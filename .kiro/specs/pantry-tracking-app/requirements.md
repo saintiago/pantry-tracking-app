@@ -2,7 +2,7 @@
 
 ## Introduction
 
-The Pantry Tracking App is a web-based Progressive Web Application (PWA) that helps the beautiful user manage their household inventory across multiple storage locations (Pantry, Fridge, Freezer, and Limbo Pantry), plan meals, and generate shopping lists. The application is optimized for smartphone use with an emphasis on ease of adding and removing items. It supports offline-first functionality, barcode scanning, receipt OCR, and AI-powered recipe parsing.
+The Pantry Tracking App is a web-based Progressive Web Application (PWA) that helps the beautiful user manage their household inventory across user-defined storage locations, plan meals, and generate shopping lists. A default "Pantry" location is provided, and beautiful users can create additional locations to match their household setup. The application is optimized for smartphone use with an emphasis on ease of adding and removing items. It supports offline-first functionality, barcode scanning, and receipt OCR.
 
 ## Glossary
 
@@ -11,14 +11,12 @@ The Pantry Tracking App is a web-based Progressive Web Application (PWA) that he
 - **Barcode_Scanner**: Frontend component using QuaggaJS for scanning product barcodes via device camera
 - **Receipt_Processor**: Backend service using AWS Textract for OCR processing of supermarket receipts
 - **Inventory_Item**: A food or household product stored in one of the storage locations with quantity, expiration date, and threshold information
-- **Storage_Location**: One of four locations where items are stored: Pantry, Fridge, Freezer, or Limbo Pantry
+- **Storage_Location**: A beautiful user-defined named location where items are stored. Each beautiful user starts with a default "Pantry" location and can add, rename, or remove additional locations
 - **Recipe**: A collection of ingredients with quantities and preparation instructions
 - **Meal_Plan**: A scheduled assignment of recipes to specific meals (breakfast, lunch, dinner) on calendar dates
 - **Shopping_List**: A calculated list of items needed based on meal plans and current inventory
 - **Threshold**: A beautiful user-defined minimum quantity that triggers low-stock notifications
 - **Sync_Service**: Component responsible for synchronizing offline data with the backend
-- **Recipe_Parser**: AI-powered service that extracts ingredients from pasted recipe text
-
 ## Requirements
 
 ### Requirement 1: Beautiful User Authentication
@@ -61,7 +59,7 @@ The Pantry Tracking App is a web-based Progressive Web Application (PWA) that he
    - Product Name (required)
    - Category (required)
    - Expiration Date (required)
-   - Location: Pantry, Fridge, Freezer, or Limbo Pantry (required)
+   - Location: selected from the beautiful user's defined Storage_Locations (required)
    - Quantity (required)
    - Units (required)
    - Brand (optional)
@@ -129,7 +127,7 @@ The Pantry Tracking App is a web-based Progressive Web Application (PWA) that he
 1. THE Pantry_App SHALL display a quick filter text input field at the top of the items list
 2. WHEN the beautiful user types in the filter field, THE Pantry_App SHALL filter items in real-time by matching against product name
 3. THE Pantry_App SHALL provide a category selector to filter items by category
-4. THE Pantry_App SHALL allow filtering by storage location (Pantry, Fridge, Freezer, Limbo Pantry)
+4. THE Pantry_App SHALL allow filtering by storage location using the beautiful user's defined Storage_Locations
 5. THE Pantry_App SHALL allow combining text filter with category and location filters
 
 ### Requirement 9: Ease-of-Use Optimized UI
@@ -168,19 +166,6 @@ The Pantry Tracking App is a web-based Progressive Web Application (PWA) that he
 2. THE Pantry_App SHALL display each ingredient with its availability status (available, partial, missing)
 3. WHEN an ingredient is partially available, THE Pantry_App SHALL show the quantity needed versus quantity in inventory
 4. THE Pantry_App SHALL calculate and display the total number of missing ingredients for each recipe
-
-### Requirement 12: AI Recipe Text Parsing
-
-**User Story:** As a beautiful user, I want to paste recipe text and have the app understand which ingredients I have and which I need to buy, so that I can quickly plan shopping from any recipe source.
-
-#### Acceptance Criteria
-
-1. THE Pantry_App SHALL provide a text input area where the beautiful user can paste recipe text
-2. WHEN recipe text is submitted, THE Recipe_Parser SHALL extract ingredient names, quantities, and units using AI
-3. WHEN ingredients are extracted, THE Pantry_App SHALL compare them against current inventory
-4. THE Pantry_App SHALL display each extracted ingredient with its availability status (available, partial, missing)
-5. THE Pantry_App SHALL allow the beautiful user to add missing ingredients directly to a shopping list
-6. IF parsing fails, THEN THE Pantry_App SHALL notify the beautiful user and suggest manual recipe entry
 
 ### Requirement 13: Meal Planner Calendar
 
@@ -238,6 +223,21 @@ The Pantry Tracking App is a web-based Progressive Web Application (PWA) that he
 1. THE Pantry_App SHALL store all beautiful user data in DynamoDB
 2. WHEN data is modified, THE Pantry_App SHALL persist changes within 5 seconds of beautiful user action (when online)
 3. THE Pantry_App SHALL store receipt photos and item pictures in S3 with references in DynamoDB
+
+### Requirement 18: Storage Location Management
+
+**User Story:** As a beautiful user, I want to manage my storage locations, so that I can organize my inventory to match my household setup.
+
+#### Acceptance Criteria
+
+1. WHEN a new beautiful user account is created, THE Pantry_App SHALL create a default Storage_Location named "Pantry"
+2. THE Pantry_App SHALL allow beautiful users to add new Storage_Locations by providing a unique name
+3. THE Pantry_App SHALL allow beautiful users to rename existing Storage_Locations
+4. THE Pantry_App SHALL allow beautiful users to remove Storage_Locations that contain no Inventory_Items
+5. IF a beautiful user attempts to remove a Storage_Location that contains Inventory_Items, THEN THE Pantry_App SHALL display an error indicating the location contains items and cannot be removed
+6. THE Pantry_App SHALL prevent the beautiful user from removing the last remaining Storage_Location
+7. IF a beautiful user attempts to add a Storage_Location with a name that already exists, THEN THE Pantry_App SHALL display a validation error indicating the name is already in use
+8. THE Pantry_App SHALL display the list of Storage_Locations in the order they were created
 
 ## Optional Requirements
 

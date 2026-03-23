@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Pantry Tracking App is an offline-first Progressive Web Application (PWA) that enables a beautiful user to manage household inventory across multiple storage locations (Pantry, Fridge, Freezer, Limbo Pantry), plan meals, and generate shopping lists. The system uses a serverless AWS architecture with React frontend, providing seamless offline functionality through service workers and IndexedDB. The UI is optimized for ease of adding and removing items, with two prominent buttons dominating the main screen. An AI-powered recipe parser allows pasting recipe text to extract ingredients and compare against inventory.
+The Pantry Tracking App is an offline-first Progressive Web Application (PWA) that enables a beautiful user to manage household inventory across user-defined storage locations, plan meals, and generate shopping lists. Each beautiful user starts with a default "Pantry" location and can add, rename, and remove locations to match their household setup. The system uses a serverless AWS architecture with React frontend, providing seamless offline functionality through service workers and IndexedDB. The UI is optimized for ease of adding and removing items, with two prominent buttons dominating the main screen.
 
 ### Key Design Goals
 
@@ -10,8 +10,7 @@ The Pantry Tracking App is an offline-first Progressive Web Application (PWA) th
 - **Mobile-optimized**: Touch-friendly PWA installable on smartphones, with prominent Add/Remove buttons
 - **Scalable**: Serverless architecture that scales with user demand
 - **Secure**: AWS Cognito authentication with per-user data isolation
-- **Multiple Storage Locations**: Support for Pantry, Fridge, Freezer, and Limbo Pantry
-- **AI-Powered**: Recipe text parsing via AI for ingredient extraction
+- **User-Manageable Storage Locations**: Beautiful users can create, rename, and remove storage locations to match their household setup (default: "Pantry")
 
 ### Technology Stack
 
@@ -24,7 +23,6 @@ The Pantry Tracking App is an offline-first Progressive Web Application (PWA) th
 | Storage | S3 (receipt photos, item pictures) |
 | Auth | AWS Cognito |
 | OCR | AWS Textract |
-| AI | AWS Bedrock (recipe text parsing) |
 | CDN | CloudFront |
 | DNS | Route53 |
 | IaC | AWS CDK |
@@ -58,14 +56,13 @@ graph TB
         MEAL[Meal Plan Lambda]
         SHOPPING[Shopping List Lambda]
         RECEIPT[Receipt Lambda]
-        PARSER[Recipe Parser Lambda]
+        LOCATION[Storage Location Lambda]
     end
     
     subgraph "Data Layer"
         DDB[(DynamoDB)]
         S3[(S3 Bucket)]
         TXT[Textract]
-        BDR[Bedrock AI]
     end
     
     subgraph "External APIs"
@@ -84,7 +81,7 @@ graph TB
     APIGW --> MEAL
     APIGW --> SHOPPING
     APIGW --> RECEIPT
-    APIGW --> PARSER
+    APIGW --> LOCATION
     AUTH --> COG
     INVENTORY --> DDB
     INVENTORY --> OFF
@@ -94,8 +91,7 @@ graph TB
     RECEIPT --> S3
     RECEIPT --> TXT
     RECEIPT --> DDB
-    PARSER --> BDR
-    PARSER --> DDB
+    LOCATION --> DDB
 ```
 
 ### Offline-First Data Flow
@@ -154,30 +150,6 @@ sequenceDiagram
     API-->>PWA: Data
 ```
 
-### AI Recipe Parsing Flow
-
-```mermaid
-sequenceDiagram
-    participant User as Beautiful_User
-    participant PWA
-    participant API as API Gateway
-    participant Parser as Recipe Parser Lambda
-    participant BDR as AWS Bedrock
-    participant DDB as DynamoDB
-
-    User->>PWA: Paste Recipe Text
-    PWA->>API: POST /recipes/parse
-    API->>Parser: Forward Request
-    Parser->>BDR: Extract Ingredients (AI)
-    BDR-->>Parser: Parsed Ingredients
-    Parser->>DDB: Query Inventory
-    DDB-->>Parser: Current Inventory
-    Parser->>Parser: Compare Ingredients vs Inventory
-    Parser-->>API: Parsed Ingredients + Availability
-    API-->>PWA: Display Results
-    User->>PWA: Add Missing to Shopping List
-```
-
 ## Components and Interfaces
 
 ### Frontend Components
@@ -198,11 +170,12 @@ sequenceDiagram
 - **InventoryList**: Displays all inventory items with filtering/sorting
 - **QuickFilterInput**: Text input for real-time filtering by product name
 - **CategorySelector**: Dropdown/chip selector for filtering by category
-- **LocationFilter**: Filter by storage location (Pantry, Fridge, Freezer, Limbo Pantry)
+- **LocationFilter**: Filter by storage location using the beautiful user's defined storage locations
 - **InventoryItemCard**: Individual item display with quick actions
 - **AddItemModal**: Manual item entry form with all fields
 - **BarcodeScanner**: Camera-based barcode scanning using QuaggaJS
 - **ReceiptUploader**: Photo capture/upload for receipt OCR
+- **StorageLocationManager**: UI for managing storage locations (add, rename, remove)
 - **LowStockBadge**: Visual indicator for threshold alerts
 - **InAppNotification**: Displays low-stock notifications within the app
 
@@ -211,8 +184,6 @@ sequenceDiagram
 - **RecipeDetail**: Full recipe view with ingredient availability
 - **RecipeEditor**: Create/edit recipe form
 - **IngredientAvailability**: Shows inventory match status across all storage locations
-- **RecipeTextParser**: Text input area for pasting recipe text for AI parsing
-- **ParsedIngredientsList**: Displays AI-extracted ingredients with availability status
 
 #### 5. Meal Planning Module
 - **MealCalendar**: Weekly/monthly calendar view
@@ -256,7 +227,7 @@ interface AddInventoryRequest {
   name: string;
   category: string;
   expirationDate: string;  // ISO date, required
-  location: 'pantry' | 'fridge' | 'freezer' | 'limbo_pantry';
+  locationId: string;  // References a user's StorageLocation ID
   quantity: number;
   unit: string;
   barcode?: string;
@@ -272,7 +243,7 @@ interface UpdateInventoryRequest {
   name?: string;
   category?: string;
   expirationDate?: string;
-  location?: 'pantry' | 'fridge' | 'freezer' | 'limbo_pantry';
+  locationId?: string;  // References a user's StorageLocation ID
   quantity?: number;
   unit?: string;
   brand?: string;
@@ -319,31 +290,6 @@ interface RecipeWithAvailability {
 
 // PUT /recipes/{recipeId} - Update recipe
 // DELETE /recipes/{recipeId} - Delete recipe
-```
-
-#### 4. Recipe Parser Lambda
-```typescript
-// POST /recipes/parse - Parse recipe text using AI
-interface ParseRecipeRequest {
-  recipeText: string;
-}
-interface ParseRecipeResponse {
-  ingredients: ParsedIngredient[];
-  availability: IngredientAvailabilityStatus[];
-}
-interface ParsedIngredient {
-  name: string;
-  quantity: number;
-  unit: string;
-  confidence: number;
-}
-interface IngredientAvailabilityStatus {
-  ingredientName: string;
-  status: 'available' | 'partial' | 'missing';
-  requiredQuantity: number;
-  availableQuantity: number;
-  unit: string;
-}
 ```
 
 #### 5. Meal Plan Lambda
@@ -397,7 +343,32 @@ interface ProcessReceiptResponse {
 // GET /receipts/{receiptId}/status - Check processing status
 ```
 
-#### 8. Sync Lambda
+#### 8. Storage Location Lambda
+```typescript
+// GET /locations - List user's storage locations
+interface ListLocationsResponse {
+  locations: StorageLocation[];
+}
+
+// POST /locations - Create a new storage location
+interface CreateLocationRequest {
+  name: string;  // Must be unique per user
+}
+interface CreateLocationResponse {
+  location: StorageLocation;
+}
+
+// PUT /locations/{locationId} - Rename a storage location
+interface RenameLocationRequest {
+  name: string;  // Must be unique per user
+}
+
+// DELETE /locations/{locationId} - Remove a storage location
+// Returns 400 if location contains inventory items
+// Returns 400 if it is the user's last remaining location
+```
+
+#### 9. Sync Lambda
 ```typescript
 // POST /sync - Batch sync operations
 interface SyncRequest {
@@ -406,7 +377,7 @@ interface SyncRequest {
 }
 interface SyncOperation {
   type: 'create' | 'update' | 'delete';
-  entity: 'inventoryItem' | 'recipe' | 'mealPlan';
+  entity: 'inventoryItem' | 'recipe' | 'mealPlan' | 'storageLocation';
   data: any;
   clientTimestamp: number;
 }
@@ -433,7 +404,6 @@ interface SyncResponse {
 | GET | /recipes/{recipeId} | Recipe | Yes |
 | PUT | /recipes/{recipeId} | Recipe | Yes |
 | DELETE | /recipes/{recipeId} | Recipe | Yes |
-| POST | /recipes/parse | RecipeParser | Yes |
 | GET | /meal-plans | MealPlan | Yes |
 | POST | /meal-plans | MealPlan | Yes |
 | PUT | /meal-plans/{planId} | MealPlan | Yes |
@@ -443,6 +413,10 @@ interface SyncResponse {
 | POST | /receipts/upload | Receipt | Yes |
 | POST | /receipts/{receiptId}/process | Receipt | Yes |
 | GET | /receipts/{receiptId}/status | Receipt | Yes |
+| GET | /locations | StorageLocation | Yes |
+| POST | /locations | StorageLocation | Yes |
+| PUT | /locations/{locationId} | StorageLocation | Yes |
+| DELETE | /locations/{locationId} | StorageLocation | Yes |
 | POST | /sync | Sync | Yes |
 
 
@@ -478,6 +452,7 @@ The application uses a single-table design pattern for efficient querying and re
 | Get items by category | `USER#<userId>#CAT#<category>` | `ITEM#` | GSI1 |
 | Get low-stock items | `USER#<userId>#LOWSTOCK` | `ITEM#<itemId>` | GSI1 |
 | Get items by location | `USER#<userId>#LOC#<location>` | `ITEM#<itemId>` | GSI1 |
+| Get user's storage locations | `USER#<userId>` | `LOCATION#` (begins_with) | Main |
 
 ### Entity Schemas
 
@@ -493,7 +468,7 @@ interface InventoryItem {
   name: string;
   category: string;
   expirationDate: string;  // ISO date, REQUIRED
-  location: 'pantry' | 'fridge' | 'freezer' | 'limbo_pantry';
+  location: string;       // StorageLocation locationId
   quantity: number;
   unit: string;
   brand?: string;
@@ -509,6 +484,21 @@ interface InventoryItem {
   // GSI1 for category queries
   GSI1PK?: string;      // USER#<userId>#CAT#<category> or USER#<userId>#LOC#<location>
   GSI1SK?: string;      // ITEM#<itemId>
+}
+```
+
+#### StorageLocation
+```typescript
+interface StorageLocation {
+  PK: string;           // USER#<userId>
+  SK: string;           // LOCATION#<locationId>
+  entityType: 'StorageLocation';
+  locationId: string;
+  userId: string;
+  name: string;         // User-facing display name, unique per user
+  createdAt: string;
+  updatedAt: string;
+  syncVersion: number;
 }
 ```
 
@@ -584,7 +574,7 @@ interface ExtractedItem {
 interface SyncQueueItem {
   id: string;
   operation: 'create' | 'update' | 'delete';
-  entityType: 'inventoryItem' | 'recipe' | 'mealPlan';
+  entityType: 'inventoryItem' | 'recipe' | 'mealPlan' | 'storageLocation';
   entityId: string;
   data: any;
   timestamp: number;
@@ -648,6 +638,14 @@ interface PantryAppDB {
     indexes: {
       byStatus: string;
       byTimestamp: number;
+    };
+  };
+  storageLocations: {
+    key: string;        // locationId
+    value: StorageLocation;
+    indexes: {
+      byName: string;
+      bySyncVersion: number;
     };
   };
   metadata: {
@@ -735,25 +733,13 @@ interface PantryAppDB {
 - "partial" if 0 < total inventory quantity < required quantity
 - "missing" if total inventory quantity = 0 or ingredient not in inventory
 
-**Validates: Requirements 11.1, 11.2, 11.3, 12.3, 12.4**
+**Validates: Requirements 11.1, 11.2, 11.3**
 
 ### Property 13: Missing Ingredient Count Accuracy
 
 *For any* recipe, the total missing ingredient count should equal the number of ingredients with status "partial" or "missing".
 
 **Validates: Requirements 11.4**
-
-### Property 14: AI Recipe Parser Ingredient Extraction
-
-*For any* structured AI response containing ingredient data, the recipe parser should correctly extract ingredient names, quantities, and units, producing a list of parsed ingredients that matches the AI output structure.
-
-**Validates: Requirements 12.2**
-
-### Property 15: Add Missing Ingredients to Shopping List
-
-*For any* set of ingredients identified as missing or partial from a parsed recipe, adding them to the shopping list should persist all of them in the shopping list.
-
-**Validates: Requirements 12.5**
 
 ### Property 16: Meal Plan CRUD Persistence
 
@@ -839,6 +825,30 @@ interface PantryAppDB {
 
 **Validates: Optional Requirements 3.2**
 
+### Property 30: Storage Location Add with Uniqueness
+
+*For any* beautiful user and any location name, adding a storage location should succeed if and only if no existing location for that user has the same name (case-insensitive). When the add succeeds, the location should appear in the user's location list.
+
+**Validates: Requirements 18.2, 18.7**
+
+### Property 31: Storage Location Removal Guard
+
+*For any* beautiful user and any storage location, removing the location should succeed if and only if the location contains no inventory items AND it is not the user's last remaining location. When removal is rejected, the location should remain unchanged in the user's list.
+
+**Validates: Requirements 18.4, 18.5, 18.6**
+
+### Property 32: Storage Location Rename Round-Trip
+
+*For any* existing storage location and any new unique name, renaming the location and then retrieving it should return the updated name.
+
+**Validates: Requirements 18.3**
+
+### Property 33: Storage Location Creation Order
+
+*For any* sequence of storage locations created by a beautiful user, retrieving the location list should return them in the order they were created.
+
+**Validates: Requirements 18.8**
+
 
 ## Error Handling
 
@@ -853,6 +863,7 @@ interface PantryAppDB {
 - **Form Validation**: Client-side validation before submission with inline error messages for all required fields (name, category, expirationDate, location, quantity, unit)
 - **API Validation Errors**: Display field-specific errors returned from backend (400 responses)
 - **Format**: `{ field: string, message: string }[]`
+- **Storage Location Errors**: Display inline errors for duplicate location names, non-empty location removal, and last-location removal attempts
 
 #### Authentication Errors
 - **Token Expiry**: Automatic token refresh via Cognito; redirect to login if refresh fails
@@ -863,11 +874,6 @@ interface PantryAppDB {
 - **Permission Denied**: Display instructions to enable camera permissions
 - **Camera Unavailable**: Offer manual entry as fallback
 - **Barcode Scan Failure**: Timeout after 30s with option to retry or enter manually
-
-#### AI Recipe Parsing Errors
-- **Parsing Failure**: Display error notification and suggest manual recipe entry
-- **Partial Extraction**: Show extracted ingredients with confidence scores, allow beautiful user to correct
-- **Bedrock Service Unavailable**: Queue for retry or suggest manual entry
 
 ### Backend Error Handling
 
@@ -911,12 +917,6 @@ const ErrorCodes = {
 - **UnsupportedDocumentException**: Return 400 suggesting clearer photo
 - **Throttling**: Queue for retry with exponential backoff
 
-#### Bedrock AI Errors
-- **ThrottlingException**: Return 429 with retry-after header
-- **ModelTimeoutException**: Return 504 with retry suggestion
-- **ValidationException**: Return 400 if input text is too long or malformed
-- **ServiceUnavailableException**: Return 503 with fallback to manual entry
-
 #### External API Errors (Open Food Facts)
 - **Rate Limiting**: Cache responses, implement request queuing
 - **Service Unavailable**: Return partial data with warning, allow manual entry
@@ -957,7 +957,7 @@ This application uses a dual testing approach combining unit tests for specific 
 - Component rendering and user interactions
 - API endpoint request/response handling
 - Edge cases (empty inputs, boundary values, zero quantity prompts, error states)
-- Integration points (Cognito, S3, Textract, Bedrock mocks)
+- Integration points (Cognito, S3, Textract mocks)
 
 **Example Test Cases**:
 - Login form displays error on invalid credentials
@@ -965,12 +965,16 @@ This application uses a dual testing approach combining unit tests for specific 
 - Receipt OCR shows extracted items for review
 - Calendar displays meal assignments correctly
 - Shopping list excludes fully-stocked items
-- AI recipe parser shows error on parsing failure
 - Filter input filters items by name in real-time
 - Category selector filters items by category
 - Location filter shows only items at selected location
 - Add button provides access to manual, barcode, and receipt entry methods
 - Remove button presents quick item selection interface
+- Default "Pantry" location is created for new user accounts
+- Adding a location with a duplicate name shows validation error
+- Removing a location with items shows error message
+- Removing the last remaining location is prevented
+- Renaming a location persists the new name
 
 ### Property-Based Testing
 
@@ -1016,7 +1020,7 @@ describe('Combined Filter Correctness', () => {
         fc.array(arbitraryInventoryItem(), { minLength: 0, maxLength: 50 }),
         fc.option(fc.string({ minLength: 1, maxLength: 20 })),
         fc.option(fc.constantFrom('dairy', 'produce', 'meat', 'pantry', 'frozen', 'beverages')),
-        fc.option(fc.constantFrom('pantry', 'fridge', 'freezer', 'limbo_pantry')),
+        fc.option(fc.string({ minLength: 1, maxLength: 30 })),  // location filter (user-defined)
         (items, textFilter, categoryFilter, locationFilter) => {
           const results = applyFilters(items, { text: textFilter, category: categoryFilter, location: locationFilter });
           return results.every(item => {
@@ -1078,7 +1082,7 @@ const arbitraryInventoryItem = () => fc.record({
   category: fc.constantFrom('dairy', 'produce', 'meat', 'pantry', 'frozen', 'beverages'),
   expirationDate: fc.date({ min: new Date('2024-01-01'), max: new Date('2026-12-31') })
     .map(d => d.toISOString().split('T')[0]),
-  location: fc.constantFrom('pantry', 'fridge', 'freezer', 'limbo_pantry'),
+  location: fc.string({ minLength: 1, maxLength: 30 }),  // User-defined storage location ID
   quantity: fc.integer({ min: 0, max: 10000 }),
   unit: fc.constantFrom('g', 'kg', 'ml', 'L', 'oz', 'lb', 'count'),
   barcode: fc.option(fc.stringMatching(/^[0-9]{8,13}$/)),
@@ -1110,13 +1114,21 @@ const arbitraryMealPlan = () => fc.record({
   recipeName: fc.string({ minLength: 1, maxLength: 100 }),
 });
 
-// Parsed Ingredient Generator (for AI parser tests)
-const arbitraryParsedIngredient = () => fc.record({
+// Storage Location Generator
+const arbitraryStorageLocation = () => fc.record({
+  locationId: fc.uuid(),
   name: fc.string({ minLength: 1, maxLength: 50 }),
-  quantity: fc.float({ min: 0.1, max: 100 }),
-  unit: fc.constantFrom('g', 'kg', 'ml', 'L', 'cup', 'tbsp', 'tsp', 'count'),
-  confidence: fc.float({ min: 0, max: 1 }),
+  createdAt: fc.date({ min: new Date('2024-01-01'), max: new Date('2026-12-31') })
+    .map(d => d.toISOString()),
 });
+
+// Unique Location Name List Generator (for testing ordering and uniqueness)
+const arbitraryUniqueLocationNames = () =>
+  fc.uniqueArray(fc.string({ minLength: 1, maxLength: 50 }), {
+    minLength: 1,
+    maxLength: 10,
+    comparator: (a, b) => a.toLowerCase() === b.toLowerCase(),
+  });
 ```
 
 ### Test Coverage Requirements
@@ -1127,11 +1139,11 @@ const arbitraryParsedIngredient = () => fc.record({
 | Low Stock | 80% | Properties 4-6 |
 | Filtering | 80% | Property 7 |
 | Recipe Management | 80% | Properties 10-13 |
-| AI Recipe Parsing | 80% | Properties 14-15 |
 | Meal Planning | 80% | Property 16 |
 | Shopping List | 80% | Properties 17-18 |
 | Offline/Sync | 70% | Properties 19-22 |
 | Authentication | 80% | Properties 23-25 |
+| Storage Location Management | 80% | Properties 30-33 |
 | Optional Features | 60% | Properties 27-29 |
 
 ### Integration Testing
@@ -1139,7 +1151,7 @@ const arbitraryParsedIngredient = () => fc.record({
 **Approach**: Test API endpoints with mocked AWS services
 
 **Tools**:
-- aws-sdk-mock for DynamoDB, S3, Cognito, Textract, Bedrock
+- aws-sdk-mock for DynamoDB, S3, Cognito, Textract
 - supertest for API endpoint testing
 - LocalStack for local AWS service emulation (optional)
 
@@ -1153,8 +1165,7 @@ const arbitraryParsedIngredient = () => fc.record({
 3. Create recipe → Plan meal → Generate shopping list
 4. Offline add item → Go online → Verify sync
 5. Upload receipt → Review extracted items → Confirm add
-6. Paste recipe text → View AI-parsed ingredients → Add missing to shopping list
-7. Set threshold → Reduce quantity → Verify low-stock notification
+6. Set threshold → Reduce quantity → Verify low-stock notification
 
 ### CI/CD Pipeline Testing
 
