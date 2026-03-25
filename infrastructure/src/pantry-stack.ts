@@ -161,6 +161,67 @@ export class PantryStack extends cdk.Stack {
       { authorizationType: apigateway.AuthorizationType.NONE },
     );
 
+    // ─── Storage Location Lambda ────────────────────────────────────
+    const storageLocationLambda = new NodejsFunction(this, 'StorageLocationLambda', {
+      functionName: 'PantryStorageLocationFunction',
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'handler',
+      entry: path.join(__dirname, '../../backend/src/handlers/storage-location.ts'),
+      environment: {
+        TABLE_NAME: this.table.tableName,
+      },
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 256,
+    });
+
+    this.table.grantReadWriteData(storageLocationLambda);
+
+    // API Gateway: /locations routes (authenticated)
+    const locationsResource = this.api.root.addResource('locations');
+    const authMethodOptions = {
+      authorizer: this.cognitoAuthorizer,
+      authorizationType: apigateway.AuthorizationType.COGNITO,
+    };
+    const locationIntegration = new apigateway.LambdaIntegration(storageLocationLambda);
+
+    locationsResource.addMethod('GET', locationIntegration, authMethodOptions);
+    locationsResource.addMethod('POST', locationIntegration, authMethodOptions);
+
+    const locationIdResource = locationsResource.addResource('{locationId}');
+    locationIdResource.addMethod('PUT', locationIntegration, authMethodOptions);
+    locationIdResource.addMethod('DELETE', locationIntegration, authMethodOptions);
+
+    // ─── Inventory Lambda ───────────────────────────────────────────
+    const inventoryLambda = new NodejsFunction(this, 'InventoryLambda', {
+      functionName: 'PantryInventoryFunction',
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'handler',
+      entry: path.join(__dirname, '../../backend/src/handlers/inventory.ts'),
+      environment: {
+        TABLE_NAME: this.table.tableName,
+        STORAGE_BUCKET: this.storageBucket.bucketName,
+      },
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 256,
+    });
+
+    this.table.grantReadWriteData(inventoryLambda);
+    this.storageBucket.grantReadWrite(inventoryLambda);
+
+    // API Gateway: /inventory routes (authenticated)
+    const inventoryResource = this.api.root.addResource('inventory');
+    const inventoryIntegration = new apigateway.LambdaIntegration(inventoryLambda);
+
+    inventoryResource.addMethod('GET', inventoryIntegration, authMethodOptions);
+    inventoryResource.addMethod('POST', inventoryIntegration, authMethodOptions);
+
+    const lowStockResource = inventoryResource.addResource('low-stock');
+    lowStockResource.addMethod('GET', inventoryIntegration, authMethodOptions);
+
+    const inventoryItemIdResource = inventoryResource.addResource('{itemId}');
+    inventoryItemIdResource.addMethod('PUT', inventoryIntegration, authMethodOptions);
+    inventoryItemIdResource.addMethod('DELETE', inventoryIntegration, authMethodOptions);
+
     // ─── CloudFront Distribution ─────────────────────────────────────
     const originAccessIdentity = new cloudfront.OriginAccessIdentity(
       this,

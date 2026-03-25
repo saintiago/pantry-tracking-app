@@ -56,7 +56,27 @@ echo "✅ Frontend built"
 
 # ─── Step 4: Upload to S3 ────────────────────────────────────────────
 echo "📤 Uploading to S3..."
-aws s3 sync "$ROOT_DIR/frontend/build" "s3://$WEBSITE_BUCKET" --delete
+
+# Upload hashed assets with long-lived cache (1 year) — filenames change on content change
+aws s3 sync "$ROOT_DIR/frontend/build" "s3://$WEBSITE_BUCKET" \
+  --delete \
+  --cache-control "public, max-age=31536000, immutable" \
+  --exclude "index.html" \
+  --exclude "sw.js" \
+  --exclude "manifest.json"
+
+# Upload index.html with no-cache — browser must always revalidate
+aws s3 cp "$ROOT_DIR/frontend/build/index.html" "s3://$WEBSITE_BUCKET/index.html" \
+  --cache-control "no-cache, no-store, must-revalidate"
+
+# Upload sw.js with no-cache — browser checks for updates on every navigation
+aws s3 cp "$ROOT_DIR/frontend/build/sw.js" "s3://$WEBSITE_BUCKET/sw.js" \
+  --cache-control "no-cache, no-store, must-revalidate"
+
+# Upload manifest.json with short cache
+aws s3 cp "$ROOT_DIR/frontend/build/manifest.json" "s3://$WEBSITE_BUCKET/manifest.json" \
+  --cache-control "public, max-age=3600"
+
 echo "✅ Uploaded to S3"
 
 # ─── Step 5: Invalidate CloudFront cache ─────────────────────────────
