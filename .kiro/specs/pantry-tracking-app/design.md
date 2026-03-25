@@ -246,6 +246,7 @@ interface UpdateInventoryRequest {
   locationId?: string;  // References a user's StorageLocation ID
   quantity?: number;
   unit?: string;
+  barcode?: string;
   brand?: string;
   whereToBuy?: string;
   onlineStoreLink?: string;

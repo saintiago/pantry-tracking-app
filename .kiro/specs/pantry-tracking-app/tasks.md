@@ -123,7 +123,7 @@ This implementation plan is organized into incremental stages, each delivering a
 **Deliverable:** Beautiful_User can add, edit, remove inventory items manually with location tracking, filtering, and low-stock indicators.
 
 - [ ] 5. Implement Storage Location Lambda with CRUD operations
-  - [ ] 5.1 Create Storage Location Lambda with all endpoints
+  - [x] 5.1 Create Storage Location Lambda with all endpoints
     - Implement GET /locations to list user's storage locations (ordered by createdAt)
     - Implement POST /locations to create a new storage location with unique name validation (case-insensitive)
     - Implement PUT /locations/{locationId} to rename a storage location (unique name validation)
@@ -132,14 +132,14 @@ This implementation plan is organized into incremental stages, each delivering a
     - DynamoDB entity: PK=USER#userId, SK=LOCATION#locationId
     - _Requirements: 18.1, 18.2, 18.3, 18.4, 18.5, 18.6, 18.7, 18.8_
 
-  - [ ]* 5.2 Write property tests for storage location management
+  - [ ] 5.2 Write property tests for storage location management
     - **Property 30: Storage Location Add with Uniqueness** - Validates: Requirements 18.2, 18.7
     - **Property 31: Storage Location Removal Guard** - Validates: Requirements 18.4, 18.5, 18.6
     - **Property 32: Storage Location Rename Round-Trip** - Validates: Requirements 18.3
     - **Property 33: Storage Location Creation Order** - Validates: Requirements 18.8
 
-- [ ] 6. Implement StorageLocationManager frontend component
-  - [ ] 6.1 Create StorageLocationManager UI
+- [x] 6. Implement StorageLocationManager frontend component
+  - [x] 6.1 Create StorageLocationManager UI
     - Display list of user's storage locations
     - Provide form/input to add a new location by name
     - Support inline renaming of existing locations
@@ -147,33 +147,33 @@ This implementation plan is organized into incremental stages, each delivering a
     - Display validation errors: duplicate name, non-empty location removal, last-location removal
     - _Requirements: 18.1, 18.2, 18.3, 18.4, 18.5, 18.6, 18.7, 18.8_
 
-  - [ ] 6.2 Wire StorageLocationManager to backend API
+  - [x] 6.2 Wire StorageLocationManager to backend API
     - Create API client calls for GET/POST/PUT/DELETE /locations
     - Handle error responses (400 for duplicates, non-empty removal, last-location removal)
     - _Requirements: 18.2, 18.3, 18.4, 18.5, 18.6, 18.7_
 
 - [ ] 7. Implement Inventory Lambda with CRUD operations
-  - [ ] 7.1 Create Inventory Lambda with list and add operations
+  - [x] 7.1 Create Inventory Lambda with list and add operations
     - Implement GET /inventory endpoint with pagination
     - Implement POST /inventory endpoint for adding items with all fields: name, category, expirationDate (required), locationId (references user's StorageLocation), quantity, unit, barcode, brand, whereToBuy, onlineStoreLink, pictureUrl
     - Include validation for required fields (name, category, expirationDate, locationId, quantity, unit)
     - Store item pictures in S3 and save reference in DynamoDB
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 17.1, 17.3_
 
-  - [ ] 7.2 Implement inventory item update and delete operations
+  - [x] 7.2 Implement inventory item update and delete operations
     - Implement PUT /inventory/{itemId} for updating all fields including locationId
     - Implement DELETE /inventory/{itemId} with confirmation logic
     - Handle zero quantity prompt logic
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 6.1, 6.2, 6.3_
 
-  - [ ] 7.3 Implement low-stock threshold logic and in-app notifications
+  - [x] 7.3 Implement low-stock threshold logic and in-app notifications
     - Add isLowStock flag calculation on item create/update (isLowStock = quantity <= threshold)
     - Implement GET /inventory/low-stock endpoint
     - Update GSI1 for low-stock and location-based queries
     - Generate in-app notification when item transitions to low-stock status
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-  - [ ]* 7.4 Write property tests for inventory operations
+  - [ ] 7.4 Write property tests for inventory operations
     - **Property 1: Item Addition Persistence** - Validates: Requirements 2.6, 3.2, 4.6
     - **Property 2: Item Deletion Removes from Inventory** - Validates: Requirements 5.4
     - **Property 3: Quantity Update Round-Trip** - Validates: Requirements 6.1
@@ -185,14 +185,14 @@ This implementation plan is organized into incremental stages, each delivering a
     - **Property 26: Threshold Setting Persistence** - Validates: Requirements 7.1
 
 - [ ] 8. Implement frontend inventory module
-  - [ ] 8.1 Create MainScreen with prominent Add/Remove buttons
+  - [x] 8.1 Create MainScreen with prominent Add/Remove buttons
     - Implement MainScreen with two large, touch-friendly Add/Remove buttons dominating the UI
     - Add button provides quick access to all item entry methods (manual, barcode, receipt)
     - Remove button provides quick access to item removal with minimal taps
     - Minimum tap target size of 44x44px
     - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
 
-  - [ ] 8.2 Create InventoryList with filtering components
+  - [x] 8.2 Create InventoryList with filtering components
     - Implement InventoryList with InventoryItemCard components (showing item picture, location badge)
     - Create QuickFilterInput for real-time text filtering by product name
     - Create CategorySelector dropdown/chip for filtering by category
@@ -202,23 +202,23 @@ This implementation plan is organized into incremental stages, each delivering a
     - Display low-stock items in a dedicated view
     - _Requirements: 7.3, 7.4, 7.5, 8.1, 8.2, 8.3, 8.4, 8.5_
 
-  - [ ]* 8.3 Write property test for combined filtering
+  - [ ] 8.3 Write property test for combined filtering
     - **Property 7: Combined Filter Correctness** - Validates: Requirements 8.2, 8.3, 8.4, 8.5
 
-  - [ ] 8.4 Implement AddItemModal for manual entry
+  - [x] 8.4 Implement AddItemModal for manual entry
     - Create form with all fields: barcode (optional), name, category, expirationDate, locationId (selected from user's storage locations), quantity, unit, brand, whereToBuy, onlineStoreLink, picture
     - Implement picture upload to S3 via presigned URL
     - Implement client-side validation with inline errors for required fields
     - Display confirmation message on success
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-  - [ ] 8.5 Wire inventory frontend to backend API
+  - [x] 8.5 Wire inventory frontend to backend API
     - Create API client with Bearer token authentication
     - Connect InventoryModule to Inventory Lambda endpoints
     - Handle validation errors with field-specific messages
     - _Requirements: 17.2_
 
-- [ ] 9. **Stage 2 Checkpoint** - Deploy and verify storage locations, inventory CRUD, filtering, and low-stock notifications work end-to-end
+- [x] 9. **Stage 2 Checkpoint** - Deploy and verify storage locations, inventory CRUD, filtering, and low-stock notifications work end-to-end
 
 ---
 
