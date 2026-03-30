@@ -2,14 +2,15 @@
 
 ## Overview
 
-The Item Detail View adds a full-screen detail panel to the Pantry Tracking App that users open by tapping an inventory item card. The panel displays all `InventoryItem` fields (omitting empty optional ones), supports an inline edit mode with validation, and persists changes via `PUT /inventory/{itemId}`. The feature integrates into the existing `InventoryPage` component using state-based rendering (no router), reuses the existing `updateInventoryItem` API function, and follows the app's inline-styles + mobile-first conventions.
+The Item Detail View adds a full-screen edit panel to the Pantry Tracking App that users open by tapping an inventory item card. The panel opens directly in edit mode with all fields pre-populated, displays all `InventoryItem` fields (showing "—" for empty optional fields), validates edits client-side, and persists changes via `PUT /inventory/{itemId}`. The feature integrates into the existing `InventoryPage` component using state-based rendering (no router), reuses the existing `updateInventoryItem` API function, and follows the app's inline-styles + mobile-first conventions.
 
 ### Key Design Decisions
 
 - **State-based panel, not a route**: The detail view is rendered conditionally inside `InventoryPage` based on a `selectedItem` state variable. This is consistent with how `AddItemModal` works and avoids introducing a router dependency.
-- **Single component with read/edit modes**: `ItemDetailView` manages its own `mode: 'view' | 'edit'` state internally. This keeps the parent page simple — it only passes the item, locations, and an `onClose`/`onItemUpdated` callback.
+- **Edit-only, no read-only mode**: `ItemDetailView` opens directly as an editable form. There is no separate read-only view or Edit button — tapping an item card immediately shows the edit form. Cancel and Close both dismiss the panel.
 - **Validation mirrors AddItemModal**: The same required-field rules (name, category, expirationDate, location, quantity, unit) are reused. This ensures consistency and reduces user confusion.
 - **Full-screen overlay**: The detail view renders as a fixed-position panel covering the inventory list, similar to a modal but scrollable. This works well on mobile (320px) through desktop (1920px).
+- **Always-visible optional fields**: All optional fields (brand, barcode, threshold, whereToBuy, onlineStoreLink) are always displayed, showing "—" when empty. This ensures users can see all available fields at a glance.
 
 ## Architecture
 
@@ -32,14 +33,12 @@ graph TD
 ```mermaid
 stateDiagram-v2
     [*] --> ListView
-    ListView --> DetailReadOnly: tap item card (removeMode=false)
-    DetailReadOnly --> DetailEditMode: tap Edit button
-    DetailEditMode --> DetailReadOnly: tap Cancel (discard changes)
-    DetailEditMode --> Saving: tap Save (validation passes)
-    Saving --> DetailReadOnly: API success (update local data)
-    Saving --> DetailEditMode: API error (show error, keep edits)
-    DetailReadOnly --> ListView: tap Close button
-    DetailEditMode --> DetailEditMode: validation fails (show inline errors)
+    ListView --> EditForm: tap item card (removeMode=false)
+    EditForm --> Saving: tap Save (validation passes)
+    Saving --> ListView: API success (update local data, dismiss detail view)
+    Saving --> EditForm: API error (show error, keep edits)
+    EditForm --> ListView: tap Close or Cancel
+    EditForm --> EditForm: validation fails (show inline errors)
 ```
 
 ## Components and Interfaces
@@ -57,8 +56,7 @@ interface ItemDetailViewProps {
 
 This is the single new component. It renders:
 
-- **Read-only mode**: All item fields as static text, with optional fields omitted when empty. Displays an Edit button and a Close button.
-- **Edit mode**: Editable form inputs pre-populated with current values. Displays Save and Cancel buttons. The Edit button is hidden.
+- **Edit form**: All item fields as editable form inputs pre-populated with current values. Displays Save and Cancel buttons, plus a Close button in the header. Optional fields that are empty show "—" as placeholder text in the form inputs.
 
 ### InventoryPage Changes
 
@@ -85,20 +83,20 @@ No new API functions needed. The existing `updateInventoryItem(itemId, data)` in
 
 ### Field Display Rules
 
-| Field | Always shown | Condition |
-|-------|-------------|-----------|
+| Field | Always shown | Empty display |
+|-------|-------------|---------------|
 | name | ✅ | — |
 | category | ✅ | — |
 | location (resolved name) | ✅ | — |
 | quantity + unit | ✅ | — |
 | expirationDate | ✅ | — |
-| isLowStock badge | conditional | `isLowStock === true` |
-| brand | conditional | `brand` is truthy |
-| barcode | conditional | `barcode` is truthy |
-| threshold | conditional | `threshold !== undefined` |
-| whereToBuy | conditional | `whereToBuy` is truthy |
-| onlineStoreLink | conditional | `onlineStoreLink` is truthy |
-| pictureUrl | conditional | `pictureUrl` is truthy |
+| isLowStock badge | conditional | only when `isLowStock === true` |
+| brand | ✅ | shows "—" |
+| barcode | ✅ | shows "—" |
+| threshold | ✅ | shows "—" |
+| whereToBuy | ✅ | shows "—" |
+| onlineStoreLink | ✅ | shows "—" |
+| pictureUrl | conditional | only when `pictureUrl` is truthy |
 | createdAt | ✅ | formatted as readable date |
 | updatedAt | ✅ | formatted as readable date |
 
@@ -205,7 +203,7 @@ interface EditFormState {
 }
 ```
 
-The form state is initialized from the `InventoryItem` when entering edit mode, converting numeric fields to strings for input binding.
+The form state is initialized from the `InventoryItem` when the component mounts, converting numeric fields to strings for input binding.
 
 
 ## Correctness Properties
@@ -230,9 +228,9 @@ The form state is initialized from the `InventoryItem` when entering edit mode, 
 
 **Validates: Requirements 2.1, 2.7, 2.8**
 
-### Property 4: Optional Fields Shown If and Only If Present
+### Property 4: Optional Fields Always Displayed
 
-*For any* inventory item, each optional field (brand, barcode, threshold, whereToBuy, onlineStoreLink, pictureUrl) should be rendered in the detail view if and only if the field has a truthy value. When onlineStoreLink is present, it should render as an anchor element with `target="_blank"`.
+*For any* inventory item, all optional fields (brand, barcode, threshold, whereToBuy, onlineStoreLink) should always be rendered in the detail view. When a field has no value, it should display "—". When onlineStoreLink is present, it should render as an anchor element with `target="_blank"`.
 
 **Validates: Requirements 2.2, 2.3, 2.4, 2.5, 2.6, 2.9, 3.1, 3.2**
 
@@ -248,21 +246,21 @@ The form state is initialized from the `InventoryItem` when entering edit mode, 
 
 **Validates: Requirements 4.2**
 
-### Property 7: Edit Mode Pre-Populates Form With Current Values
+### Property 7: Form Pre-Populated With Current Values
 
-*For any* inventory item, when the user enters edit mode, every editable form input should be pre-populated with the item's current value.
+*For any* inventory item, when the detail view opens, every editable form input should be pre-populated with the item's current value.
 
-**Validates: Requirements 7.2**
+**Validates: Requirements 7.1**
 
-### Property 8: Cancel Discards Changes and Restores Original Values
+### Property 8: Cancel Dismisses Detail View
 
-*For any* inventory item and any set of edits made in edit mode, tapping Cancel should discard all changes and return to read-only mode displaying the original item values.
+*For any* inventory item, tapping Cancel should dismiss the detail view and return to the inventory list (same as Close button).
 
-**Validates: Requirements 7.4**
+**Validates: Requirements 7.3**
 
-### Property 9: All Editable Fields Rendered in Edit Mode
+### Property 9: All Editable Fields Rendered
 
-*For any* inventory item in edit mode, the form should render editable inputs for all 11 fields: name, category, location, quantity, unit, expiration date, brand, barcode, whereToBuy, onlineStoreLink, and threshold.
+*For any* inventory item, the form should render editable inputs for all 11 fields: name, category, location, quantity, unit, expiration date, brand, barcode, whereToBuy, onlineStoreLink, and threshold.
 
 **Validates: Requirements 8.1**
 
@@ -284,15 +282,15 @@ The form state is initialized from the `InventoryItem` when entering edit mode, 
 
 **Validates: Requirements 10.2**
 
-### Property 13: Successful Save Updates Data and Exits Edit Mode
+### Property 13: Successful Save Dismisses Detail View
 
-*For any* successful save response, the detail view should display a success message, update the displayed item data with the response values, and return to read-only mode.
+*For any* successful save response, the system should update the local item data with the response values and dismiss the detail view, returning the user to the inventory list.
 
 **Validates: Requirements 10.4**
 
-### Property 14: Save Failure Shows Error and Keeps Edit Mode
+### Property 14: Save Failure Shows Error
 
-*For any* save attempt that fails (API error or network error), the detail view should display an error message and remain in edit mode with the user's edits preserved.
+*For any* save attempt that fails (API error or network error), the detail view should display an error message with the user's edits preserved.
 
 **Validates: Requirements 10.5, 10.6**
 
@@ -327,6 +325,7 @@ The form state is initialized from the `InventoryItem` when entering edit mode, 
 - While the save request is in progress, both Save and Cancel buttons are disabled.
 - The Save button text changes to "Saving…" with a loading indicator.
 - This prevents double-submission and accidental cancellation during save.
+- On success, the panel closes and the user returns to the inventory list.
 
 ## Testing Strategy
 
@@ -339,10 +338,10 @@ Tag format: `Feature: item-detail-view, Property {number}: {property_text}`
 Key properties to implement as PBT:
 
 - **Property 3** (required fields displayed): Generate random `InventoryItem` objects, render `ItemDetailView`, assert all required field values appear in the output.
-- **Property 4** (optional fields shown iff present): Generate items with random combinations of optional fields present/absent, verify each optional field's presence in the DOM matches its truthiness.
+- **Property 4** (optional fields always shown): Generate items with random combinations of optional fields present/absent, verify all optional fields are always rendered (showing "—" when empty).
 - **Property 5** (low stock badge): Generate items with random `isLowStock` values, verify badge presence matches the flag.
-- **Property 7** (edit mode pre-population): Generate random items, enter edit mode, verify each input value matches the item's field.
-- **Property 8** (cancel discards changes): Generate random items and random edit values, make edits, cancel, verify original values are restored.
+- **Property 7** (form pre-population): Generate random items, verify each input value matches the item's field on render.
+- **Property 8** (cancel dismisses): Verify cancel closes the detail view.
 - **Property 10** (required field validation): Generate form states with random combinations of empty required fields, submit, verify errors appear for exactly the empty fields.
 - **Property 11** (error clearing): Generate a field with an error, change its value, verify the error is cleared.
 
@@ -350,8 +349,8 @@ Key properties to implement as PBT:
 
 Unit tests use Jest + @testing-library/react (already configured). Focus areas:
 
-- **Example tests**: Close button tap dismisses view, Edit button enters edit mode, Cancel returns to read-only mode, Save button calls API.
-- **Edge cases**: Item with no optional fields (all omitted), item with all optional fields populated, network error during save, API error during save.
+- **Example tests**: Close button tap dismisses view, Cancel dismisses view, Save button calls API.
+- **Edge cases**: Item with no optional fields (all show "—"), item with all optional fields populated, network error during save, API error during save.
 - **Integration**: `InventoryPage` correctly passes `selectedItem` to `ItemDetailView`, remove mode suppresses card tap, successful save updates the inventory list.
 
 ### Test File Locations

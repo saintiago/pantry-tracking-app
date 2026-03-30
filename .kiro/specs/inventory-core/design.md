@@ -6,6 +6,18 @@ This feature implements manual inventory item management across user-defined sto
 
 Data models and API routes are defined in the shared steering file: `.kiro/steering/data-model.md`
 
+### UnitType Enum
+
+The `unit` field on inventory items is constrained to a fixed set of measurement units:
+
+```typescript
+type UnitType = 'Gram' | 'Kilo' | 'Milliliter' | 'Liter' | 'Unit';
+
+const VALID_UNITS: UnitType[] = ['Gram', 'Kilo', 'Milliliter', 'Liter', 'Unit'];
+```
+
+This enum is enforced both client-side (dropdown select) and server-side (validation on POST/PUT).
+
 ### Key Design Decisions
 
 - **Storage locations are user-managed**: Each user starts with a default "Pantry" location and can add, rename, or remove locations. Locations are ordered by creation date.
@@ -41,7 +53,7 @@ graph TD
 - **CategorySelector**: Dropdown for filtering by category
 - **LocationFilter**: Filter by user's defined storage locations
 - **InventoryItemCard**: Individual item display with thumbnail, badges, remove action
-- **AddItemModal**: Manual item entry form with all fields and validation
+- **AddItemModal**: Manual item entry form with all fields and validation. The Units field is rendered as a dropdown select control restricted to UnitType values (Gram, Kilo, Milliliter, Liter, Unit)
 - **LowStockBadge**: Visual indicator for threshold alerts
 - **InAppNotification**: Displays low-stock transition notifications
 
@@ -63,8 +75,8 @@ Endpoints: GET/POST/PUT/DELETE `/locations`
 
 Endpoints: GET/POST/PUT/DELETE `/inventory`, GET `/inventory/low-stock`
 
-- POST validates required fields (name, category, expirationDate, locationId, quantity, unit)
-- PUT supports partial updates for all fields including barcode
+- POST validates required fields (name, category, expirationDate, locationId, quantity, unit) and validates that `unit` is a valid UnitType value
+- PUT supports partial updates for all fields including barcode; validates `unit` against UnitType when provided
 - isLowStock flag computed on create/update: `quantity <= threshold`
 - Low-stock transition detection: returns `lowStockTransition` flag and notification payload
 - GSI1 updated for category and location queries
@@ -143,6 +155,12 @@ deleteLocation(locationId: string): Promise<void>
 
 **Validates: Requirements 3.5**
 
+### Property 10: Unit Enum Validation
+
+*For any* string value submitted as the `unit` field, the system should accept it if and only if it is one of the valid UnitType values (Gram, Kilo, Milliliter, Liter, Unit). Any other string should be rejected with a validation error.
+
+**Validates: Requirements 3.7**
+
 ### Property 26: Threshold Setting Persistence
 
 *For any* inventory item and valid threshold value, setting the threshold and retrieving the item should return the set threshold value.
@@ -189,7 +207,7 @@ deleteLocation(locationId: string): Promise<void>
 ## Testing Strategy
 
 ### Property-Based Testing
-- Properties 1–9, 26, 30–33 using fast-check with 100+ iterations
+- Properties 1–9, 10, 26, 30–33 using fast-check with 100+ iterations
 - Tag format: `Feature: inventory-core, Property {number}: {property_text}`
 
 ### Unit Testing

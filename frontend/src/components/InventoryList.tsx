@@ -127,6 +127,7 @@ interface InventoryItemCardProps {
   locationName: string;
   removeMode: boolean;
   onRemove?: (itemId: string) => void;
+  onClick?: () => void;
 }
 
 export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
@@ -134,13 +135,31 @@ export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
   locationName,
   removeMode,
   onRemove,
-}) => (
+  onClick,
+}) => {
+  const isClickable = !removeMode && !!onClick;
+
+  return (
   <div
     style={{
       ...styles.card,
       ...(removeMode ? styles.cardRemoveMode : {}),
+      ...(isClickable ? { cursor: 'pointer' } : {}),
     }}
     data-testid={`item-card-${item.itemId}`}
+    onClick={isClickable ? onClick : undefined}
+    onKeyDown={
+      isClickable
+        ? (e: React.KeyboardEvent) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onClick();
+            }
+          }
+        : undefined
+    }
+    role={isClickable ? 'button' : undefined}
+    tabIndex={isClickable ? 0 : undefined}
   >
     {/* Thumbnail area */}
     <div style={styles.thumbnail} aria-label="Item picture">
@@ -174,7 +193,10 @@ export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
 
     {removeMode && onRemove && (
       <button
-        onClick={() => onRemove(item.itemId)}
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove(item.itemId);
+        }}
         style={styles.removeItemButton}
         aria-label={`Remove ${item.name}`}
       >
@@ -182,7 +204,8 @@ export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
       </button>
     )}
   </div>
-);
+  );
+};
 
 /* ── InventoryList (main component) ─────────────────────────────── */
 
@@ -191,6 +214,7 @@ export interface InventoryListProps {
   locations: StorageLocation[];
   removeMode: boolean;
   onRemoveItem?: (itemId: string) => void;
+  onItemClick?: (item: InventoryItem) => void;
 }
 
 const InventoryList: React.FC<InventoryListProps> = ({
@@ -198,6 +222,7 @@ const InventoryList: React.FC<InventoryListProps> = ({
   locations,
   removeMode,
   onRemoveItem,
+  onItemClick,
 }) => {
   const [textFilter, setTextFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
@@ -277,6 +302,7 @@ const InventoryList: React.FC<InventoryListProps> = ({
               locationName={locationMap[item.location] ?? item.location}
               removeMode={removeMode}
               onRemove={onRemoveItem}
+              onClick={() => onItemClick?.(item)}
             />
           ))}
         </div>

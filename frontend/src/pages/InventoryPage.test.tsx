@@ -427,7 +427,7 @@ describe('Inventory integration', () => {
     await user.type(within(dialog).getByLabelText(/Expiration Date/i), '2025-12-01');
     await user.selectOptions(within(dialog).getByLabelText(/Storage Location/i), 'loc-1');
     await user.type(within(dialog).getByLabelText(/^Quantity/i), '12');
-    await user.type(within(dialog).getByLabelText(/^Unit/i), 'pcs');
+    await user.selectOptions(within(dialog).getByLabelText(/^Unit/i), 'Unit');
 
     const submitBtn = within(dialog).getByText('Add Item', { selector: 'button[type="submit"]' });
     await user.click(submitBtn);
@@ -490,7 +490,7 @@ describe('Inventory integration', () => {
     await user.type(within(dialog).getByLabelText(/Expiration Date/i), '2025-12-01');
     await user.selectOptions(within(dialog).getByLabelText(/Storage Location/i), 'loc-1');
     await user.type(within(dialog).getByLabelText(/^Quantity/i), '1');
-    await user.type(within(dialog).getByLabelText(/^Unit/i), 'pcs');
+    await user.selectOptions(within(dialog).getByLabelText(/^Unit/i), 'Unit');
 
     const submitBtn = within(dialog).getByText('Add Item', { selector: 'button[type="submit"]' });
     await user.click(submitBtn);

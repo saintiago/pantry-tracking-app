@@ -31,6 +31,16 @@ Single-table design pattern. Table name: `PantryApp`.
 | Get low-stock items | `USER#<userId>#LOWSTOCK` | `ITEM#<itemId>` | GSI1 |
 | Get items by location | `USER#<userId>#LOC#<location>` | `ITEM#<itemId>` | GSI1 |
 
+## Shared Types
+
+### UnitType
+
+```typescript
+type UnitType = 'Gram' | 'Kilo' | 'Milliliter' | 'Liter' | 'Unit';
+
+const VALID_UNITS: UnitType[] = ['Gram', 'Kilo', 'Milliliter', 'Liter', 'Unit'];
+```
+
 ## Entity Schemas
 
 ### InventoryItem
@@ -48,7 +58,7 @@ interface InventoryItem {
   expirationDate: string;  // ISO date, REQUIRED
   location: string;       // StorageLocation locationId
   quantity: number;
-  unit: string;
+  unit: UnitType;          // Constrained to: Gram, Kilo, Milliliter, Liter, Unit
   brand?: string;
   whereToBuy?: string;
   onlineStoreLink?: string;
@@ -207,7 +217,7 @@ interface AddInventoryRequest {
   expirationDate: string;  // ISO date, required
   locationId: string;
   quantity: number;
-  unit: string;
+  unit: UnitType;          // Must be a valid UnitType value
   barcode?: string;
   brand?: string;
   whereToBuy?: string;
@@ -223,7 +233,7 @@ interface UpdateInventoryRequest {
   expirationDate?: string;
   locationId?: string;
   quantity?: number;
-  unit?: string;
+  unit?: UnitType;         // Validated against UnitType when provided
   barcode?: string;
   brand?: string;
   whereToBuy?: string;

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { StorageLocation } from '../api/locations';
+import { VALID_UNITS } from '../types/units';
 
 export interface AddItemData {
   name: string;
@@ -335,15 +336,21 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onSubmit, 
             <label htmlFor="add-item-unit" style={styles.label}>
               Unit <span aria-hidden="true">*</span>
             </label>
-            <input
+            <select
               id="add-item-unit"
-              type="text"
               value={form.unit}
               onChange={handleChange('unit')}
-              style={styles.input}
+              style={styles.select}
               aria-required="true"
               aria-invalid={!!errors.unit}
-            />
+            >
+              <option value="">Select a unit</option>
+              {VALID_UNITS.map((u) => (
+                <option key={u} value={u}>
+                  {u}
+                </option>
+              ))}
+            </select>
             {errors.unit && (
               <span style={styles.fieldError} role="alert">
                 {errors.unit}

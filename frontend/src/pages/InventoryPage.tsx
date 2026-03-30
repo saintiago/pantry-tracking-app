@@ -3,6 +3,7 @@ import StorageLocationManager from '../components/StorageLocationManager';
 import InventoryList from '../components/InventoryList';
 import { InAppNotification } from '../components/InventoryList';
 import AddItemModal from '../components/AddItemModal';
+import ItemDetailView from '../components/ItemDetailView';
 import type { AddItemData } from '../components/AddItemModal';
 import type { StorageLocation } from '../api/locations';
 import type { InventoryItem } from '../components/InventoryList';
@@ -30,6 +31,7 @@ const InventoryPage: React.FC = () => {
     message: '',
     visible: false,
   });
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
 
   const loadLocations = useCallback(async () => {
     const data = await fetchLocations();
@@ -141,6 +143,15 @@ const InventoryPage: React.FC = () => {
     [],
   );
 
+  const handleItemUpdated = useCallback((updatedItem: InventoryItem, lowStockTransition?: boolean, notificationData?: { type: string; message: string; itemId: string }) => {
+    setInventoryItems((prev) =>
+      prev.map((i) => (i.itemId === updatedItem.itemId ? updatedItem : i)),
+    );
+    if (lowStockTransition && notificationData) {
+      setNotification({ message: notificationData.message, visible: true });
+    }
+  }, []);
+
   const toggleRemoveMode = useCallback(() => {
     setRemoveMode((prev) => !prev);
   }, []);
@@ -239,6 +250,7 @@ const InventoryPage: React.FC = () => {
         locations={locations}
         removeMode={removeMode}
         onRemoveItem={handleRemoveItem}
+        onItemClick={(item) => setSelectedItem(item)}
       />
 
       <StorageLocationManager
@@ -254,6 +266,15 @@ const InventoryPage: React.FC = () => {
         onSubmit={handleAddItem}
         locations={locations}
       />
+
+      {selectedItem && (
+        <ItemDetailView
+          item={selectedItem}
+          locations={locations}
+          onClose={() => setSelectedItem(null)}
+          onItemUpdated={handleItemUpdated}
+        />
+      )}
     </div>
   );
 };

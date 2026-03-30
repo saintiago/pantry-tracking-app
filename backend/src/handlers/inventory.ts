@@ -9,6 +9,7 @@ import {
   GetCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { randomUUID } from 'crypto';
+import { VALID_UNITS } from '../types/units';
 
 const TABLE_NAME = process.env.TABLE_NAME ?? 'PantryApp';
 const STORAGE_BUCKET = process.env.STORAGE_BUCKET ?? '';
@@ -56,6 +57,15 @@ function validateAddRequest(
     if (isNaN(date.getTime())) {
       errors.push({ field: 'expirationDate', message: 'expirationDate must be a valid ISO date' });
     }
+  }
+
+  if (
+    parsed.unit !== undefined &&
+    parsed.unit !== null &&
+    parsed.unit !== '' &&
+    !VALID_UNITS.includes(parsed.unit as string as typeof VALID_UNITS[number])
+  ) {
+    errors.push({ field: 'unit', message: `unit must be one of: ${VALID_UNITS.join(', ')}` });
   }
 
   return errors;
@@ -209,6 +219,17 @@ async function updateInventoryItem(
     return response(400, { error: 'VALIDATION_ERROR', message: 'No fields to update' });
   }
 
+  if (
+    parsed.unit !== undefined &&
+    !VALID_UNITS.includes(parsed.unit as string as typeof VALID_UNITS[number])
+  ) {
+    return response(400, {
+      error: 'VALIDATION_ERROR',
+      message: 'Invalid unit value',
+      details: [{ field: 'unit', message: `unit must be one of: ${VALID_UNITS.join(', ')}` }],
+    });
+  }
+
   const now = new Date().toISOString();
 
   // Build dynamic update expression
@@ -223,6 +244,7 @@ async function updateInventoryItem(
     locationId: 'location',
     quantity: 'quantity',
     unit: 'unit',
+    barcode: 'barcode',
     brand: 'brand',
     whereToBuy: 'whereToBuy',
     onlineStoreLink: 'onlineStoreLink',

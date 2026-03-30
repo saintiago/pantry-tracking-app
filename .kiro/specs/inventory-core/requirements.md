@@ -11,6 +11,7 @@ This feature covers manual inventory item management across multiple storage loc
 - **Inventory_Item**: A food or household product stored in one of the storage locations with quantity, expiration date, and threshold information
 - **Storage_Location**: A beautiful user-defined named location where items are stored. Each beautiful user starts with a default "Pantry" location and can add, rename, or remove additional locations
 - **Threshold**: A beautiful user-defined minimum quantity that triggers low-stock notifications
+- **Unit_Type**: A constrained set of measurement units for inventory items. Valid values: Gram, Kilo, Milliliter, Liter, Unit
 
 ## Requirements
 
@@ -27,7 +28,7 @@ This feature covers manual inventory item management across multiple storage loc
    - Expiration Date (required)
    - Location: selected from the beautiful user's defined Storage_Locations (required)
    - Quantity (required)
-   - Units (required)
+   - Units: selected from a dropdown containing the Unit_Type values (Gram, Kilo, Milliliter, Liter, Unit) (required)
    - Brand (optional)
    - Where to Buy (optional)
    - Link to Item in Online Store (optional)
@@ -36,6 +37,8 @@ This feature covers manual inventory item management across multiple storage loc
 3. IF required fields are missing, THEN THE Pantry_App SHALL display validation errors indicating the missing fields
 4. WHEN an item is successfully added, THE Pantry_App SHALL display a confirmation message
 5. WHEN a picture is provided, THE Pantry_App SHALL store the image in S3 and display it next to the item name
+6. THE Pantry_App SHALL present the Units field as a dropdown select control restricted to the Unit_Type values
+7. IF a unit value outside the Unit_Type enum is submitted, THEN THE Pantry_App SHALL reject the submission with a validation error indicating the invalid unit
 
 ### Requirement 5: Remove Items
 

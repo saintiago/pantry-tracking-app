@@ -6,15 +6,15 @@ Add an `ItemDetailView` component to the Pantry Tracking App that opens when a u
 
 ## Tasks
 
-- [ ] 1. Add onClick prop to InventoryItemCard and wire through InventoryList
-  - [ ] 1.1 Update InventoryItemCard to accept an `onClick` prop and call it on card tap when `removeMode` is false
+- [x] 1. Add onClick prop to InventoryItemCard and wire through InventoryList
+  - [x] 1.1 Update InventoryItemCard to accept an `onClick` prop and call it on card tap when `removeMode` is false
     - Add `onClick?: () => void` to `InventoryItemCardProps`
     - When `removeMode` is false and `onClick` is provided, attach an `onClick` handler to the card container
     - When `removeMode` is true, the card tap should not trigger `onClick`
     - Ensure the card has `cursor: pointer` and appropriate `role`/`tabIndex` for accessibility when clickable
     - _Requirements: 1.1, 1.2_
 
-  - [ ] 1.2 Update InventoryList to accept an `onItemClick` prop and pass it to each InventoryItemCard
+  - [x] 1.2 Update InventoryList to accept an `onItemClick` prop and pass it to each InventoryItemCard
     - Add `onItemClick?: (item: InventoryItem) => void` to `InventoryListProps`
     - For each rendered `InventoryItemCard`, pass `onClick={() => onItemClick?.(item)}`
     - _Requirements: 1.1_
@@ -25,20 +25,20 @@ Add an `ItemDetailView` component to the Pantry Tracking App that opens when a u
     - Test that the card has appropriate accessibility attributes when clickable
     - _Requirements: 1.1, 1.2_
 
-- [ ] 2. Add selectedItem state to InventoryPage and render ItemDetailView
-  - [ ] 2.1 Add `selectedItem` state to InventoryPage and pass `onItemClick` to InventoryList
+- [x] 2. Add selectedItem state to InventoryPage and render ItemDetailView
+  - [x] 2.1 Add `selectedItem` state to InventoryPage and pass `onItemClick` to InventoryList
     - Add `const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)`
     - Pass `onItemClick={(item) => setSelectedItem(item)}` to `InventoryList`
     - _Requirements: 1.1_
 
-  - [ ] 2.2 Conditionally render `ItemDetailView` when `selectedItem` is non-null
+  - [x] 2.2 Conditionally render `ItemDetailView` when `selectedItem` is non-null
     - Import and render `ItemDetailView` with props: `item={selectedItem}`, `locations={locations}`, `onClose={() => setSelectedItem(null)}`, `onItemUpdated` callback
     - The `onItemUpdated` callback should update the item in `inventoryItems` state and set `selectedItem` to the updated item
     - Handle `lowStockTransition` from the API response by showing the existing `InAppNotification`
     - _Requirements: 1.1, 1.3, 10.4, 10.7_
 
-- [ ] 3. Create ItemDetailView component — read-only mode
-  - [ ] 3.1 Create `frontend/src/components/ItemDetailView.tsx` with read-only rendering
+- [x] 3. Create ItemDetailView component — read-only mode
+  - [x] 3.1 Create `frontend/src/components/ItemDetailView.tsx` with read-only rendering
     - Create the component accepting `ItemDetailViewProps` (item, locations, onClose, onItemUpdated)
     - Render as a fixed full-screen overlay panel (similar to AddItemModal overlay pattern)
     - Display a header with the item name and a Close button (min 44×44px tap target)
@@ -67,11 +67,11 @@ Add an `ItemDetailView` component to the Pantry Tracking App that opens when a u
     - Generate items with random `isLowStock` values, verify badge presence matches the flag
     - **Validates: Requirements 5.1, 5.2**
 
-- [ ] 4. Checkpoint — Verify read-only mode
+- [x] 4. Checkpoint — Verify read-only mode
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 5. Implement ItemDetailView edit mode — enter, edit, cancel
-  - [ ] 5.1 Add edit mode state and form rendering to ItemDetailView
+- [x] 5. Implement ItemDetailView edit mode — enter, edit, cancel
+  - [x] 5.1 Add edit mode state and form rendering to ItemDetailView
     - Add `mode: 'view' | 'edit'` state, `editForm: EditFormState` state, and `errors: EditFormErrors` state
     - When Edit button is tapped, switch to edit mode and initialize `editForm` from the current item values (converting numeric fields to strings)
     - In edit mode: hide the Edit button, show Save and Cancel buttons (min 44×44px), render all 11 editable fields as form inputs
@@ -94,8 +94,8 @@ Add an `ItemDetailView` component to the Pantry Tracking App that opens when a u
     - Generate random items, enter edit mode, verify all 11 editable field inputs are present
     - **Validates: Requirements 8.1**
 
-- [ ] 6. Implement validation logic
-  - [ ] 6.1 Add validation to the edit form in ItemDetailView
+- [x] 6. Implement validation logic
+  - [x] 6.1 Add validation to the edit form in ItemDetailView
     - Implement `validateEditForm` matching the design spec: required fields (name, category, expirationDate, locationId, quantity, unit) must be non-empty; quantity must be numeric and non-negative
     - Display inline error messages below each invalid field using `role="alert"`
     - Clear individual field errors on change (in the `handleChange` handler)
@@ -112,8 +112,8 @@ Add an `ItemDetailView` component to the Pantry Tracking App that opens when a u
     - Generate a field with an error, change its value, verify the error is cleared
     - **Validates: Requirements 9.7**
 
-- [ ] 7. Implement save functionality
-  - [ ] 7.1 Add save handler to ItemDetailView
+- [x] 7. Implement save functionality
+  - [x] 7.1 Add save handler to ItemDetailView
     - On Save tap: run validation, if valid call `updateInventoryItem(item.itemId, editedData)`
     - While saving: disable Save and Cancel buttons, show "Saving…" text on Save button
     - On success: show success message, call `onItemUpdated` with the response item, return to read-only mode
@@ -128,11 +128,11 @@ Add an `ItemDetailView` component to the Pantry Tracking App that opens when a u
     - Test Save and Cancel buttons are disabled during save
     - _Requirements: 10.2, 10.3, 10.4, 10.5, 10.6_
 
-- [ ] 8. Checkpoint — Verify edit mode and save
+- [x] 8. Checkpoint — Verify edit mode and save
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 9. Integration wiring and final tests
-  - [ ] 9.1 Wire low-stock notification on save with transition in InventoryPage
+- [x] 9. Integration wiring and final tests
+  - [x] 9.1 Wire low-stock notification on save with transition in InventoryPage
     - When `onItemUpdated` is called and the API response includes `lowStockTransition: true`, trigger the existing `InAppNotification` with the notification message
     - _Requirements: 10.7_
 
@@ -158,7 +158,20 @@ Add an `ItemDetailView` component to the Pantry Tracking App that opens when a u
     - Mock `updateInventoryItem` to return `lowStockTransition: true`, verify notification is displayed
     - **Validates: Requirements 10.7**
 
-- [ ] 10. Final checkpoint — Ensure all tests pass
+- [x] 11. Dismiss detail view after successful save
+  - [x] 11.1 Update `ItemDetailView` save handler to call `onClose()` after `onItemUpdated()` on successful save instead of showing a success message and returning to read-only mode
+    - After a successful API response, call `onItemUpdated(response.item)` then `onClose()` to dismiss the detail view
+    - Remove the success message display since the panel closes immediately
+    - _Requirements: 10.4_
+
+  - [x] 11.2 Update `InventoryPage` `onItemUpdated` callback to only update `inventoryItems` state (no longer set `selectedItem` to the updated item, since the view will be dismissed via `onClose`)
+    - _Requirements: 10.4_
+
+  - [ ]* 11.3 Update existing tests to reflect the new save-dismiss behavior
+    - Update tests that assert a success message is shown after save to instead assert `onClose` is called
+    - _Requirements: 10.4_
+
+- [x] 12. Final checkpoint — Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes
