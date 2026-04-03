@@ -6,8 +6,8 @@ Add barcode scanning to the Pantry Tracking App. The backend gets a new `POST /i
 
 ## Tasks
 
-- [ ] 1. Add barcode lookup endpoint to Inventory Lambda
-  - [ ] 1.1 Implement the `barcodeLookup` handler function in `backend/src/handlers/inventory.ts`
+- [x] 1. Add barcode lookup endpoint to Inventory Lambda
+  - [x] 1.1 Implement the `barcodeLookup` handler function in `backend/src/handlers/inventory.ts`
     - Add in-memory `Map<string, { product: ProductInfo; timestamp: number }>` cache with 5-minute TTL
     - Parse and validate request body: return 400 for missing body, invalid JSON, or empty/whitespace barcode
     - Check cache before calling external API
@@ -47,16 +47,16 @@ Add barcode scanning to the Pantry Tracking App. The backend gets a new `POST /i
     - Generate random barcodes and mock successful API responses. Call the lookup twice for the same barcode and verify the second call returns the same result. Verify the external API was called only once.
     - **Validates: Requirements 5.5**
 
-- [ ] 2. Add barcode-lookup route to API Gateway in CDK stack
-  - [ ] 2.1 Add `barcode-lookup` sub-resource under `/inventory` in `infrastructure/src/pantry-stack.ts`
+- [x] 2. Add barcode-lookup route to API Gateway in CDK stack
+  - [x] 2.1 Add `barcode-lookup` sub-resource under `/inventory` in `infrastructure/src/pantry-stack.ts`
     - Create `inventoryResource.addResource('barcode-lookup')` and add `POST` method with the inventory Lambda integration and Cognito authorizer
     - _Requirements: 5.1, 5.4_
 
-- [ ] 3. Checkpoint - Backend complete
+- [x] 3. Checkpoint - Backend complete
   - Ensure all backend tests pass, ask the user if questions arise.
 
-- [ ] 4. Add `lookupBarcode()` to frontend API client
-  - [ ] 4.1 Add `BarcodeLookupResponse` interface and `lookupBarcode()` function to `frontend/src/api/inventory.ts`
+- [x] 4. Add `lookupBarcode()` to frontend API client
+  - [x] 4.1 Add `BarcodeLookupResponse` interface and `lookupBarcode()` function to `frontend/src/api/inventory.ts`
     - Define `BarcodeLookupResponse` with `found: boolean` and optional `product: { name: string; brand?: string; category?: string }`
     - Implement `lookupBarcode(barcode: string)` that POSTs to `/inventory/barcode-lookup` with auth headers
     - _Requirements: 5.1, 5.2_
@@ -67,8 +67,8 @@ Add barcode scanning to the Pantry Tracking App. The backend gets a new `POST /i
     - Test that `lookupBarcode` throws on non-2xx response
     - _Requirements: 5.1, 5.2_
 
-- [ ] 5. Implement BarcodeScanner component
-  - [ ] 5.1 Create `frontend/src/components/BarcodeScanner.tsx`
+- [x] 5. Implement BarcodeScanner component
+  - [x] 5.1 Create `frontend/src/components/BarcodeScanner.tsx`
     - Render a modal overlay with live camera preview via QuaggaJS (rear camera, EAN-13 + UPC-A readers)
     - Display a scanning region indicator overlay on the video feed
     - Show a 30-second countdown timer while scanning
@@ -100,8 +100,8 @@ Add barcode scanning to the Pantry Tracking App. The backend gets a new `POST /i
     - Generate random `BarcodeLookupResult` objects (both found and not-found). Verify the pre-fill data passed to AddItemModal matches: all fields populated when found, only barcode when not found.
     - **Validates: Requirements 4.1, 4.2, 4.5**
 
-- [ ] 6. Add prefillData support to AddItemModal
-  - [ ] 6.1 Extend `AddItemModalProps` with optional `prefillData` prop in `frontend/src/components/AddItemModal.tsx`
+- [x] 6. Add prefillData support to AddItemModal
+  - [x] 6.1 Extend `AddItemModalProps` with optional `prefillData` prop in `frontend/src/components/AddItemModal.tsx`
     - Add `prefillData?: { name?: string; brand?: string; category?: string; barcode?: string }` to the props interface
     - When `prefillData` is provided, initialize form fields with those values instead of empty strings
     - Ensure pre-filled fields remain editable
@@ -114,8 +114,8 @@ Add barcode scanning to the Pantry Tracking App. The backend gets a new `POST /i
     - Test AddItemModal with `prefillData` where only barcode is set leaves other fields empty
     - _Requirements: 4.1, 4.2, 4.3, 4.5_
 
-- [ ] 7. Wire barcode scanning flow into InventoryPage
-  - [ ] 7.1 Update `frontend/src/pages/InventoryPage.tsx` to integrate BarcodeScanner
+- [-] 7. Wire barcode scanning flow into InventoryPage
+  - [x] 7.1 Update `frontend/src/pages/InventoryPage.tsx` to integrate BarcodeScanner
     - Add `scannerOpen` and `prefillData` state
     - Wire the "Barcode Scan" menu item to open the BarcodeScanner component
     - Implement `handleBarcodeDetected` callback: close scanner, set prefillData from lookup result, open AddItemModal
@@ -129,7 +129,7 @@ Add barcode scanning to the Pantry Tracking App. The backend gets a new `POST /i
     - Test that `handleBarcodeDetected` closes scanner and opens AddItemModal with prefillData
     - _Requirements: 4.1, 4.2, 4.4, 4.5_
 
-- [ ] 8. Final checkpoint - Ensure all tests pass
+- [x] 8. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

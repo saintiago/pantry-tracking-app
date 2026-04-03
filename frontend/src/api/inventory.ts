@@ -91,3 +91,25 @@ export async function fetchLowStockItems(): Promise<{
   }
   return res.json();
 }
+
+export interface BarcodeLookupResponse {
+  found: boolean;
+  product?: {
+    name: string;
+    brand?: string;
+    category?: string;
+  };
+}
+
+export async function lookupBarcode(barcode: string): Promise<BarcodeLookupResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_URL}/inventory/barcode-lookup`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ barcode }),
+  });
+  if (!res.ok) {
+    throw new Error('Barcode lookup failed');
+  }
+  return res.json();
+}

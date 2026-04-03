@@ -4,6 +4,8 @@ import InventoryList from '../components/InventoryList';
 import { InAppNotification } from '../components/InventoryList';
 import AddItemModal from '../components/AddItemModal';
 import ItemDetailView from '../components/ItemDetailView';
+import BarcodeScanner from '../components/BarcodeScanner';
+import type { BarcodeLookupResult } from '../components/BarcodeScanner';
 import type { AddItemData } from '../components/AddItemModal';
 import type { StorageLocation } from '../api/locations';
 import type { InventoryItem } from '../components/InventoryList';
@@ -32,6 +34,13 @@ const InventoryPage: React.FC = () => {
     visible: false,
   });
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [prefillData, setPrefillData] = useState<{
+    name?: string;
+    brand?: string;
+    category?: string;
+    barcode?: string;
+  } | undefined>();
 
   const loadLocations = useCallback(async () => {
     const data = await fetchLocations();
@@ -106,8 +115,21 @@ const InventoryPage: React.FC = () => {
     setAddMenuOpen(false);
     if (method === 'manual') {
       setAddModalOpen(true);
+    } else if (method === 'barcode') {
+      setScannerOpen(true);
     }
-    // Future tasks will wire barcode and receipt
+    // Future tasks will wire receipt
+  }, []);
+
+  const handleBarcodeDetected = useCallback((result: BarcodeLookupResult) => {
+    setScannerOpen(false);
+    setPrefillData({
+      barcode: result.barcode,
+      name: result.product?.name,
+      brand: result.product?.brand,
+      category: result.product?.category,
+    });
+    setAddModalOpen(true);
   }, []);
 
   const handleAddItem = useCallback(
@@ -262,9 +284,13 @@ const InventoryPage: React.FC = () => {
 
       <AddItemModal
         isOpen={addModalOpen}
-        onClose={() => setAddModalOpen(false)}
+        onClose={() => {
+          setAddModalOpen(false);
+          setPrefillData(undefined);
+        }}
         onSubmit={handleAddItem}
         locations={locations}
+        prefillData={prefillData}
       />
 
       {selectedItem && (
@@ -275,6 +301,12 @@ const InventoryPage: React.FC = () => {
           onItemUpdated={handleItemUpdated}
         />
       )}
+
+      <BarcodeScanner
+        isOpen={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onBarcodeDetected={handleBarcodeDetected}
+      />
     </div>
   );
 };

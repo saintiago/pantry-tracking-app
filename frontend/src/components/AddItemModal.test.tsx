@@ -38,7 +38,7 @@ const fillRequiredFields = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.type(screen.getByLabelText(/expiration date/i), '2025-12-31');
   await user.selectOptions(screen.getByLabelText(/storage location/i), 'loc-1');
   await user.type(screen.getByLabelText(/quantity/i), '2');
-  await user.type(screen.getByLabelText(/^unit/i), 'liters');
+  await user.selectOptions(screen.getByLabelText(/^unit/i), 'Liter');
 };
 
 describe('AddItemModal', () => {
@@ -120,7 +120,7 @@ describe('AddItemModal', () => {
       await user.type(screen.getByLabelText(/expiration date/i), '2025-12-31');
       await user.selectOptions(screen.getByLabelText(/storage location/i), 'loc-1');
       await user.type(screen.getByLabelText(/quantity/i), '-5');
-      await user.type(screen.getByLabelText(/^unit/i), 'kg');
+      await user.selectOptions(screen.getByLabelText(/^unit/i), 'Kilo');
 
       await user.click(getSubmitButton());
 
@@ -163,7 +163,7 @@ describe('AddItemModal', () => {
           expirationDate: '2025-12-31',
           locationId: 'loc-1',
           quantity: 2,
-          unit: 'liters',
+          unit: 'Liter',
         }),
       );
     });

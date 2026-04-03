@@ -361,6 +361,93 @@ async function updateInventoryItem(
   }
 }
 
+// --- Barcode Lookup ---
+
+interface ProductInfo {
+  name: string;
+  brand?: string;
+  category?: string;
+}
+
+const barcodeCache = new Map<string, { product: ProductInfo; timestamp: number }>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+export async function barcodeLookup(
+  _userId: string,
+  body: string | null,
+): Promise<APIGatewayProxyResult> {
+  if (!body) {
+    return response(400, { error: 'VALIDATION_ERROR', message: 'Missing request body' });
+  }
+
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return response(400, { error: 'VALIDATION_ERROR', message: 'Invalid JSON body' });
+  }
+
+  const barcode = parsed.barcode;
+  if (typeof barcode !== 'string' || barcode.trim() === '') {
+    return response(400, { error: 'VALIDATION_ERROR', message: 'barcode is required' });
+  }
+
+  const trimmedBarcode = barcode.trim();
+
+  // Check cache
+  const cached = barcodeCache.get(trimmedBarcode);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return response(200, { found: true, product: cached.product });
+  }
+
+  // Evict stale entry if present
+  if (cached) {
+    barcodeCache.delete(trimmedBarcode);
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    const apiRes = await fetch(
+      `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(trimmedBarcode)}`,
+      { signal: controller.signal },
+    );
+
+    clearTimeout(timeout);
+
+    if (!apiRes.ok) {
+      return response(200, { found: false });
+    }
+
+    const data = (await apiRes.json()) as {
+      status?: number;
+      product?: {
+        product_name?: string;
+        brands?: string;
+        categories_tags?: string[];
+      };
+    };
+
+    if (!data.product || data.status === 0 || !data.product.product_name) {
+      return response(200, { found: false });
+    }
+
+    const product: ProductInfo = {
+      name: data.product.product_name,
+      brand: data.product.brands || undefined,
+      category: data.product.categories_tags?.[0] || undefined,
+    };
+
+    barcodeCache.set(trimmedBarcode, { product, timestamp: Date.now() });
+
+    return response(200, { found: true, product });
+  } catch (err) {
+    console.error('Barcode lookup error:', err);
+    return response(200, { found: false });
+  }
+}
+
 async function deleteInventoryItem(
   userId: string,
   itemId: string,
@@ -406,6 +493,10 @@ export async function handler(
 
     if (method === 'GET' && !itemId) {
       return await listInventory(userId, event);
+    }
+
+    if (method === 'POST' && path.endsWith('/barcode-lookup')) {
+      return await barcodeLookup(userId, event.body);
     }
 
     if (method === 'POST' && !itemId) {

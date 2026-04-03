@@ -59,7 +59,7 @@ const locationIdArb = fc.uuid();
 
 const positiveQuantityArb = fc.integer({ min: 1, max: 10000 });
 
-const unitArb = fc.constantFrom('liters', 'kg', 'pieces', 'grams', 'oz', 'lbs', 'cups');
+const unitArb = fc.constantFrom('Gram', 'Kilo', 'Milliliter', 'Liter', 'Unit');
 
 const thresholdArb = fc.integer({ min: 0, max: 10000 });
 

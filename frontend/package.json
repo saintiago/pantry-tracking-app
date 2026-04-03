@@ -13,6 +13,7 @@
     "test:property": "jest --testPathPattern=property"
   },
   "dependencies": {
+    "@ericblade/quagga2": "^1.12.1",
     "amazon-cognito-identity-js": "^6.3.16",
     "react": "^18.3.0",
     "react-dom": "^18.3.0"

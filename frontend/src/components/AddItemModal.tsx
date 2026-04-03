@@ -21,6 +21,12 @@ export interface AddItemModalProps {
   onClose: () => void;
   onSubmit: (item: AddItemData) => Promise<{ error?: string }>;
   locations: StorageLocation[];
+  prefillData?: {
+    name?: string;
+    brand?: string;
+    category?: string;
+    barcode?: string;
+  };
 }
 
 interface FormErrors {
@@ -45,7 +51,7 @@ const INITIAL_FORM = {
   onlineStoreLink: '',
 };
 
-const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onSubmit, locations }) => {
+const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onSubmit, locations, prefillData }) => {
   const [form, setForm] = useState(INITIAL_FORM);
   const [pictureFile, setPictureFile] = useState<File | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -58,13 +64,19 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onSubmit, 
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
-      setForm(INITIAL_FORM);
+      setForm({
+        ...INITIAL_FORM,
+        name: prefillData?.name ?? '',
+        brand: prefillData?.brand ?? '',
+        category: prefillData?.category ?? '',
+        barcode: prefillData?.barcode ?? '',
+      });
       setPictureFile(null);
       setErrors({});
       setSubmitError(null);
       setSuccessMessage(null);
     }
-  }, [isOpen]);
+  }, [isOpen, prefillData]);
 
   // Focus trap
   useEffect(() => {
