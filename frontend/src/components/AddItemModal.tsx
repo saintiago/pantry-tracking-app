@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { StorageLocation } from '../api/locations';
 import { VALID_UNITS } from '../types/units';
+import { searchInventory, lookupBarcode } from '../api/inventory';
+import type { InventoryItem } from '../api/inventory';
+import AutocompleteDropdown from './AutocompleteDropdown';
 
 export interface AddItemData {
   name: string;
@@ -38,6 +41,13 @@ interface FormErrors {
   unit?: string;
 }
 
+interface DropdownState {
+  visible: boolean;
+  items?: InventoryItem[];
+  values?: string[];
+  focusedIndex: number;
+}
+
 const INITIAL_FORM = {
   name: '',
   category: '',
@@ -51,6 +61,20 @@ const INITIAL_FORM = {
   onlineStoreLink: '',
 };
 
+const AUTOFILL_STYLES = {
+  prefilled: {
+    backgroundColor: '#e0f2fe',
+    borderColor: '#0284c7',
+  },
+  userEdited: {
+    backgroundColor: '#ffffff',
+    borderColor: '#d1d5db',
+  },
+  loading: {
+    opacity: 0.6,
+  },
+};
+
 const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onSubmit, locations, prefillData }) => {
   const [form, setForm] = useState(INITIAL_FORM);
   const [pictureFile, setPictureFile] = useState<File | null>(null);
@@ -60,6 +84,25 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onSubmit, 
   const [submitting, setSubmitting] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const headingId = 'add-item-modal-title';
+
+  // Autofill state
+  const [prefilledFields, setPrefilledFields] = useState<Set<string>>(new Set());
+  const [userEditedFields, setUserEditedFields] = useState<Set<string>>(new Set());
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [lastLookupBarcode, setLastLookupBarcode] = useState<string | null>(null);
+  
+  const [autocompleteDropdowns, setAutocompleteDropdowns] = useState<Record<string, DropdownState>>({
+    barcode: { visible: false, items: [], focusedIndex: -1 },
+    name: { visible: false, items: [], focusedIndex: -1 },
+    category: { visible: false, values: [], focusedIndex: -1 },
+    brand: { visible: false, values: [], focusedIndex: -1 },
+    whereToBuy: { visible: false, values: [], focusedIndex: -1 },
+    onlineStoreLink: { visible: false, values: [], focusedIndex: -1 },
+  });
+
+  const debounceTimers = useRef<Record<string, NodeJS.Timeout>>({});
+  const abortControllers = useRef<Record<string, AbortController>>({});
 
   // Reset form when modal opens
   useEffect(() => {
@@ -75,6 +118,27 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onSubmit, 
       setErrors({});
       setSubmitError(null);
       setSuccessMessage(null);
+      
+      // Reset autofill state
+      setPrefilledFields(new Set());
+      setUserEditedFields(new Set());
+      setLookupLoading(false);
+      setLookupError(null);
+      setLastLookupBarcode(null);
+      setAutocompleteDropdowns({
+        barcode: { visible: false, items: [], focusedIndex: -1 },
+        name: { visible: false, items: [], focusedIndex: -1 },
+        category: { visible: false, values: [], focusedIndex: -1 },
+        brand: { visible: false, values: [], focusedIndex: -1 },
+        whereToBuy: { visible: false, values: [], focusedIndex: -1 },
+        onlineStoreLink: { visible: false, values: [], focusedIndex: -1 },
+      });
+    } else {
+      // Cancel all pending requests and timers on close
+      Object.values(abortControllers.current).forEach(controller => controller.abort());
+      Object.values(debounceTimers.current).forEach(timer => clearTimeout(timer));
+      abortControllers.current = {};
+      debounceTimers.current = {};
     }
   }, [isOpen, prefillData]);
 
@@ -116,19 +180,257 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onSubmit, 
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  // Full autofill function for barcode and name fields
+  const performFullAutofill = useCallback((item: InventoryItem) => {
+    const newPrefilledFields = new Set<string>();
+    const updates: Partial<typeof form> = {};
+
+    // Only populate fields that don't have user-entered data
+    if (!form.name && item.name) {
+      updates.name = item.name;
+      newPrefilledFields.add('name');
+    }
+    if (!form.category && item.category) {
+      updates.category = item.category;
+      newPrefilledFields.add('category');
+    }
+    if (!form.brand && item.brand) {
+      updates.brand = item.brand;
+      newPrefilledFields.add('brand');
+    }
+    if (!form.unit && item.unit && VALID_UNITS.includes(item.unit as any)) {
+      updates.unit = item.unit;
+      newPrefilledFields.add('unit');
+    }
+    if (!form.whereToBuy && item.whereToBuy) {
+      updates.whereToBuy = item.whereToBuy;
+      newPrefilledFields.add('whereToBuy');
+    }
+    if (!form.onlineStoreLink && item.onlineStoreLink) {
+      updates.onlineStoreLink = item.onlineStoreLink;
+      newPrefilledFields.add('onlineStoreLink');
+    }
+    if (!form.barcode && item.barcode) {
+      updates.barcode = item.barcode;
+      newPrefilledFields.add('barcode');
+    }
+
+    setForm(prev => ({ ...prev, ...updates }));
+    setPrefilledFields(prev => new Set([...prev, ...newPrefilledFields]));
+  }, [form]);
+
+  // Single autofill function for category, brand, whereToBuy, onlineStoreLink fields
+  const performSingleAutofill = useCallback((field: string, value: string) => {
+    // Only populate if field doesn't have user-entered data
+    if (!form[field as keyof typeof form]) {
+      setForm(prev => ({ ...prev, [field]: value }));
+      setPrefilledFields(prev => new Set([...prev, field]));
+    }
+  }, [form]);
+
+  // Trigger search for autocomplete
+  const triggerSearch = useCallback(async (field: string, query: string) => {
+    // Cancel previous request for this field
+    if (abortControllers.current[field]) {
+      abortControllers.current[field].abort();
+    }
+
+    const controller = new AbortController();
+    abortControllers.current[field] = controller;
+
+    try {
+      const response = await searchInventory(
+        field as 'barcode' | 'name' | 'category' | 'brand' | 'whereToBuy' | 'onlineStoreLink',
+        query
+      );
+
+      if (controller.signal.aborted) return;
+
+      setAutocompleteDropdowns(prev => ({
+        ...prev,
+        [field]: {
+          visible: response.count > 0,
+          items: response.items || [],
+          values: response.values || [],
+          focusedIndex: -1,
+        },
+      }));
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      // Silently fail for autocomplete searches
+      setAutocompleteDropdowns(prev => ({
+        ...prev,
+        [field]: { visible: false, items: [], values: [], focusedIndex: -1 },
+      }));
+    }
+  }, []);
+
+  // External barcode lookup
+  const triggerExternalLookup = useCallback(async (barcode: string) => {
+    if (lastLookupBarcode === barcode || lookupLoading) return;
+
+    setLookupLoading(true);
+    setLookupError(null);
+    setLastLookupBarcode(barcode);
+
+    try {
+      const response = await lookupBarcode(barcode);
+      
+      if (response.found && response.product) {
+        const product = response.product;
+        const newPrefilledFields = new Set<string>();
+        const updates: Partial<typeof form> = {};
+
+        if (!form.name && product.name) {
+          updates.name = product.name;
+          newPrefilledFields.add('name');
+        }
+        if (!form.category && product.category) {
+          updates.category = product.category;
+          newPrefilledFields.add('category');
+        }
+        if (!form.brand && product.brand) {
+          updates.brand = product.brand;
+          newPrefilledFields.add('brand');
+        }
+
+        setForm(prev => ({ ...prev, ...updates }));
+        setPrefilledFields(prev => new Set([...prev, ...newPrefilledFields]));
+      }
+    } catch (error) {
+      setLookupError('Unable to lookup barcode. Please check your connection and try again.');
+    } finally {
+      setLookupLoading(false);
+    }
+  }, [lastLookupBarcode, lookupLoading, form]);
+
   const handleChange = useCallback(
     (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-      setForm((prev) => ({ ...prev, [field]: e.target.value }));
+      const value = e.target.value;
+      setForm((prev) => ({ ...prev, [field]: value }));
       setErrors((prev) => ({ ...prev, [field]: undefined }));
       setSubmitError(null);
+
+      // Track user edits for prefilled fields
+      if (prefilledFields.has(field)) {
+        if (value === '') {
+          // Field cleared - remove from both sets
+          setPrefilledFields(prev => {
+            const next = new Set(prev);
+            next.delete(field);
+            return next;
+          });
+          setUserEditedFields(prev => {
+            const next = new Set(prev);
+            next.delete(field);
+            return next;
+          });
+        } else {
+          // Field edited - mark as user-edited
+          setUserEditedFields(prev => new Set([...prev, field]));
+        }
+      }
+
+      // Clear lookup error when barcode changes
+      if (field === 'barcode') {
+        setLookupError(null);
+      }
+
+      // Character thresholds for autocomplete
+      const thresholds: Record<string, number> = {
+        barcode: 3,
+        name: 3,
+        category: 1,
+        brand: 1,
+        whereToBuy: 1,
+        onlineStoreLink: 3,
+      };
+
+      const threshold = thresholds[field];
+      if (threshold === undefined) return;
+
+      // Clear existing timer
+      if (debounceTimers.current[field]) {
+        clearTimeout(debounceTimers.current[field]);
+      }
+
+      // Hide dropdown if below threshold
+      if (value.length < threshold) {
+        setAutocompleteDropdowns(prev => ({
+          ...prev,
+          [field]: { visible: false, items: [], values: [], focusedIndex: -1 },
+        }));
+        return;
+      }
+
+      // Debounce search (300ms)
+      debounceTimers.current[field] = setTimeout(async () => {
+        await triggerSearch(field, value);
+
+        // For barcode field: trigger external lookup if 8+ digits and no local results
+        if (field === 'barcode' && value.length >= 8) {
+          const dropdown = autocompleteDropdowns[field];
+          if (!dropdown.visible || (dropdown.items && dropdown.items.length === 0)) {
+            await triggerExternalLookup(value);
+          }
+        }
+      }, 300);
     },
-    [],
+    [prefilledFields, triggerSearch, triggerExternalLookup, autocompleteDropdowns],
   );
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
     setPictureFile(file);
   }, []);
+
+  // Dropdown handlers
+  const handleDropdownSelect = useCallback((field: string, index: number) => {
+    const dropdown = autocompleteDropdowns[field];
+    
+    if (field === 'barcode' || field === 'name') {
+      // Full autofill fields
+      if (dropdown.items && dropdown.items[index]) {
+        performFullAutofill(dropdown.items[index]);
+      }
+    } else {
+      // Single autofill fields
+      if (dropdown.values && dropdown.values[index]) {
+        performSingleAutofill(field, dropdown.values[index]);
+      }
+    }
+
+    // Hide dropdown after selection
+    setAutocompleteDropdowns(prev => ({
+      ...prev,
+      [field]: { ...prev[field], visible: false, focusedIndex: -1 },
+    }));
+  }, [autocompleteDropdowns, performFullAutofill, performSingleAutofill]);
+
+  const handleDropdownClose = useCallback((field: string) => {
+    setAutocompleteDropdowns(prev => ({
+      ...prev,
+      [field]: { ...prev[field], visible: false, focusedIndex: -1 },
+    }));
+  }, []);
+
+  const handleDropdownFocusChange = useCallback((field: string, index: number) => {
+    setAutocompleteDropdowns(prev => ({
+      ...prev,
+      [field]: { ...prev[field], focusedIndex: index },
+    }));
+  }, []);
+
+  // Get field styling based on autofill state
+  const getFieldStyle = useCallback((field: string) => {
+    if (prefilledFields.has(field) && !userEditedFields.has(field)) {
+      return {
+        ...styles.input,
+        ...AUTOFILL_STYLES.prefilled,
+      };
+    }
+    return styles.input;
+  }, [prefilledFields, userEditedFields]);
 
   const validate = useCallback((): FormErrors => {
     const errs: FormErrors = {};
@@ -236,20 +538,44 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onSubmit, 
             <label htmlFor="add-item-name" style={styles.label}>
               Product Name <span aria-hidden="true">*</span>
             </label>
-            <input
-              id="add-item-name"
-              type="text"
-              value={form.name}
-              onChange={handleChange('name')}
-              style={styles.input}
-              aria-required="true"
-              aria-invalid={!!errors.name}
-            />
-            {errors.name && (
-              <span style={styles.fieldError} role="alert">
-                {errors.name}
-              </span>
-            )}
+            <div style={{ position: 'relative' }}>
+              <input
+                id="add-item-name"
+                type="text"
+                value={form.name}
+                onChange={handleChange('name')}
+                style={getFieldStyle('name')}
+                aria-required="true"
+                aria-invalid={!!errors.name}
+                aria-autocomplete={autocompleteDropdowns.name.visible ? 'list' : undefined}
+                aria-controls={autocompleteDropdowns.name.visible ? 'name-dropdown' : undefined}
+                aria-expanded={autocompleteDropdowns.name.visible}
+              />
+              {errors.name && (
+                <span style={styles.fieldError} role="alert">
+                  {errors.name}
+                </span>
+              )}
+              <AutocompleteDropdown
+                isVisible={autocompleteDropdowns.name.visible}
+                items={autocompleteDropdowns.name.items}
+                focusedIndex={autocompleteDropdowns.name.focusedIndex}
+                onSelect={(index) => handleDropdownSelect('name', index)}
+                onClose={() => handleDropdownClose('name')}
+                onFocusChange={(index) => handleDropdownFocusChange('name', index)}
+                inputId="add-item-name"
+                dropdownId="name-dropdown"
+                renderItem={(item) => (
+                  <div>
+                    <div style={{ fontWeight: 600 }}>{item.name}</div>
+                    <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                      {item.category} {item.brand ? `• ${item.brand}` : ''}
+                    </div>
+                  </div>
+                )}
+                ariaLabel="Product name suggestions"
+              />
+            </div>
           </div>
 
           {/* Category */}
@@ -257,20 +583,36 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onSubmit, 
             <label htmlFor="add-item-category" style={styles.label}>
               Category <span aria-hidden="true">*</span>
             </label>
-            <input
-              id="add-item-category"
-              type="text"
-              value={form.category}
-              onChange={handleChange('category')}
-              style={styles.input}
-              aria-required="true"
-              aria-invalid={!!errors.category}
-            />
-            {errors.category && (
-              <span style={styles.fieldError} role="alert">
-                {errors.category}
-              </span>
-            )}
+            <div style={{ position: 'relative' }}>
+              <input
+                id="add-item-category"
+                type="text"
+                value={form.category}
+                onChange={handleChange('category')}
+                style={getFieldStyle('category')}
+                aria-required="true"
+                aria-invalid={!!errors.category}
+                aria-autocomplete={autocompleteDropdowns.category.visible ? 'list' : undefined}
+                aria-controls={autocompleteDropdowns.category.visible ? 'category-dropdown' : undefined}
+                aria-expanded={autocompleteDropdowns.category.visible}
+              />
+              {errors.category && (
+                <span style={styles.fieldError} role="alert">
+                  {errors.category}
+                </span>
+              )}
+              <AutocompleteDropdown
+                isVisible={autocompleteDropdowns.category.visible}
+                values={autocompleteDropdowns.category.values}
+                focusedIndex={autocompleteDropdowns.category.focusedIndex}
+                onSelect={(index) => handleDropdownSelect('category', index)}
+                onClose={() => handleDropdownClose('category')}
+                onFocusChange={(index) => handleDropdownFocusChange('category', index)}
+                inputId="add-item-category"
+                dropdownId="category-dropdown"
+                ariaLabel="Category suggestions"
+              />
+            </div>
           </div>
 
           {/* Expiration Date */}
@@ -375,13 +717,45 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onSubmit, 
             <label htmlFor="add-item-barcode" style={styles.label}>
               Barcode
             </label>
-            <input
-              id="add-item-barcode"
-              type="text"
-              value={form.barcode}
-              onChange={handleChange('barcode')}
-              style={styles.input}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                id="add-item-barcode"
+                type="text"
+                value={form.barcode}
+                onChange={handleChange('barcode')}
+                style={getFieldStyle('barcode')}
+                aria-autocomplete={autocompleteDropdowns.barcode.visible ? 'list' : undefined}
+                aria-controls={autocompleteDropdowns.barcode.visible ? 'barcode-dropdown' : undefined}
+                aria-expanded={autocompleteDropdowns.barcode.visible}
+              />
+              {lookupLoading && (
+                <div style={styles.loadingIndicator}>Loading...</div>
+              )}
+              {lookupError && (
+                <span style={styles.fieldError} role="alert">
+                  {lookupError}
+                </span>
+              )}
+              <AutocompleteDropdown
+                isVisible={autocompleteDropdowns.barcode.visible}
+                items={autocompleteDropdowns.barcode.items}
+                focusedIndex={autocompleteDropdowns.barcode.focusedIndex}
+                onSelect={(index) => handleDropdownSelect('barcode', index)}
+                onClose={() => handleDropdownClose('barcode')}
+                onFocusChange={(index) => handleDropdownFocusChange('barcode', index)}
+                inputId="add-item-barcode"
+                dropdownId="barcode-dropdown"
+                renderItem={(item) => (
+                  <div>
+                    <div style={{ fontWeight: 600 }}>{item.barcode}</div>
+                    <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                      {item.name} {item.brand ? `• ${item.brand}` : ''}
+                    </div>
+                  </div>
+                )}
+                ariaLabel="Barcode suggestions"
+              />
+            </div>
           </div>
 
           {/* Brand (optional) */}
@@ -389,13 +763,29 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onSubmit, 
             <label htmlFor="add-item-brand" style={styles.label}>
               Brand
             </label>
-            <input
-              id="add-item-brand"
-              type="text"
-              value={form.brand}
-              onChange={handleChange('brand')}
-              style={styles.input}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                id="add-item-brand"
+                type="text"
+                value={form.brand}
+                onChange={handleChange('brand')}
+                style={getFieldStyle('brand')}
+                aria-autocomplete={autocompleteDropdowns.brand.visible ? 'list' : undefined}
+                aria-controls={autocompleteDropdowns.brand.visible ? 'brand-dropdown' : undefined}
+                aria-expanded={autocompleteDropdowns.brand.visible}
+              />
+              <AutocompleteDropdown
+                isVisible={autocompleteDropdowns.brand.visible}
+                values={autocompleteDropdowns.brand.values}
+                focusedIndex={autocompleteDropdowns.brand.focusedIndex}
+                onSelect={(index) => handleDropdownSelect('brand', index)}
+                onClose={() => handleDropdownClose('brand')}
+                onFocusChange={(index) => handleDropdownFocusChange('brand', index)}
+                inputId="add-item-brand"
+                dropdownId="brand-dropdown"
+                ariaLabel="Brand suggestions"
+              />
+            </div>
           </div>
 
           {/* Where to Buy (optional) */}
@@ -403,13 +793,29 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onSubmit, 
             <label htmlFor="add-item-wheretobuy" style={styles.label}>
               Where to Buy
             </label>
-            <input
-              id="add-item-wheretobuy"
-              type="text"
-              value={form.whereToBuy}
-              onChange={handleChange('whereToBuy')}
-              style={styles.input}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                id="add-item-wheretobuy"
+                type="text"
+                value={form.whereToBuy}
+                onChange={handleChange('whereToBuy')}
+                style={getFieldStyle('whereToBuy')}
+                aria-autocomplete={autocompleteDropdowns.whereToBuy.visible ? 'list' : undefined}
+                aria-controls={autocompleteDropdowns.whereToBuy.visible ? 'wheretobuy-dropdown' : undefined}
+                aria-expanded={autocompleteDropdowns.whereToBuy.visible}
+              />
+              <AutocompleteDropdown
+                isVisible={autocompleteDropdowns.whereToBuy.visible}
+                values={autocompleteDropdowns.whereToBuy.values}
+                focusedIndex={autocompleteDropdowns.whereToBuy.focusedIndex}
+                onSelect={(index) => handleDropdownSelect('whereToBuy', index)}
+                onClose={() => handleDropdownClose('whereToBuy')}
+                onFocusChange={(index) => handleDropdownFocusChange('whereToBuy', index)}
+                inputId="add-item-wheretobuy"
+                dropdownId="wheretobuy-dropdown"
+                ariaLabel="Where to buy suggestions"
+              />
+            </div>
           </div>
 
           {/* Online Store Link (optional) */}
@@ -417,13 +823,29 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onSubmit, 
             <label htmlFor="add-item-onlinelink" style={styles.label}>
               Online Store Link
             </label>
-            <input
-              id="add-item-onlinelink"
-              type="url"
-              value={form.onlineStoreLink}
-              onChange={handleChange('onlineStoreLink')}
-              style={styles.input}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                id="add-item-onlinelink"
+                type="url"
+                value={form.onlineStoreLink}
+                onChange={handleChange('onlineStoreLink')}
+                style={getFieldStyle('onlineStoreLink')}
+                aria-autocomplete={autocompleteDropdowns.onlineStoreLink.visible ? 'list' : undefined}
+                aria-controls={autocompleteDropdowns.onlineStoreLink.visible ? 'onlinelink-dropdown' : undefined}
+                aria-expanded={autocompleteDropdowns.onlineStoreLink.visible}
+              />
+              <AutocompleteDropdown
+                isVisible={autocompleteDropdowns.onlineStoreLink.visible}
+                values={autocompleteDropdowns.onlineStoreLink.values}
+                focusedIndex={autocompleteDropdowns.onlineStoreLink.focusedIndex}
+                onSelect={(index) => handleDropdownSelect('onlineStoreLink', index)}
+                onClose={() => handleDropdownClose('onlineStoreLink')}
+                onFocusChange={(index) => handleDropdownFocusChange('onlineStoreLink', index)}
+                inputId="add-item-onlinelink"
+                dropdownId="onlinelink-dropdown"
+                ariaLabel="Online store link suggestions"
+              />
+            </div>
           </div>
 
           {/* Picture (optional — file input placeholder) */}
@@ -572,5 +994,10 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 8,
     cursor: 'pointer',
     marginTop: '0.5rem',
+  },
+  loadingIndicator: {
+    fontSize: '0.8125rem',
+    color: '#6b7280',
+    marginTop: '0.25rem',
   },
 };

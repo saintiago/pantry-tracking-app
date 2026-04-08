@@ -448,6 +448,142 @@ export async function barcodeLookup(
   }
 }
 
+// --- Inventory Search ---
+
+interface InventorySearchResponse {
+  field: string;
+  query: string;
+  resultType: 'items' | 'values';
+  items?: unknown[];
+  values?: string[];
+  count: number;
+}
+
+async function searchInventory(
+  userId: string,
+  field: string,
+  query: string,
+): Promise<APIGatewayProxyResult> {
+  if (!field || !query) {
+    return response(400, {
+      error: 'VALIDATION_ERROR',
+      message: 'field and query parameters are required',
+    });
+  }
+
+  const validFields = ['barcode', 'name', 'category', 'brand', 'whereToBuy', 'onlineStoreLink'];
+  if (!validFields.includes(field)) {
+    return response(400, {
+      error: 'VALIDATION_ERROR',
+      message: `field must be one of: ${validFields.join(', ')}`,
+    });
+  }
+
+  const trimmedQuery = query.trim();
+  if (trimmedQuery === '') {
+    return response(400, { error: 'VALIDATION_ERROR', message: 'query cannot be empty' });
+  }
+
+  try {
+    // Full item searches (barcode, name)
+    if (field === 'barcode') {
+      const result = await docClient.send(
+        new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+          FilterExpression: 'contains(barcode, :query)',
+          ExpressionAttributeValues: {
+            ':pk': `USER#${userId}`,
+            ':skPrefix': 'ITEM#',
+            ':query': trimmedQuery,
+          },
+          Limit: 10,
+        }),
+      );
+
+      const items = result.Items ?? [];
+      return response(200, {
+        field,
+        query: trimmedQuery,
+        resultType: 'items',
+        items,
+        count: items.length,
+      } as InventorySearchResponse);
+    }
+
+    if (field === 'name') {
+      const result = await docClient.send(
+        new QueryCommand({
+          TableName: TABLE_NAME,
+          KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+          ExpressionAttributeValues: {
+            ':pk': `USER#${userId}`,
+            ':skPrefix': 'ITEM#',
+          },
+        }),
+      );
+
+      const allItems = result.Items ?? [];
+      const lowerQuery = trimmedQuery.toLowerCase();
+      const matchingItems = allItems
+        .filter((item) => {
+          const name = item.name as string;
+          return name && name.toLowerCase().includes(lowerQuery);
+        })
+        .slice(0, 10);
+
+      return response(200, {
+        field,
+        query: trimmedQuery,
+        resultType: 'items',
+        items: matchingItems,
+        count: matchingItems.length,
+      } as InventorySearchResponse);
+    }
+
+    // Distinct value searches (category, brand, whereToBuy, onlineStoreLink)
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+        ExpressionAttributeValues: {
+          ':pk': `USER#${userId}`,
+          ':skPrefix': 'ITEM#',
+        },
+      }),
+    );
+
+    const allItems = result.Items ?? [];
+    const distinctValues = new Set<string>();
+
+    for (const item of allItems) {
+      const value = item[field];
+      if (value && typeof value === 'string' && value.trim() !== '') {
+        distinctValues.add(value);
+      }
+    }
+
+    const lowerQuery = trimmedQuery.toLowerCase();
+    const matchingValues = Array.from(distinctValues)
+      .filter((value) => value.toLowerCase().includes(lowerQuery))
+      .slice(0, 10);
+
+    return response(200, {
+      field,
+      query: trimmedQuery,
+      resultType: 'values',
+      values: matchingValues,
+      count: matchingValues.length,
+    } as InventorySearchResponse);
+  } catch (err) {
+    console.error('Inventory search error:', err);
+    return response(500, {
+      error: 'INTERNAL_ERROR',
+      message: 'Failed to search inventory',
+    });
+  }
+}
+
 async function deleteInventoryItem(
   userId: string,
   itemId: string,
@@ -489,6 +625,12 @@ export async function handler(
   try {
     if (method === 'GET' && path.endsWith('/low-stock')) {
       return await getLowStockItems(userId);
+    }
+
+    if (method === 'GET' && path.endsWith('/search')) {
+      const field = event.queryStringParameters?.field ?? '';
+      const query = event.queryStringParameters?.query ?? '';
+      return await searchInventory(userId, field, query);
     }
 
     if (method === 'GET' && !itemId) {

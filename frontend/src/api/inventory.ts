@@ -113,3 +113,36 @@ export async function lookupBarcode(barcode: string): Promise<BarcodeLookupRespo
   }
   return res.json();
 }
+
+export interface InventorySearchRequest {
+  field: 'barcode' | 'name' | 'category' | 'brand' | 'whereToBuy' | 'onlineStoreLink';
+  query: string;
+}
+
+export interface InventorySearchResponse {
+  field: string;
+  query: string;
+  resultType: 'items' | 'values';
+  items?: import('../components/InventoryList').InventoryItem[];
+  values?: string[];
+  count: number;
+}
+
+export async function searchInventory(
+  field: 'barcode' | 'name' | 'category' | 'brand' | 'whereToBuy' | 'onlineStoreLink',
+  query: string,
+): Promise<InventorySearchResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(
+    `${API_URL}/inventory/search?field=${encodeURIComponent(field)}&query=${encodeURIComponent(query)}`,
+    {
+      method: 'GET',
+      headers,
+    },
+  );
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.message ?? 'Inventory search failed');
+  }
+  return res.json();
+}

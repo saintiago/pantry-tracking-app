@@ -46,7 +46,7 @@ const validItem = {
   expirationDate: '2025-02-01',
   locationId: 'loc-1',
   quantity: 2,
-  unit: 'liters',
+  unit: 'Liter',
 };
 
 describe('Inventory Lambda handler', () => {
@@ -136,7 +136,7 @@ describe('Inventory Lambda handler', () => {
       expect(body.item.name).toBe('Milk');
       expect(body.item.category).toBe('Dairy');
       expect(body.item.quantity).toBe(2);
-      expect(body.item.unit).toBe('liters');
+      expect(body.item.unit).toBe('Liter');
       expect(body.item.location).toBe('loc-1');
       expect(body.item.itemId).toBe('item-uuid-1234');
       expect(body.item.entityType).toBe('InventoryItem');
@@ -302,7 +302,7 @@ describe('Inventory Lambda handler', () => {
           name: 'Milk',
           category: 'Dairy',
           quantity: 2,
-          unit: 'liters',
+          unit: 'Liter',
           location: 'loc-1',
           isLowStock: false,
           syncVersion: 1,
@@ -316,7 +316,7 @@ describe('Inventory Lambda handler', () => {
           name: 'Milk',
           category: 'Dairy',
           quantity: 5,
-          unit: 'liters',
+          unit: 'Liter',
           location: 'loc-1',
           isLowStock: false,
           syncVersion: 2,
@@ -348,7 +348,7 @@ describe('Inventory Lambda handler', () => {
           GSI1PK: 'USER#user-123#CAT#Beverages',
           GSI1SK: 'ITEM#item-1',
           quantity: 2,
-          unit: 'liters',
+          unit: 'Liter',
           syncVersion: 2,
         },
       });
@@ -614,6 +614,1077 @@ describe('Inventory Lambda handler', () => {
 
       expect(body.item.isLowStock).toBe(false);
       expect(body.item.GSI1PK).toBe('USER#user-123#CAT#Dairy');
+    });
+  });
+
+  describe('GET /inventory/search', () => {
+    it('searches by barcode and returns matching items', async () => {
+      // Mock returns items that match the barcode query (DynamoDB FilterExpression does this)
+      const items = [
+        { itemId: 'item-1', name: 'Milk', barcode: '1234567890', brand: 'FarmFresh' },
+        { itemId: 'item-2', name: 'Yogurt', barcode: '1234567891', brand: 'FarmFresh' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'barcode', query: '123456' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.field).toBe('barcode');
+      expect(body.query).toBe('123456');
+      expect(body.resultType).toBe('items');
+      expect(body.items).toHaveLength(2);
+      expect(body.count).toBe(2);
+    });
+
+    it('searches by name and returns matching items (case-insensitive)', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', category: 'Dairy' },
+        { itemId: 'item-2', name: 'Almond Milk', category: 'Dairy' },
+        { itemId: 'item-3', name: 'Bread', category: 'Bakery' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'name', query: 'milk' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.resultType).toBe('items');
+      expect(body.items).toHaveLength(2);
+      expect(body.items[0].name).toBe('Milk');
+      expect(body.items[1].name).toBe('Almond Milk');
+      expect(body.count).toBe(2);
+    });
+
+    it('searches by category and returns distinct values', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', category: 'Dairy' },
+        { itemId: 'item-2', name: 'Cheese', category: 'Dairy' },
+        { itemId: 'item-3', name: 'Bread', category: 'Bakery' },
+        { itemId: 'item-4', name: 'Snacks', category: 'Snacks' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'category', query: 'da' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.resultType).toBe('values');
+      expect(body.values).toEqual(['Dairy']);
+      expect(body.count).toBe(1);
+    });
+
+    it('searches by brand and returns distinct values', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', brand: 'FarmFresh' },
+        { itemId: 'item-2', name: 'Cheese', brand: 'FarmFresh' },
+        { itemId: 'item-3', name: 'Bread', brand: 'BakeryBest' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'brand', query: 'farm' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.resultType).toBe('values');
+      expect(body.values).toEqual(['FarmFresh']);
+      expect(body.count).toBe(1);
+    });
+
+    it('searches by whereToBuy and returns distinct values', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', whereToBuy: 'Supermarket' },
+        { itemId: 'item-2', name: 'Cheese', whereToBuy: 'Supermarket' },
+        { itemId: 'item-3', name: 'Bread', whereToBuy: 'Local Bakery' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'whereToBuy', query: 'super' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.resultType).toBe('values');
+      expect(body.values).toEqual(['Supermarket']);
+      expect(body.count).toBe(1);
+    });
+
+    it('searches by onlineStoreLink and returns distinct values', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', onlineStoreLink: 'https://store.com/milk' },
+        { itemId: 'item-2', name: 'Cheese', onlineStoreLink: 'https://store.com/cheese' },
+        { itemId: 'item-3', name: 'Bread', onlineStoreLink: 'https://bakery.com/bread' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'onlineStoreLink', query: 'store.com' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.resultType).toBe('values');
+      expect(body.values).toHaveLength(2);
+      expect(body.count).toBe(2);
+    });
+
+    it('returns max 10 results for barcode search', async () => {
+      const items = Array.from({ length: 15 }, (_, i) => ({
+        itemId: `item-${i}`,
+        name: `Item ${i}`,
+        barcode: `123456789${i}`,
+      }));
+      mockSend.mockResolvedValueOnce({ Items: items.slice(0, 10) });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'barcode', query: '123' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.items).toHaveLength(10);
+      expect(body.count).toBe(10);
+    });
+
+    it('returns max 10 results for name search', async () => {
+      const items = Array.from({ length: 15 }, (_, i) => ({
+        itemId: `item-${i}`,
+        name: `Milk ${i}`,
+      }));
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'name', query: 'milk' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.items).toHaveLength(10);
+      expect(body.count).toBe(10);
+    });
+
+    it('returns max 10 distinct values for category search', async () => {
+      const items = Array.from({ length: 15 }, (_, i) => ({
+        itemId: `item-${i}`,
+        name: `Item ${i}`,
+        category: `Category ${i}`,
+      }));
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'category', query: 'cat' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.values).toHaveLength(10);
+      expect(body.count).toBe(10);
+    });
+
+    it('returns empty results when no matches found', async () => {
+      mockSend.mockResolvedValueOnce({ Items: [] });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'barcode', query: 'nonexistent' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.items).toHaveLength(0);
+      expect(body.count).toBe(0);
+    });
+
+    it('filters out empty values for distinct value searches', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', brand: 'FarmFresh' },
+        { itemId: 'item-2', name: 'Cheese', brand: '' },
+        { itemId: 'item-3', name: 'Bread', brand: 'BakeryBest' },
+        { itemId: 'item-4', name: 'Eggs' }, // no brand field
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'brand', query: 'farm' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.values).toHaveLength(1);
+      expect(body.values).toContain('FarmFresh');
+    });
+
+    it('returns 400 when field parameter is missing', async () => {
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { query: 'test' },
+        }),
+      );
+
+      expect(result.statusCode).toBe(400);
+      expect(JSON.parse(result.body).error).toBe('VALIDATION_ERROR');
+    });
+
+    it('returns 400 when query parameter is missing', async () => {
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'barcode' },
+        }),
+      );
+
+      expect(result.statusCode).toBe(400);
+      expect(JSON.parse(result.body).error).toBe('VALIDATION_ERROR');
+    });
+
+    it('returns 400 when field is invalid', async () => {
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'invalid', query: 'test' },
+        }),
+      );
+
+      expect(result.statusCode).toBe(400);
+      expect(JSON.parse(result.body).error).toBe('VALIDATION_ERROR');
+      expect(JSON.parse(result.body).message).toContain('field must be one of');
+    });
+
+    it('returns 400 when query is empty after trimming', async () => {
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'barcode', query: '   ' },
+        }),
+      );
+
+      expect(result.statusCode).toBe(400);
+      expect(JSON.parse(result.body).message).toBe('query cannot be empty');
+    });
+
+    it('handles DynamoDB errors gracefully', async () => {
+      mockSend.mockRejectedValueOnce(new Error('DynamoDB failure'));
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'barcode', query: 'test' },
+        }),
+      );
+
+      expect(result.statusCode).toBe(500);
+      expect(JSON.parse(result.body).error).toBe('INTERNAL_ERROR');
+    });
+
+    it('returns correct result format for barcode field (items)', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', barcode: '123456', brand: 'FarmFresh' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'barcode', query: '123' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(body).toHaveProperty('field', 'barcode');
+      expect(body).toHaveProperty('query', '123');
+      expect(body).toHaveProperty('resultType', 'items');
+      expect(body).toHaveProperty('items');
+      expect(body).toHaveProperty('count', 1);
+      expect(body).not.toHaveProperty('values');
+    });
+
+    it('returns correct result format for name field (items)', async () => {
+      const items = [{ itemId: 'item-1', name: 'Milk', category: 'Dairy' }];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'name', query: 'milk' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(body).toHaveProperty('field', 'name');
+      expect(body).toHaveProperty('query', 'milk');
+      expect(body).toHaveProperty('resultType', 'items');
+      expect(body).toHaveProperty('items');
+      expect(body).toHaveProperty('count', 1);
+      expect(body).not.toHaveProperty('values');
+    });
+
+    it('returns correct result format for category field (values)', async () => {
+      const items = [{ itemId: 'item-1', name: 'Milk', category: 'Dairy' }];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'category', query: 'da' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(body).toHaveProperty('field', 'category');
+      expect(body).toHaveProperty('query', 'da');
+      expect(body).toHaveProperty('resultType', 'values');
+      expect(body).toHaveProperty('values');
+      expect(body).toHaveProperty('count', 1);
+      expect(body).not.toHaveProperty('items');
+    });
+
+    it('returns correct result format for brand field (values)', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', brand: 'FarmFresh' },
+        { itemId: 'item-2', name: 'Cheese', brand: 'OtherBrand' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'brand', query: 'farm' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(body).toHaveProperty('field', 'brand');
+      expect(body).toHaveProperty('query', 'farm');
+      expect(body).toHaveProperty('resultType', 'values');
+      expect(body).toHaveProperty('values');
+      expect(body).toHaveProperty('count', 1);
+      expect(body).not.toHaveProperty('items');
+    });
+
+    it('returns correct result format for whereToBuy field (values)', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', whereToBuy: 'Supermarket' },
+        { itemId: 'item-2', name: 'Bread', whereToBuy: 'Bakery' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'whereToBuy', query: 'super' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(body).toHaveProperty('field', 'whereToBuy');
+      expect(body).toHaveProperty('query', 'super');
+      expect(body).toHaveProperty('resultType', 'values');
+      expect(body).toHaveProperty('values');
+      expect(body).toHaveProperty('count', 1);
+      expect(body).not.toHaveProperty('items');
+    });
+
+    it('returns correct result format for onlineStoreLink field (values)', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', onlineStoreLink: 'https://store.com' },
+        { itemId: 'item-2', name: 'Bread', onlineStoreLink: 'https://bakery.com' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'onlineStoreLink', query: 'store' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(body).toHaveProperty('field', 'onlineStoreLink');
+      expect(body).toHaveProperty('query', 'store');
+      expect(body).toHaveProperty('resultType', 'values');
+      expect(body).toHaveProperty('values');
+      expect(body).toHaveProperty('count', 1);
+      expect(body).not.toHaveProperty('items');
+    });
+
+    it('performs case-insensitive matching for name field', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', brand: 'FarmFresh' },
+        { itemId: 'item-2', name: 'ALMOND MILK' },
+        { itemId: 'item-3', name: 'milk chocolate' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'name', query: 'MILK' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.items).toHaveLength(3);
+    });
+
+    it('performs case-insensitive matching for category field', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', category: 'Dairy' },
+        { itemId: 'item-2', name: 'Cheese', category: 'DAIRY' },
+        { itemId: 'item-3', name: 'Yogurt', category: 'dairy' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'category', query: 'DAIRY' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.values).toHaveLength(3);
+      expect(body.values).toContain('Dairy');
+      expect(body.values).toContain('DAIRY');
+      expect(body.values).toContain('dairy');
+    });
+
+    it('performs case-insensitive matching for brand field', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', brand: 'FarmFresh' },
+        { itemId: 'item-2', name: 'Cheese', brand: 'FARMFRESH' },
+        { itemId: 'item-3', name: 'Yogurt', brand: 'farmfresh' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'brand', query: 'FARM' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.values).toHaveLength(3);
+      expect(body.values).toContain('FarmFresh');
+      expect(body.values).toContain('FARMFRESH');
+      expect(body.values).toContain('farmfresh');
+    });
+
+    it('performs case-insensitive matching for whereToBuy field', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', whereToBuy: 'Supermarket' },
+        { itemId: 'item-2', name: 'Cheese', whereToBuy: 'SUPERMARKET' },
+        { itemId: 'item-3', name: 'Yogurt', whereToBuy: 'supermarket' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'whereToBuy', query: 'SUPER' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.values).toHaveLength(3);
+      expect(body.values).toContain('Supermarket');
+      expect(body.values).toContain('SUPERMARKET');
+      expect(body.values).toContain('supermarket');
+    });
+
+    it('performs case-insensitive matching for onlineStoreLink field', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', onlineStoreLink: 'https://Store.com/milk' },
+        { itemId: 'item-2', name: 'Cheese', onlineStoreLink: 'https://STORE.com/cheese' },
+        { itemId: 'item-3', name: 'Yogurt', onlineStoreLink: 'https://store.com/yogurt' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'onlineStoreLink', query: 'STORE' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.values).toHaveLength(3);
+    });
+
+    it('handles empty results for barcode search', async () => {
+      mockSend.mockResolvedValueOnce({ Items: [] }); // DynamoDB FilterExpression returns no items
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'barcode', query: 'nonexistent' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.resultType).toBe('items');
+      expect(body.items).toEqual([]);
+      expect(body.count).toBe(0);
+    });
+
+    it('handles empty results for name search', async () => {
+      mockSend.mockResolvedValueOnce({ Items: [] });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'name', query: 'nonexistent' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.resultType).toBe('items');
+      expect(body.items).toEqual([]);
+      expect(body.count).toBe(0);
+    });
+
+    it('handles empty results for category search', async () => {
+      mockSend.mockResolvedValueOnce({ Items: [] });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'category', query: 'nonexistent' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.resultType).toBe('values');
+      expect(body.values).toEqual([]);
+      expect(body.count).toBe(0);
+    });
+
+    it('trims whitespace from query parameter', async () => {
+      const items = [{ itemId: 'item-1', name: 'Milk', barcode: '123456' }];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'barcode', query: '  123456  ' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.query).toBe('123456');
+    });
+
+    it('returns distinct values only once for category field', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', category: 'Dairy' },
+        { itemId: 'item-2', name: 'Cheese', category: 'Dairy' },
+        { itemId: 'item-3', name: 'Yogurt', category: 'Dairy' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'category', query: 'da' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.values).toEqual(['Dairy']);
+      expect(body.count).toBe(1);
+    });
+
+    it('returns distinct values only once for brand field', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', brand: 'FarmFresh' },
+        { itemId: 'item-2', name: 'Cheese', brand: 'FarmFresh' },
+        { itemId: 'item-3', name: 'Yogurt', brand: 'FarmFresh' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'brand', query: 'farm' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.values).toEqual(['FarmFresh']);
+      expect(body.count).toBe(1);
+    });
+
+    it('supports substring matching in the middle of text for name field', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Almond Milk', brand: 'FarmFresh' },
+        { itemId: 'item-2', name: 'Soy Milk' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'name', query: 'milk' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.items).toHaveLength(2);
+    });
+
+    it('supports substring matching at the end of text for category field', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', category: 'Fresh Dairy' },
+        { itemId: 'item-2', name: 'Cheese', category: 'Aged Dairy' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'category', query: 'dairy' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.values).toHaveLength(2);
+      expect(body.values).toContain('Fresh Dairy');
+      expect(body.values).toContain('Aged Dairy');
+    });
+
+    it('handles items with missing optional fields for brand search', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', brand: 'FarmFresh' },
+        { itemId: 'item-2', name: 'Cheese' }, // no brand
+        { itemId: 'item-3', name: 'Yogurt', brand: 'FarmFresh' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'brand', query: 'farm' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.values).toEqual(['FarmFresh']);
+      expect(body.count).toBe(1);
+    });
+
+    it('handles items with missing optional fields for whereToBuy search', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', whereToBuy: 'Supermarket' },
+        { itemId: 'item-2', name: 'Cheese' }, // no whereToBuy
+        { itemId: 'item-3', name: 'Yogurt', whereToBuy: 'Local Store' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'whereToBuy', query: 'store' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.values).toEqual(['Local Store']);
+      expect(body.count).toBe(1);
+    });
+
+    it('handles items with missing optional fields for onlineStoreLink search', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', onlineStoreLink: 'https://store.com/milk' },
+        { itemId: 'item-2', name: 'Cheese' }, // no onlineStoreLink
+        { itemId: 'item-3', name: 'Yogurt', onlineStoreLink: 'https://shop.com/yogurt' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'onlineStoreLink', query: 'store' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.values).toEqual(['https://store.com/milk']);
+      expect(body.count).toBe(1);
+    });
+
+    it('handles query with special characters for name search', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk & Honey' },
+        { itemId: 'item-2', name: 'Bread' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'name', query: '&' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.items).toHaveLength(1);
+      expect(body.items[0].name).toBe('Milk & Honey');
+    });
+
+    it('returns empty array when no items match name query', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk' },
+        { itemId: 'item-2', name: 'Bread' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'name', query: 'xyz' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.items).toEqual([]);
+      expect(body.count).toBe(0);
+    });
+
+    it('returns empty array when no distinct values match category query', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', category: 'Dairy' },
+        { itemId: 'item-2', name: 'Bread', category: 'Bakery' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'category', query: 'xyz' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.values).toEqual([]);
+      expect(body.count).toBe(0);
+    });
+
+    it('handles barcode search with exact match', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', barcode: '1234567890' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items }); // DynamoDB FilterExpression returns matching item
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'barcode', query: '1234567890' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.items).toHaveLength(1);
+      expect(body.items[0].barcode).toBe('1234567890');
+    });
+
+    it('handles barcode search with partial match', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', barcode: '1234567890' },
+        { itemId: 'item-2', name: 'Yogurt', barcode: '1234567891' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items }); // DynamoDB FilterExpression returns matching items
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'barcode', query: '12345' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.items).toHaveLength(2);
+    });
+
+    it('handles single character query for category field', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', category: 'Dairy' },
+        { itemId: 'item-2', name: 'Bread', category: 'Bakery' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'category', query: 'D' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.values).toEqual(['Dairy']);
+      expect(body.count).toBe(1);
+    });
+
+    it('handles numeric query for brand field', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', brand: 'Brand123' },
+        { itemId: 'item-2', name: 'Cheese', brand: 'BrandABC' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'brand', query: '123' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.values).toEqual(['Brand123']);
+      expect(body.count).toBe(1);
+    });
+
+    it('handles URL query for onlineStoreLink field', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', onlineStoreLink: 'https://store.com/milk' },
+        { itemId: 'item-2', name: 'Cheese', onlineStoreLink: 'https://shop.com/cheese' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'onlineStoreLink', query: 'https://store' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.values).toEqual(['https://store.com/milk']);
+      expect(body.count).toBe(1);
+    });
+
+    it('handles whereToBuy search with multiple word query', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', whereToBuy: 'Local Farmers Market' },
+        { itemId: 'item-2', name: 'Cheese', whereToBuy: 'Supermarket' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'whereToBuy', query: 'Farmers Market' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.values).toEqual(['Local Farmers Market']);
+      expect(body.count).toBe(1);
+    });
+
+    it('preserves original casing in returned distinct values', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', category: 'Fresh Dairy' },
+        { itemId: 'item-2', name: 'Cheese', category: 'Aged Cheese' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'category', query: 'e' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.values).toContain('Fresh Dairy');
+      expect(body.values).toContain('Aged Cheese');
+    });
+
+    it('handles items with null values for optional fields', async () => {
+      const items = [
+        { itemId: 'item-1', name: 'Milk', brand: 'FarmFresh' },
+        { itemId: 'item-2', name: 'Cheese', brand: null },
+        { itemId: 'item-3', name: 'Yogurt', brand: 'YogurtCo' },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'GET',
+          resource: '/inventory/search',
+          path: '/inventory/search',
+          queryStringParameters: { field: 'brand', query: 'farm' },
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.values).toEqual(['FarmFresh']);
+      expect(body.count).toBe(1);
     });
   });
 

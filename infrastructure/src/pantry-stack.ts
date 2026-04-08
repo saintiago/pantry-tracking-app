@@ -218,6 +218,9 @@ export class PantryStack extends cdk.Stack {
     const lowStockResource = inventoryResource.addResource('low-stock');
     lowStockResource.addMethod('GET', inventoryIntegration, authMethodOptions);
 
+    const searchResource = inventoryResource.addResource('search');
+    searchResource.addMethod('GET', inventoryIntegration, authMethodOptions);
+
     const barcodeLookupResource = inventoryResource.addResource('barcode-lookup');
     barcodeLookupResource.addMethod('POST', inventoryIntegration, authMethodOptions);
 

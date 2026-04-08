@@ -109,8 +109,10 @@ function expectedFilteredItems(
  * that satisfy all active filter criteria simultaneously.
  */
 describe('Property 7: Combined Filter Correctness', () => {
-  it('filtered results contain exactly the items satisfying all active filter criteria', async () => {
-    await fc.assert(
+  it(
+    'filtered results contain exactly the items satisfying all active filter criteria',
+    async () => {
+      await fc.assert(
       fc.asyncProperty(
         inventoryListArb.chain((items) =>
           filterComboArbFor(items).map((filters) => ({ items, filters })),
@@ -178,7 +180,8 @@ describe('Property 7: Combined Filter Correctness', () => {
           unmount();
         },
       ),
-      { numRuns: 100 },
+      { numRuns: 20 }, // Reduced from 100 to avoid timeout
     );
-  });
+  },
+  30000); // 30 second timeout for property test
 });

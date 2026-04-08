@@ -184,7 +184,8 @@ interface SyncQueueItem {
 | PUT | /inventory/{itemId} | Inventory | Yes | Update inventory item |
 | DELETE | /inventory/{itemId} | Inventory | Yes | Remove inventory item |
 | GET | /inventory/low-stock | Inventory | Yes | Get items at or below threshold |
-| POST | /inventory/barcode-lookup | Inventory | Yes | Lookup product by barcode |
+| GET | /inventory/search | Inventory | Yes | Search inventory for autocomplete (query: field, query) |
+| POST | /inventory/barcode-lookup | Inventory | Yes | Lookup product by barcode (external API) |
 | GET | /recipes | Recipe | Yes | List all recipes |
 | POST | /recipes | Recipe | Yes | Create recipe |
 | GET | /recipes/{recipeId} | Recipe | Yes | Get recipe with availability |
@@ -253,6 +254,20 @@ interface MutationResponse {
   item: InventoryItem;
   lowStockTransition?: boolean;
   notification?: { type: string; message: string; itemId: string };
+}
+
+// GET /inventory/search
+interface InventorySearchRequest {
+  field: 'barcode' | 'name' | 'category' | 'brand' | 'whereToBuy' | 'onlineStoreLink';
+  query: string;
+}
+interface InventorySearchResponse {
+  field: string;
+  query: string;
+  resultType: 'items' | 'values';
+  items?: InventoryItem[];  // For barcode and name fields (returns full items)
+  values?: string[];         // For category, brand, whereToBuy, onlineStoreLink (returns distinct values)
+  count: number;             // Number of results (max 10)
 }
 
 // POST /inventory/barcode-lookup
