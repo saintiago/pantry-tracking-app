@@ -3,6 +3,10 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import InventoryPage from './InventoryPage';
+import type { StorageLocation } from '../api/locations';
+import type { InventoryItem } from '../components/InventoryList';
+import type { PageId } from '../components/Layout';
+import type { AddItemData } from '../components/AddItemModal';
 
 // Mock the location API module
 jest.mock('../api/locations', () => ({
@@ -70,11 +74,35 @@ function setupDefaults() {
   mockFetchInventory.mockResolvedValue({ items: defaultItems });
 }
 
+// Default no-op props for InventoryPage
+const noop = () => {};
+const defaultProps = {
+  onNavigate: noop as (page: PageId) => void,
+  onNavigateToAddItem: noop as (
+    locations: StorageLocation[],
+    onSubmit: (item: AddItemData) => Promise<{ error?: string }>,
+    prefillData?: { name?: string; brand?: string; category?: string; barcode?: string },
+  ) => void,
+  onNavigateToItemDetail: noop as (
+    item: InventoryItem,
+    locations: StorageLocation[],
+    onItemUpdated: (
+      updatedItem: InventoryItem,
+      lowStockTransition?: boolean,
+      notification?: { type: string; message: string; itemId: string },
+    ) => void,
+  ) => void,
+};
+
+function renderInventoryPage(overrides?: Partial<typeof defaultProps>) {
+  return render(<InventoryPage {...defaultProps} {...overrides} />);
+}
+
 describe('InventoryPage', () => {
   it('shows loading state then renders inventory and locations', async () => {
     setupDefaults();
 
-    render(<InventoryPage />);
+    renderInventoryPage();
 
     expect(screen.getByText('Loading…')).toBeInTheDocument();
 
@@ -89,7 +117,7 @@ describe('InventoryPage', () => {
     mockFetchLocations.mockRejectedValueOnce(new Error('Network error'));
     mockFetchInventory.mockResolvedValue({ items: [] });
 
-    render(<InventoryPage />);
+    renderInventoryPage();
 
     await waitFor(() => {
       expect(screen.getByText('Network error')).toBeInTheDocument();
@@ -120,7 +148,7 @@ describe('InventoryPage', () => {
       createdAt: '2024-01-02T00:00:00Z',
     });
 
-    render(<InventoryPage />);
+    renderInventoryPage();
 
     await waitFor(() => {
       expect(screen.getByLabelText('Add item')).toBeInTheDocument();
@@ -144,7 +172,7 @@ describe('InventoryPage', () => {
       new Error('A storage location with this name already exists'),
     );
 
-    render(<InventoryPage />);
+    renderInventoryPage();
 
     await waitFor(() => {
       expect(screen.getByLabelText('Add item')).toBeInTheDocument();
@@ -175,7 +203,7 @@ describe('InventoryPage', () => {
       createdAt: '2024-01-01T00:00:00Z',
     });
 
-    render(<InventoryPage />);
+    renderInventoryPage();
 
     await waitFor(() => {
       expect(screen.getByLabelText('Rename Pantry')).toBeInTheDocument();
@@ -206,7 +234,7 @@ describe('InventoryPage', () => {
 
     mockDeleteLocation.mockResolvedValue(undefined);
 
-    render(<InventoryPage />);
+    renderInventoryPage();
 
     await waitFor(() => {
       expect(screen.getByLabelText('Delete Fridge')).toBeInTheDocument();
@@ -229,7 +257,7 @@ describe('InventoryPage', () => {
       new Error('Cannot remove the last remaining storage location'),
     );
 
-    render(<InventoryPage />);
+    renderInventoryPage();
 
     await waitFor(() => {
       expect(screen.getByLabelText('Delete Pantry')).toBeInTheDocument();
@@ -252,7 +280,7 @@ describe('MainScreen Add/Remove buttons', () => {
   });
 
   it('renders Add and Remove buttons with minimum 44x44px tap targets', async () => {
-    render(<InventoryPage />);
+    renderInventoryPage();
 
     await waitFor(() => {
       expect(screen.getByLabelText('Add item')).toBeInTheDocument();
@@ -272,7 +300,7 @@ describe('MainScreen Add/Remove buttons', () => {
 
   it('opens add menu with entry methods when Add button is clicked', async () => {
     const user = userEvent.setup();
-    render(<InventoryPage />);
+    renderInventoryPage();
 
     await waitFor(() => {
       expect(screen.getByLabelText('Add item')).toBeInTheDocument();
@@ -288,7 +316,8 @@ describe('MainScreen Add/Remove buttons', () => {
 
   it('closes add menu when a method is selected', async () => {
     const user = userEvent.setup();
-    render(<InventoryPage />);
+    const onNavigateToAddItem = jest.fn();
+    renderInventoryPage({ onNavigateToAddItem });
 
     await waitFor(() => {
       expect(screen.getByLabelText('Add item')).toBeInTheDocument();
@@ -299,11 +328,13 @@ describe('MainScreen Add/Remove buttons', () => {
 
     await user.click(screen.getByRole('menuitem', { name: /Manual Entry/i }));
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    // Navigation callback should have been called
+    expect(onNavigateToAddItem).toHaveBeenCalled();
   });
 
   it('toggles add menu open and closed', async () => {
     const user = userEvent.setup();
-    render(<InventoryPage />);
+    renderInventoryPage();
 
     await waitFor(() => {
       expect(screen.getByLabelText('Add item')).toBeInTheDocument();
@@ -318,7 +349,7 @@ describe('MainScreen Add/Remove buttons', () => {
 
   it('toggles remove mode and shows hint text', async () => {
     const user = userEvent.setup();
-    render(<InventoryPage />);
+    renderInventoryPage();
 
     await waitFor(() => {
       expect(screen.getByLabelText('Remove item')).toBeInTheDocument();
@@ -338,7 +369,7 @@ describe('MainScreen Add/Remove buttons', () => {
 
   it('Add button has aria-expanded and aria-haspopup attributes', async () => {
     const user = userEvent.setup();
-    render(<InventoryPage />);
+    renderInventoryPage();
 
     await waitFor(() => {
       expect(screen.getByLabelText('Add item')).toBeInTheDocument();
@@ -354,7 +385,7 @@ describe('MainScreen Add/Remove buttons', () => {
 
   it('each add menu item has minimum 48px height for touch targets', async () => {
     const user = userEvent.setup();
-    render(<InventoryPage />);
+    renderInventoryPage();
 
     await waitFor(() => {
       expect(screen.getByLabelText('Add item')).toBeInTheDocument();
@@ -376,7 +407,7 @@ describe('Inventory integration', () => {
 
   it('loads and displays inventory items on mount', async () => {
     const user = userEvent.setup();
-    render(<InventoryPage />);
+    renderInventoryPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('category-card-Dairy')).toBeInTheDocument();
@@ -389,7 +420,8 @@ describe('Inventory integration', () => {
 
   it('opens AddItemModal when Manual Entry is selected', async () => {
     const user = userEvent.setup();
-    render(<InventoryPage />);
+    const onNavigateToAddItem = jest.fn();
+    renderInventoryPage({ onNavigateToAddItem });
 
     await waitFor(() => {
       expect(screen.getByLabelText('Add item')).toBeInTheDocument();
@@ -398,8 +430,12 @@ describe('Inventory integration', () => {
     await user.click(screen.getByLabelText('Add item'));
     await user.click(screen.getByRole('menuitem', { name: /Manual Entry/i }));
 
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Add Item' })).toBeInTheDocument();
+    // Navigation to AddItemPage should be triggered (no dialog rendered inline)
+    expect(onNavigateToAddItem).toHaveBeenCalledWith(
+      expect.any(Array), // locations
+      expect.any(Function), // onSubmit
+    );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('calls addInventoryItem API when submitting an item and reloads', async () => {
@@ -413,28 +449,35 @@ describe('Inventory integration', () => {
         items: [...defaultItems, { ...defaultItems[0], itemId: 'item-2', name: 'Eggs' }],
       });
 
-    render(<InventoryPage />);
+    let capturedOnSubmit: ((item: AddItemData) => Promise<{ error?: string }>) | undefined;
+    const onNavigateToAddItem = jest.fn((_locations, onSubmit) => {
+      capturedOnSubmit = onSubmit;
+    });
+
+    renderInventoryPage({ onNavigateToAddItem });
 
     await waitFor(() => {
       expect(screen.getByTestId('category-card-Dairy')).toBeInTheDocument();
     });
 
-    // Open modal
+    // Trigger navigation to AddItemPage
     await user.click(screen.getByLabelText('Add item'));
     await user.click(screen.getByRole('menuitem', { name: /Manual Entry/i }));
 
-    // Fill form — use specific IDs to avoid matching filter inputs
-    const dialog = screen.getByRole('dialog');
-    await user.type(within(dialog).getByLabelText(/Product Name/i), 'Eggs');
-    await user.type(within(dialog).getByLabelText(/^Category/i), 'Dairy');
-    await user.type(within(dialog).getByLabelText(/Expiration Date/i), '2025-12-01');
-    await user.selectOptions(within(dialog).getByLabelText(/Storage Location/i), 'loc-1');
-    await user.type(within(dialog).getByLabelText(/^Quantity/i), '12');
-    await user.selectOptions(within(dialog).getByLabelText(/^Unit/i), 'Unit');
+    expect(onNavigateToAddItem).toHaveBeenCalled();
+    expect(capturedOnSubmit).toBeDefined();
 
-    const submitBtn = within(dialog).getByText('Add Item', { selector: 'button[type="submit"]' });
-    await user.click(submitBtn);
+    // Invoke the onSubmit callback directly (simulating AddItemPage form submission)
+    const result = await capturedOnSubmit!({
+      name: 'Eggs',
+      category: 'Dairy',
+      expirationDate: '2025-12-01',
+      locationId: 'loc-1',
+      quantity: 12,
+      unit: 'Unit',
+    });
 
+    expect(result).toEqual({});
     await waitFor(() => {
       expect(mockAddInventoryItem).toHaveBeenCalled();
     });
@@ -447,7 +490,7 @@ describe('Inventory integration', () => {
       .mockResolvedValueOnce({ items: defaultItems })
       .mockResolvedValueOnce({ items: [] });
 
-    render(<InventoryPage />);
+    renderInventoryPage();
 
     await waitFor(() => {
       expect(screen.getByTestId('category-card-Dairy')).toBeInTheDocument();
@@ -479,27 +522,32 @@ describe('Inventory integration', () => {
       .mockResolvedValueOnce({ items: defaultItems })
       .mockResolvedValueOnce({ items: defaultItems });
 
-    render(<InventoryPage />);
+    let capturedOnSubmit: ((item: AddItemData) => Promise<{ error?: string }>) | undefined;
+    const onNavigateToAddItem = jest.fn((_locations, onSubmit) => {
+      capturedOnSubmit = onSubmit;
+    });
+
+    renderInventoryPage({ onNavigateToAddItem });
 
     await waitFor(() => {
       expect(screen.getByTestId('category-card-Dairy')).toBeInTheDocument();
     });
 
-    // Open modal
+    // Trigger navigation to AddItemPage
     await user.click(screen.getByLabelText('Add item'));
     await user.click(screen.getByRole('menuitem', { name: /Manual Entry/i }));
 
-    // Fill form
-    const dialog = screen.getByRole('dialog');
-    await user.type(within(dialog).getByLabelText(/Product Name/i), 'Butter');
-    await user.type(within(dialog).getByLabelText(/^Category/i), 'Dairy');
-    await user.type(within(dialog).getByLabelText(/Expiration Date/i), '2025-12-01');
-    await user.selectOptions(within(dialog).getByLabelText(/Storage Location/i), 'loc-1');
-    await user.type(within(dialog).getByLabelText(/^Quantity/i), '1');
-    await user.selectOptions(within(dialog).getByLabelText(/^Unit/i), 'Unit');
+    expect(capturedOnSubmit).toBeDefined();
 
-    const submitBtn = within(dialog).getByText('Add Item', { selector: 'button[type="submit"]' });
-    await user.click(submitBtn);
+    // Invoke the onSubmit callback directly
+    await capturedOnSubmit!({
+      name: 'Butter',
+      category: 'Dairy',
+      expirationDate: '2025-12-01',
+      locationId: 'loc-1',
+      quantity: 1,
+      unit: 'Unit',
+    });
 
     await waitFor(() => {
       expect(screen.getByText('Butter is running low on stock')).toBeInTheDocument();

@@ -1,18 +1,13 @@
-import { test, expect, Page, Locator } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 
 /**
  * E2E Test Suite: Barcode Autofill Feature
  *
- * Tests the autocomplete and autofill functionality for the AddItemModal.
+ * Tests the autocomplete and autofill functionality for the AddItemPage.
  * Requires VITE_MOCK_AUTH=true (set in playwright.config.ts webServer env)
  * so the Cognito SDK is replaced by e2e/mocks/cognitoClient.ts.
  * Backend API calls are mocked via Playwright route interception.
  */
-
-// Helper: returns the Add Item dialog locator
-function modal(page: Page): Locator {
-  return page.getByRole('dialog', { name: 'Add Item' });
-}
 
 // Helper: wait for dropdown option and click it
 async function selectOption(page: Page, text: string) {
@@ -21,11 +16,11 @@ async function selectOption(page: Page, text: string) {
   await option.click();
 }
 
-// Helper function to open the Add Item modal
-async function openAddItemModal(page: Page) {
+// Helper: navigate from InventoryPage to AddItemPage via Manual Entry
+async function openAddItemPage(page: Page) {
   await page.getByRole('button', { name: 'Add item' }).click();
   await page.getByRole('menuitem', { name: 'Manual Entry' }).click();
-  await expect(modal(page).getByLabel('Barcode')).toBeVisible({ timeout: 5000 });
+  await expect(page.getByLabel('Barcode')).toBeVisible({ timeout: 5000 });
 }
 
 // Mock inventory data
@@ -177,56 +172,52 @@ test.describe('Barcode Autofill Feature', () => {
   });
 
   test('should show autocomplete dropdown when typing barcode', async ({ page }) => {
-    await openAddItemModal(page);
-    const dlg = modal(page);
+    await openAddItemPage(page);
 
-    await dlg.getByLabel('Barcode').fill('012');
+    await page.getByLabel('Barcode').fill('012');
     await page.waitForTimeout(400);
 
-    const dropdown = dlg.locator('[role="listbox"]');
+    const dropdown = page.locator('[role="listbox"]');
     await expect(dropdown).toBeVisible();
     await expect(dropdown.locator('text=Organic Milk')).toBeVisible();
     await expect(dropdown.locator('text=Almond Milk')).toBeVisible();
   });
 
   test('should autofill all fields when selecting from barcode dropdown', async ({ page }) => {
-    await openAddItemModal(page);
-    const dlg = modal(page);
+    await openAddItemPage(page);
 
-    await dlg.getByLabel('Barcode').fill('012345678901');
+    await page.getByLabel('Barcode').fill('012345678901');
     await page.waitForTimeout(400);
     await selectOption(page, 'Organic Milk');
 
-    await expect(dlg.getByLabel('Product Name')).toHaveValue('Organic Milk');
-    await expect(dlg.getByLabel('Category')).toHaveValue('Dairy');
-    await expect(dlg.getByLabel('Brand')).toHaveValue('Organic Valley');
-    await expect(dlg.getByLabel('Unit')).toHaveValue('Liter');
-    await expect(dlg.getByLabel('Where to Buy')).toHaveValue('Whole Foods');
-    await expect(dlg.getByLabel('Online Store Link')).toHaveValue('https://example.com/milk');
+    await expect(page.getByLabel('Product Name')).toHaveValue('Organic Milk');
+    await expect(page.getByLabel('Category')).toHaveValue('Dairy');
+    await expect(page.getByLabel('Brand')).toHaveValue('Organic Valley');
+    await expect(page.getByLabel('Unit')).toHaveValue('Liter');
+    await expect(page.getByLabel('Where to Buy')).toHaveValue('Whole Foods');
+    await expect(page.getByLabel('Online Store Link')).toHaveValue('https://example.com/milk');
   });
 
   test('should show prefilled field styling', async ({ page }) => {
-    await openAddItemModal(page);
-    const dlg = modal(page);
+    await openAddItemPage(page);
 
-    await dlg.getByLabel('Barcode').fill('012345678901');
+    await page.getByLabel('Barcode').fill('012345678901');
     await page.waitForTimeout(400);
     await selectOption(page, 'Organic Milk');
 
-    const nameInput = dlg.getByLabel('Product Name');
+    const nameInput = page.getByLabel('Product Name');
     const bgColor = await nameInput.evaluate((el) => window.getComputedStyle(el).backgroundColor);
     expect(bgColor).not.toBe('rgb(255, 255, 255)');
   });
 
   test('should remove prefilled styling when user edits field', async ({ page }) => {
-    await openAddItemModal(page);
-    const dlg = modal(page);
+    await openAddItemPage(page);
 
-    await dlg.getByLabel('Barcode').fill('012345678901');
+    await page.getByLabel('Barcode').fill('012345678901');
     await page.waitForTimeout(400);
     await selectOption(page, 'Organic Milk');
 
-    const nameInput = dlg.getByLabel('Product Name');
+    const nameInput = page.getByLabel('Product Name');
     await nameInput.click();
     await nameInput.press('End');
     await nameInput.type(' - Edited');
@@ -236,65 +227,60 @@ test.describe('Barcode Autofill Feature', () => {
   });
 
   test('should show autocomplete for category field', async ({ page }) => {
-    await openAddItemModal(page);
-    const dlg = modal(page);
+    await openAddItemPage(page);
 
-    await dlg.getByLabel('Category').fill('D');
+    await page.getByLabel('Category').fill('D');
     await page.waitForTimeout(400);
 
-    const dropdown = dlg.locator('[role="listbox"]');
+    const dropdown = page.locator('[role="listbox"]');
     await expect(dropdown).toBeVisible();
     await expect(dropdown.locator('text=Dairy')).toBeVisible();
   });
 
   test('should autofill only category when selecting from category dropdown', async ({ page }) => {
-    await openAddItemModal(page);
-    const dlg = modal(page);
+    await openAddItemPage(page);
 
-    await dlg.getByLabel('Category').fill('Dai');
+    await page.getByLabel('Category').fill('Dai');
     await page.waitForTimeout(400);
     await selectOption(page, 'Dairy');
 
-    await expect(dlg.getByLabel('Category')).toHaveValue('Dairy');
-    await expect(dlg.getByLabel('Product Name')).toHaveValue('');
-    await expect(dlg.getByLabel('Brand')).toHaveValue('');
+    await expect(page.getByLabel('Category')).toHaveValue('Dairy');
+    await expect(page.getByLabel('Product Name')).toHaveValue('');
+    await expect(page.getByLabel('Brand')).toHaveValue('');
   });
 
   test('should trigger external barcode lookup for 8+ digit barcode with no local match', async ({ page }) => {
-    await openAddItemModal(page);
-    const dlg = modal(page);
+    await openAddItemPage(page);
 
-    await dlg.getByLabel('Barcode').fill('987654321098');
+    await page.getByLabel('Barcode').fill('987654321098');
     await page.waitForTimeout(400);
 
-    await expect(dlg.getByLabel('Product Name')).toHaveValue('External Product', { timeout: 5000 });
-    await expect(dlg.getByLabel('Category')).toHaveValue('Snacks');
-    await expect(dlg.getByLabel('Brand')).toHaveValue('External Brand');
+    await expect(page.getByLabel('Product Name')).toHaveValue('External Product', { timeout: 5000 });
+    await expect(page.getByLabel('Category')).toHaveValue('Snacks');
+    await expect(page.getByLabel('Brand')).toHaveValue('External Brand');
   });
 
   test('should support keyboard navigation in dropdown', async ({ page }) => {
-    await openAddItemModal(page);
-    const dlg = modal(page);
+    await openAddItemPage(page);
 
-    const barcodeInput = dlg.getByRole('textbox', { name: 'Barcode' });
+    const barcodeInput = page.getByRole('textbox', { name: 'Barcode' });
     await barcodeInput.fill('012');
     await page.waitForTimeout(400);
 
     await barcodeInput.press('ArrowDown');
     await barcodeInput.press('Enter');
 
-    await expect(dlg.getByLabel('Product Name')).toHaveValue('Organic Milk');
+    await expect(page.getByLabel('Product Name')).toHaveValue('Organic Milk');
   });
 
   test('should close dropdown on Escape key', async ({ page }) => {
-    await openAddItemModal(page);
-    const dlg = modal(page);
+    await openAddItemPage(page);
 
-    const barcodeInput = dlg.getByRole('textbox', { name: 'Barcode' });
+    const barcodeInput = page.getByRole('textbox', { name: 'Barcode' });
     await barcodeInput.fill('012');
     await page.waitForTimeout(400);
 
-    const dropdown = dlg.locator('[role="listbox"]');
+    const dropdown = page.locator('[role="listbox"]');
     await expect(dropdown).toBeVisible();
 
     await barcodeInput.press('Escape');
@@ -302,76 +288,66 @@ test.describe('Barcode Autofill Feature', () => {
   });
 
   test('should not overwrite user-edited fields', async ({ page }) => {
-    await openAddItemModal(page);
-    const dlg = modal(page);
+    await openAddItemPage(page);
 
-    const nameInput = dlg.getByLabel('Product Name');
+    const nameInput = page.getByLabel('Product Name');
     await nameInput.fill('My Custom Name');
 
-    await dlg.getByLabel('Barcode').fill('012345678901');
+    await page.getByLabel('Barcode').fill('012345678901');
     await page.waitForTimeout(400);
     await selectOption(page, 'Organic Milk');
 
     await expect(nameInput).toHaveValue('My Custom Name');
-    await expect(dlg.getByLabel('Category')).toHaveValue('Dairy');
+    await expect(page.getByLabel('Category')).toHaveValue('Dairy');
   });
 
   test('selecting from barcode dropdown fills barcode itself even though user typed a partial value', async ({ page }) => {
-    await openAddItemModal(page);
-    const dlg = modal(page);
+    await openAddItemPage(page);
 
-    // User types partial barcode — this is what triggered the dropdown
-    await dlg.getByLabel('Barcode').fill('012');
+    await page.getByLabel('Barcode').fill('012');
     await page.waitForTimeout(400);
-
-    // Select the full item — barcode field must be overwritten with the full value
     await selectOption(page, 'Organic Milk');
 
-    await expect(dlg.getByLabel('Barcode')).toHaveValue('012345678901');
-    await expect(dlg.getByLabel('Product Name')).toHaveValue('Organic Milk');
-    await expect(dlg.getByLabel('Category')).toHaveValue('Dairy');
-    await expect(dlg.getByLabel('Brand')).toHaveValue('Organic Valley');
-    await expect(dlg.getByLabel('Unit')).toHaveValue('Liter');
-    await expect(dlg.getByLabel('Storage Location')).toHaveValue('loc-1');
-    await expect(dlg.getByLabel('Quantity')).toHaveValue('1');
-    await expect(dlg.getByLabel('Where to Buy')).toHaveValue('Whole Foods');
-    await expect(dlg.getByLabel('Online Store Link')).toHaveValue('https://example.com/milk');
+    await expect(page.getByLabel('Barcode')).toHaveValue('012345678901');
+    await expect(page.getByLabel('Product Name')).toHaveValue('Organic Milk');
+    await expect(page.getByLabel('Category')).toHaveValue('Dairy');
+    await expect(page.getByLabel('Brand')).toHaveValue('Organic Valley');
+    await expect(page.getByLabel('Unit')).toHaveValue('Liter');
+    await expect(page.getByLabel('Storage Location')).toHaveValue('loc-1');
+    await expect(page.getByLabel('Quantity')).toHaveValue('1');
+    await expect(page.getByLabel('Where to Buy')).toHaveValue('Whole Foods');
+    await expect(page.getByLabel('Online Store Link')).toHaveValue('https://example.com/milk');
   });
 
   test('selecting from name dropdown fills name itself and all other fields', async ({ page }) => {
-    await openAddItemModal(page);
-    const dlg = modal(page);
+    await openAddItemPage(page);
 
-    // User types partial name
-    await dlg.getByLabel('Product Name').fill('Org');
+    await page.getByLabel('Product Name').fill('Org');
     await page.waitForTimeout(400);
-
-    // Select the full item — name field must be overwritten with the full value
     await selectOption(page, 'Organic Milk');
 
-    await expect(dlg.getByLabel('Product Name')).toHaveValue('Organic Milk');
-    await expect(dlg.getByLabel('Barcode')).toHaveValue('012345678901');
-    await expect(dlg.getByLabel('Category')).toHaveValue('Dairy');
-    await expect(dlg.getByLabel('Brand')).toHaveValue('Organic Valley');
-    await expect(dlg.getByLabel('Unit')).toHaveValue('Liter');
-    await expect(dlg.getByLabel('Storage Location')).toHaveValue('loc-1');
-    await expect(dlg.getByLabel('Quantity')).toHaveValue('1');
-    await expect(dlg.getByLabel('Where to Buy')).toHaveValue('Whole Foods');
-    await expect(dlg.getByLabel('Online Store Link')).toHaveValue('https://example.com/milk');
+    await expect(page.getByLabel('Product Name')).toHaveValue('Organic Milk');
+    await expect(page.getByLabel('Barcode')).toHaveValue('012345678901');
+    await expect(page.getByLabel('Category')).toHaveValue('Dairy');
+    await expect(page.getByLabel('Brand')).toHaveValue('Organic Valley');
+    await expect(page.getByLabel('Unit')).toHaveValue('Liter');
+    await expect(page.getByLabel('Storage Location')).toHaveValue('loc-1');
+    await expect(page.getByLabel('Quantity')).toHaveValue('1');
+    await expect(page.getByLabel('Where to Buy')).toHaveValue('Whole Foods');
+    await expect(page.getByLabel('Online Store Link')).toHaveValue('https://example.com/milk');
   });
 
   test('expiration date field is focused after autofill', async ({ page }) => {
-    await openAddItemModal(page);
-    const dlg = modal(page);
+    await openAddItemPage(page);
 
-    await dlg.getByLabel('Barcode').fill('012');
+    await page.getByLabel('Barcode').fill('012');
     await page.waitForTimeout(400);
     await selectOption(page, 'Organic Milk');
 
     // Wait for the setTimeout in performFullAutofill
     await page.waitForTimeout(200);
 
-    const focused = await dlg.getByLabel('Expiration Date').evaluate(
+    const focused = await page.getByLabel('Expiration Date').evaluate(
       (el) => document.activeElement === el,
     );
     expect(focused).toBe(true);

@@ -2,13 +2,12 @@ import React, { useCallback, useEffect, useState } from 'react';
 import StorageLocationManager from '../components/StorageLocationManager';
 import InventoryList from '../components/InventoryList';
 import { InAppNotification } from '../components/InventoryList';
-import AddItemModal from '../components/AddItemModal';
-import ItemDetailView from '../components/ItemDetailView';
 import BarcodeScanner from '../components/BarcodeScanner';
 import type { BarcodeLookupResult } from '../components/BarcodeScanner';
 import type { AddItemData } from '../components/AddItemModal';
 import type { StorageLocation } from '../api/locations';
 import type { InventoryItem } from '../components/InventoryList';
+import type { PageId } from '../components/Layout';
 import {
   fetchLocations,
   createLocation,
@@ -21,26 +20,36 @@ import {
   deleteInventoryItem,
 } from '../api/inventory';
 
-const InventoryPage: React.FC = () => {
+interface InventoryPageProps {
+  onNavigate: (page: PageId) => void;
+  onNavigateToAddItem: (
+    locations: StorageLocation[],
+    onSubmit: (item: AddItemData) => Promise<{ error?: string }>,
+    prefillData?: { name?: string; brand?: string; category?: string; barcode?: string },
+  ) => void;
+  onNavigateToItemDetail: (
+    item: InventoryItem,
+    locations: StorageLocation[],
+    onItemUpdated: (
+      updatedItem: InventoryItem,
+      lowStockTransition?: boolean,
+      notification?: { type: string; message: string; itemId: string },
+    ) => void,
+  ) => void;
+}
+
+const InventoryPage: React.FC<InventoryPageProps> = ({ onNavigate: _onNavigate, onNavigateToAddItem, onNavigateToItemDetail }) => {
   const [locations, setLocations] = useState<StorageLocation[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [removeMode, setRemoveMode] = useState(false);
-  const [addModalOpen, setAddModalOpen] = useState(false);
   const [notification, setNotification] = useState<{ message: string; visible: boolean }>({
     message: '',
     visible: false,
   });
-  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
-  const [prefillData, setPrefillData] = useState<{
-    name?: string;
-    brand?: string;
-    category?: string;
-    barcode?: string;
-  } | undefined>();
 
   const loadLocations = useCallback(async () => {
     const data = await fetchLocations();
@@ -111,27 +120,6 @@ const InventoryPage: React.FC = () => {
     [loadLocations],
   );
 
-  const handleAddMenuSelect = useCallback((method: 'manual' | 'barcode' | 'receipt') => {
-    setAddMenuOpen(false);
-    if (method === 'manual') {
-      setAddModalOpen(true);
-    } else if (method === 'barcode') {
-      setScannerOpen(true);
-    }
-    // Future tasks will wire receipt
-  }, []);
-
-  const handleBarcodeDetected = useCallback((result: BarcodeLookupResult) => {
-    setScannerOpen(false);
-    setPrefillData({
-      barcode: result.barcode,
-      name: result.product?.name,
-      brand: result.product?.brand,
-      category: result.product?.category,
-    });
-    setAddModalOpen(true);
-  }, []);
-
   const handleAddItem = useCallback(
     async (data: AddItemData): Promise<{ error?: string }> => {
       try {
@@ -148,6 +136,26 @@ const InventoryPage: React.FC = () => {
     },
     [loadInventory],
   );
+
+  const handleAddMenuSelect = useCallback((method: 'manual' | 'barcode' | 'receipt') => {
+    setAddMenuOpen(false);
+    if (method === 'manual') {
+      onNavigateToAddItem(locations, handleAddItem);
+    } else if (method === 'barcode') {
+      setScannerOpen(true);
+    }
+    // Future tasks will wire receipt
+  }, [locations, onNavigateToAddItem, handleAddItem]);
+
+  const handleBarcodeDetected = useCallback((result: BarcodeLookupResult) => {
+    setScannerOpen(false);
+    onNavigateToAddItem(locations, handleAddItem, {
+      barcode: result.barcode,
+      name: result.product?.name,
+      brand: result.product?.brand,
+      category: result.product?.category,
+    });
+  }, [locations, onNavigateToAddItem, handleAddItem]);
 
   const handleRemoveItem = useCallback(
     async (itemId: string) => {
@@ -173,6 +181,10 @@ const InventoryPage: React.FC = () => {
       setNotification({ message: notificationData.message, visible: true });
     }
   }, []);
+
+  const handleItemClick = useCallback((item: InventoryItem) => {
+    onNavigateToItemDetail(item, locations, handleItemUpdated);
+  }, [locations, onNavigateToItemDetail, handleItemUpdated]);
 
   const toggleRemoveMode = useCallback(() => {
     setRemoveMode((prev) => !prev);
@@ -272,7 +284,7 @@ const InventoryPage: React.FC = () => {
         locations={locations}
         removeMode={removeMode}
         onRemoveItem={handleRemoveItem}
-        onItemClick={(item) => setSelectedItem(item)}
+        onItemClick={handleItemClick}
       />
 
       <StorageLocationManager
@@ -281,26 +293,6 @@ const InventoryPage: React.FC = () => {
         onRename={handleRename}
         onRemove={handleRemoveLocation}
       />
-
-      <AddItemModal
-        isOpen={addModalOpen}
-        onClose={() => {
-          setAddModalOpen(false);
-          setPrefillData(undefined);
-        }}
-        onSubmit={handleAddItem}
-        locations={locations}
-        prefillData={prefillData}
-      />
-
-      {selectedItem && (
-        <ItemDetailView
-          item={selectedItem}
-          locations={locations}
-          onClose={() => setSelectedItem(null)}
-          onItemUpdated={handleItemUpdated}
-        />
-      )}
 
       <BarcodeScanner
         isOpen={scannerOpen}

@@ -1,7 +1,7 @@
 import React from 'react';
 import OnlineIndicator from './OnlineIndicator';
 
-export type PageId = 'inventory' | 'recipes' | 'meal-plan' | 'shopping-list';
+export type PageId = 'inventory' | 'recipes' | 'meal-plan' | 'shopping-list' | 'add-item' | 'item-detail';
 
 interface NavItem {
   id: PageId;

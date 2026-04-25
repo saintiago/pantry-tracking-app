@@ -3,11 +3,32 @@ import { AuthProvider, useAuth } from './auth/AuthContext';
 import AuthScreen from './auth/AuthScreen';
 import Layout, { PageId } from './components/Layout';
 import InventoryPage from './pages/InventoryPage';
+import AddItemPage from './pages/AddItemPage';
+import ItemDetailPage from './pages/ItemDetailPage';
 import RecipesPage from './pages/RecipesPage';
 import MealPlanPage from './pages/MealPlanPage';
 import ShoppingListPage from './pages/ShoppingListPage';
+import type { AddItemData } from './components/AddItemModal';
+import type { InventoryItem } from './components/InventoryList';
+import type { StorageLocation } from './api/locations';
 
-const pages: Record<PageId, React.FC> = {
+interface AddItemPageState {
+  prefillData?: { name?: string; brand?: string; category?: string; barcode?: string };
+  locations: StorageLocation[];
+  onSubmit: (item: AddItemData) => Promise<{ error?: string }>;
+}
+
+interface ItemDetailPageState {
+  selectedItem: InventoryItem | null;
+  locations: StorageLocation[];
+  onItemUpdated: (
+    updatedItem: InventoryItem,
+    lowStockTransition?: boolean,
+    notification?: { type: string; message: string; itemId: string },
+  ) => void;
+}
+
+const mainPages: Partial<Record<PageId, React.FC>> = {
   inventory: InventoryPage,
   recipes: RecipesPage,
   'meal-plan': MealPlanPage,
@@ -59,11 +80,75 @@ const LoadingSpinner: React.FC = () => (
 
 const AuthenticatedApp: React.FC = () => {
   const [activePage, setActivePage] = useState<PageId>('inventory');
-  const ActiveComponent = pages[activePage];
+  const [addItemPageProps, setAddItemPageProps] = useState<AddItemPageState | null>(null);
+  const [itemDetailPageProps, setItemDetailPageProps] = useState<ItemDetailPageState | null>(null);
+
+  const handleNavigate = (page: PageId) => {
+    setActivePage(page);
+  };
+
+  const handleNavigateToAddItem = (
+    locations: StorageLocation[],
+    onSubmit: (item: AddItemData) => Promise<{ error?: string }>,
+    prefillData?: AddItemPageState['prefillData'],
+  ) => {
+    setAddItemPageProps({ prefillData, locations, onSubmit });
+    setActivePage('add-item');
+  };
+
+  const handleNavigateToItemDetail = (
+    selectedItem: InventoryItem,
+    locations: StorageLocation[],
+    onItemUpdated: ItemDetailPageState['onItemUpdated'],
+  ) => {
+    setItemDetailPageProps({ selectedItem, locations, onItemUpdated });
+    setActivePage('item-detail');
+  };
+
+  const renderPage = () => {
+    if (activePage === 'add-item' && addItemPageProps) {
+      return (
+        <AddItemPage
+          onBack={() => {
+            setActivePage('inventory');
+            setAddItemPageProps(null);
+          }}
+          onSubmit={addItemPageProps.onSubmit}
+          locations={addItemPageProps.locations}
+          prefillData={addItemPageProps.prefillData}
+        />
+      );
+    }
+    if (activePage === 'item-detail' && itemDetailPageProps && itemDetailPageProps.selectedItem) {
+      return (
+        <ItemDetailPage
+          item={itemDetailPageProps.selectedItem}
+          locations={itemDetailPageProps.locations}
+          onBack={() => {
+            setActivePage('inventory');
+            setItemDetailPageProps(null);
+          }}
+          onItemUpdated={itemDetailPageProps.onItemUpdated}
+        />
+      );
+    }
+    if (activePage === 'inventory' || activePage === 'add-item' || activePage === 'item-detail') {
+      return (
+        <InventoryPage
+          onNavigate={handleNavigate}
+          onNavigateToAddItem={handleNavigateToAddItem}
+          onNavigateToItemDetail={handleNavigateToItemDetail}
+        />
+      );
+    }
+    const ActiveComponent = mainPages[activePage];
+    if (!ActiveComponent) return null;
+    return <ActiveComponent />;
+  };
 
   return (
-    <Layout activePage={activePage} onNavigate={setActivePage}>
-      <ActiveComponent />
+    <Layout activePage={activePage} onNavigate={handleNavigate}>
+      {renderPage()}
     </Layout>
   );
 };
