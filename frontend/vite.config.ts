@@ -9,7 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 function mockAuthPlugin(): Plugin | null {
   if (process.env.VITE_MOCK_AUTH !== 'true') return null;
 
-  const realPath = path.resolve(__dirname, 'src/auth/cognitoClient.ts').split(path.sep).join('/');
+  const realPath = path.resolve(__dirname, 'src/auth/cognitoClient/cognitoClient.ts').split(path.sep).join('/');
   const mockPath = path.resolve(__dirname, '../e2e/mocks/cognitoClient.ts');
   const mockContent = fs.readFileSync(mockPath, 'utf-8');
 

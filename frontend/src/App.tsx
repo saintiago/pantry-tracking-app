@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import { AuthProvider, useAuth } from './auth/AuthContext';
-import AuthScreen from './auth/AuthScreen';
-import Layout, { PageId } from './components/Layout';
-import InventoryPage from './pages/InventoryPage';
-import AddItemPage from './pages/AddItemPage';
-import ItemDetailPage from './pages/ItemDetailPage';
-import RecipesPage from './pages/RecipesPage';
-import MealPlanPage from './pages/MealPlanPage';
-import ShoppingListPage from './pages/ShoppingListPage';
-import type { AddItemData } from './components/AddItemModal';
-import type { InventoryItem } from './components/InventoryList';
-import type { StorageLocation } from './api/locations';
+import { AuthProvider, useAuth } from './auth/AuthContext/AuthContext';
+import AuthScreen from './auth/AuthScreen/AuthScreen';
+import Layout, { PageId } from './components/Layout/Layout';
+import InventoryPage from './pages/InventoryPage/InventoryPage';
+import AddItemPage from './pages/AddItemPage/AddItemPage';
+import ItemDetailPage from './pages/ItemDetailPage/ItemDetailPage';
+import RecipesPage from './pages/RecipesPage/RecipesPage';
+import MealPlanPage from './pages/MealPlanPage/MealPlanPage';
+import ShoppingListPage from './pages/ShoppingListPage/ShoppingListPage';
+import type { AddItemData } from './pages/AddItemPage/AddItemPage';
+import type { InventoryItem } from './components/InventoryList/InventoryList';
+import type { StorageLocation } from './api/locations/locations';
 
 interface AddItemPageState {
   prefillData?: { name?: string; brand?: string; category?: string; barcode?: string };
