@@ -1,3 +1,16 @@
+#!/bin/sh
+# Bump frontend patch version on every commit
+node -e "
+const fs = require('fs');
+const pkg = JSON.parse(fs.readFileSync('frontend/package.json', 'utf8'));
+const parts = pkg.version.split('.').map(Number);
+parts[2] += 1;
+pkg.version = parts.join('.');
+fs.writeFileSync('frontend/package.json', JSON.stringify(pkg, null, 2) + '\n');
+console.log('Version bumped to ' + pkg.version);
+"
+git add frontend/package.json
+
 npm run lint
 npm run test:unit
 npm run test:e2e

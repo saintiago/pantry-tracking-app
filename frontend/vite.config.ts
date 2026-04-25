@@ -3,8 +3,11 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
+const { version } = require('./package.json') as { version: string };
 
 function mockAuthPlugin(): Plugin | null {
   if (process.env.VITE_MOCK_AUTH !== 'true') return null;
@@ -33,6 +36,7 @@ export default defineConfig({
   },
   define: {
     global: 'globalThis',
+    __APP_VERSION__: JSON.stringify(version),
     'globalThis.__VITE_ENV__': JSON.stringify({
       VITE_USER_POOL_ID: process.env.VITE_USER_POOL_ID ?? '',
       VITE_USER_POOL_CLIENT_ID: process.env.VITE_USER_POOL_CLIENT_ID ?? '',

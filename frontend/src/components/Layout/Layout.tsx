@@ -1,5 +1,6 @@
 import React from 'react';
 import OnlineIndicator from '../OnlineIndicator/OnlineIndicator';
+import { APP_VERSION } from '../../config';
 
 export type PageId = 'inventory' | 'recipes' | 'meal-plan' | 'shopping-list' | 'add-item' | 'item-detail';
 
@@ -27,7 +28,10 @@ const Layout: React.FC<LayoutProps> = ({ activePage, onNavigate, children }) => 
     <div className="layout" style={styles.layout}>
       {/* Header */}
       <header style={styles.header}>
-        <h1 style={styles.title}>Pantry Tracking App</h1>
+        <div style={styles.titleGroup}>
+          <h1 style={styles.title}>Pantry Tracking App</h1>
+          <span style={styles.version}>v{APP_VERSION}</span>
+        </div>
         <OnlineIndicator />
       </header>
 
@@ -83,6 +87,16 @@ const styles: Record<string, React.CSSProperties> = {
   title: {
     fontSize: '1.125rem',
     fontWeight: 700,
+  },
+  titleGroup: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: '0.4rem',
+  },
+  version: {
+    fontSize: '0.6875rem',
+    color: '#9ca3af',
+    fontWeight: 400,
   },
   main: {
     flex: 1,
