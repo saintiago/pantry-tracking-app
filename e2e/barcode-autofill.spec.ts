@@ -333,6 +333,7 @@ test.describe('Barcode Autofill Feature', () => {
     await expect(dlg.getByLabel('Brand')).toHaveValue('Organic Valley');
     await expect(dlg.getByLabel('Unit')).toHaveValue('Liter');
     await expect(dlg.getByLabel('Storage Location')).toHaveValue('loc-1');
+    await expect(dlg.getByLabel('Quantity')).toHaveValue('1');
     await expect(dlg.getByLabel('Where to Buy')).toHaveValue('Whole Foods');
     await expect(dlg.getByLabel('Online Store Link')).toHaveValue('https://example.com/milk');
   });
@@ -354,7 +355,25 @@ test.describe('Barcode Autofill Feature', () => {
     await expect(dlg.getByLabel('Brand')).toHaveValue('Organic Valley');
     await expect(dlg.getByLabel('Unit')).toHaveValue('Liter');
     await expect(dlg.getByLabel('Storage Location')).toHaveValue('loc-1');
+    await expect(dlg.getByLabel('Quantity')).toHaveValue('1');
     await expect(dlg.getByLabel('Where to Buy')).toHaveValue('Whole Foods');
     await expect(dlg.getByLabel('Online Store Link')).toHaveValue('https://example.com/milk');
+  });
+
+  test('expiration date field is focused after autofill', async ({ page }) => {
+    await openAddItemModal(page);
+    const dlg = modal(page);
+
+    await dlg.getByLabel('Barcode').fill('012');
+    await page.waitForTimeout(400);
+    await selectOption(page, 'Organic Milk');
+
+    // Wait for the setTimeout in performFullAutofill
+    await page.waitForTimeout(200);
+
+    const focused = await dlg.getByLabel('Expiration Date').evaluate(
+      (el) => document.activeElement === el,
+    );
+    expect(focused).toBe(true);
   });
 });

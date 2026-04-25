@@ -133,16 +133,22 @@ describe('Property 7: Combined Filter Correctness', () => {
             await user.type(input, filters.text);
           }
 
-          // Apply category filter
-          if (filters.category !== 'All') {
-            const catSelect = view.getByLabelText('Filter by category');
-            await user.selectOptions(catSelect, filters.category);
-          }
-
           // Apply location filter
           if (filters.location !== 'All') {
             const locSelect = view.getByLabelText('Filter by location');
             await user.selectOptions(locSelect, filters.location);
+          }
+
+          // Apply category filter by drilling into the category card
+          // (category dropdown is only visible in item-list view)
+          if (filters.category !== 'All') {
+            const card = view.queryByTestId(`category-card-${filters.category}`);
+            if (!card) {
+              // Category was filtered out by text/location — nothing to drill into
+              unmount();
+              return;
+            }
+            await user.click(card);
           }
 
           // Compute expected results
@@ -155,25 +161,40 @@ describe('Property 7: Combined Filter Correctness', () => {
 
           const expectedIds = new Set(expected.map((i) => i.itemId));
 
-          if (expected.length === 0) {
-            expect(
-              view.getByText('No items match the current filters.'),
-            ).toBeInTheDocument();
-          } else {
-            expect(
-              view.queryByText('No items match the current filters.'),
-            ).not.toBeInTheDocument();
-
-            // Each expected item should be visible
-            for (const item of expected) {
-              expect(view.getByTestId(`item-card-${item.itemId}`)).toBeInTheDocument();
+          if (filters.category === 'All') {
+            // In category-summary view: verify category cards are shown, not item cards
+            const distinctCats = new Set(expected.map((i) => i.category));
+            if (expected.length === 0) {
+              expect(
+                view.getByText('No items match the current filters.'),
+              ).toBeInTheDocument();
+            } else {
+              for (const cat of distinctCats) {
+                expect(view.queryByTestId(`category-card-${cat}`)).toBeInTheDocument();
+              }
             }
-          }
+          } else {
+            // In item-list view: verify item cards
+            if (expected.length === 0) {
+              expect(
+                view.getByText('No items match the current filters.'),
+              ).toBeInTheDocument();
+            } else {
+              expect(
+                view.queryByText('No items match the current filters.'),
+              ).not.toBeInTheDocument();
 
-          // Items NOT in expected set should NOT be visible
-          for (const item of items) {
-            if (!expectedIds.has(item.itemId)) {
-              expect(view.queryByTestId(`item-card-${item.itemId}`)).not.toBeInTheDocument();
+              // Each expected item should be visible
+              for (const item of expected) {
+                expect(view.getByTestId(`item-card-${item.itemId}`)).toBeInTheDocument();
+              }
+            }
+
+            // Items NOT in expected set should NOT be visible
+            for (const item of items) {
+              if (!expectedIds.has(item.itemId)) {
+                expect(view.queryByTestId(`item-card-${item.itemId}`)).not.toBeInTheDocument();
+              }
             }
           }
 

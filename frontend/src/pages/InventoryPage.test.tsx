@@ -79,7 +79,7 @@ describe('InventoryPage', () => {
     expect(screen.getByText('Loading…')).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByText('Milk')).toBeInTheDocument();
+      expect(screen.getByTestId('category-card-Dairy')).toBeInTheDocument();
     });
 
     expect(screen.getByLabelText('Delete Pantry')).toBeInTheDocument();
@@ -375,12 +375,15 @@ describe('Inventory integration', () => {
   });
 
   it('loads and displays inventory items on mount', async () => {
+    const user = userEvent.setup();
     render(<InventoryPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Milk')).toBeInTheDocument();
+      expect(screen.getByTestId('category-card-Dairy')).toBeInTheDocument();
     });
 
+    await user.click(screen.getByTestId('category-card-Dairy'));
+    expect(screen.getByText('Milk')).toBeInTheDocument();
     expect(mockFetchInventory).toHaveBeenCalled();
   });
 
@@ -413,7 +416,7 @@ describe('Inventory integration', () => {
     render(<InventoryPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Milk')).toBeInTheDocument();
+      expect(screen.getByTestId('category-card-Dairy')).toBeInTheDocument();
     });
 
     // Open modal
@@ -447,12 +450,15 @@ describe('Inventory integration', () => {
     render(<InventoryPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Milk')).toBeInTheDocument();
+      expect(screen.getByTestId('category-card-Dairy')).toBeInTheDocument();
     });
 
     // Enter remove mode
     await user.click(screen.getByLabelText('Remove item'));
     expect(screen.getByLabelText('Remove item')).toHaveAttribute('aria-pressed', 'true');
+
+    // Drill into Dairy to see items with remove buttons
+    await user.click(screen.getByTestId('category-card-Dairy'));
 
     // Click remove on the item
     await user.click(screen.getByLabelText('Remove Milk'));
@@ -476,7 +482,7 @@ describe('Inventory integration', () => {
     render(<InventoryPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Milk')).toBeInTheDocument();
+      expect(screen.getByTestId('category-card-Dairy')).toBeInTheDocument();
     });
 
     // Open modal

@@ -192,6 +192,7 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onSubmit, 
       if (!prev.brand && item.brand) { updates.brand = item.brand; newPrefilledFields.add('brand'); }
       if (!prev.unit && item.unit && VALID_UNITS.includes(item.unit as any)) { updates.unit = item.unit; newPrefilledFields.add('unit'); }
       if (!prev.locationId && item.location) { updates.locationId = item.location; newPrefilledFields.add('locationId'); }
+      if (!prev.quantity) { updates.quantity = '1'; newPrefilledFields.add('quantity'); }
       if (!prev.whereToBuy && item.whereToBuy) { updates.whereToBuy = item.whereToBuy; newPrefilledFields.add('whereToBuy'); }
       if (!prev.onlineStoreLink && item.onlineStoreLink) { updates.onlineStoreLink = item.onlineStoreLink; newPrefilledFields.add('onlineStoreLink'); }
       if ((triggerField === 'barcode' || !prev.barcode) && item.barcode) { updates.barcode = item.barcode; newPrefilledFields.add('barcode'); }
@@ -199,6 +200,18 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onSubmit, 
       if (newPrefilledFields.size > 0) {
         setPrefilledFields(p => new Set([...p, ...newPrefilledFields]));
       }
+
+      // Focus expiration date field after autofill so user can pick a date next
+      if (!prev.expirationDate) {
+        setTimeout(() => {
+          const el = document.getElementById('add-item-expiration') as HTMLInputElement | null;
+          if (el) {
+            el.focus();
+            try { el.showPicker(); } catch { /* showPicker not supported or blocked */ }
+          }
+        }, 50);
+      }
+
       return { ...prev, ...updates };
     });
   }, []);
