@@ -131,7 +131,9 @@ describe('Recipe Lambda handler', () => {
 
   describe('POST /recipes', () => {
     it('creates recipe and returns 201 with recipe data', async () => {
-      mockSend.mockResolvedValueOnce({});
+      mockSend.mockResolvedValueOnce({}); // PutCommand: save recipe
+      mockSend.mockResolvedValueOnce({ Items: [] }); // QueryCommand: existing inventory (none)
+      mockSend.mockResolvedValue({}); // PutCommand: placeholder items
 
       const result = await handler(
         makeEvent({ httpMethod: 'POST', body: JSON.stringify(validRecipe) }),
@@ -150,6 +152,8 @@ describe('Recipe Lambda handler', () => {
 
     it('stores ingredients as provided', async () => {
       mockSend.mockResolvedValueOnce({});
+      mockSend.mockResolvedValueOnce({ Items: [] });
+      mockSend.mockResolvedValue({});
 
       const result = await handler(
         makeEvent({ httpMethod: 'POST', body: JSON.stringify(validRecipe) }),
@@ -164,6 +168,8 @@ describe('Recipe Lambda handler', () => {
 
     it('stores sourceUrl when provided', async () => {
       mockSend.mockResolvedValueOnce({});
+      mockSend.mockResolvedValueOnce({ Items: [] });
+      mockSend.mockResolvedValue({});
 
       const result = await handler(
         makeEvent({ httpMethod: 'POST', body: JSON.stringify(validRecipe) }),
@@ -175,6 +181,8 @@ describe('Recipe Lambda handler', () => {
 
     it('creates recipe without sourceUrl when not provided', async () => {
       mockSend.mockResolvedValueOnce({});
+      mockSend.mockResolvedValueOnce({ Items: [] });
+      mockSend.mockResolvedValue({});
       const { sourceUrl: _, ...noUrl } = validRecipe;
 
       const result = await handler(
@@ -184,6 +192,73 @@ describe('Recipe Lambda handler', () => {
 
       expect(result.statusCode).toBe(201);
       expect(body.recipe.sourceUrl).toBeUndefined();
+    });
+
+    it('auto-creates placeholder inventory items for unrecognized ingredients', async () => {
+      mockSend.mockResolvedValueOnce({}); // PutCommand: save recipe
+      mockSend.mockResolvedValueOnce({ Items: [] }); // QueryCommand: no existing inventory
+      mockSend.mockResolvedValue({}); // PutCommand: placeholder items
+
+      const { PutCommand } = jest.requireMock('@aws-sdk/lib-dynamodb');
+      PutCommand.mockClear();
+
+      await handler(
+        makeEvent({ httpMethod: 'POST', body: JSON.stringify(validRecipe) }),
+      );
+
+      // PutCommand called once for recipe + once per ingredient (2 ingredients, both new)
+      expect(PutCommand).toHaveBeenCalledTimes(3);
+
+      // Check the placeholder items have correct fields
+      const placeholderCalls = PutCommand.mock.calls.slice(1);
+      for (const [item] of placeholderCalls) {
+        expect(item.Item.category).toBe('Unknown');
+        expect(item.Item.quantity).toBe(0);
+        expect(item.Item.isLowStock).toBe(true);
+        expect(item.Item.location).toBe('unknown');
+        expect(item.Item.expirationDate).toBe('2099-12-31');
+        expect(item.Item.entityType).toBe('InventoryItem');
+      }
+    });
+
+    it('does not create placeholder for ingredients that already exist in inventory', async () => {
+      mockSend.mockResolvedValueOnce({}); // PutCommand: save recipe
+      // QueryCommand: Pasta already exists
+      mockSend.mockResolvedValueOnce({ Items: [{ name: 'Pasta', quantity: 100 }] });
+      mockSend.mockResolvedValue({}); // PutCommand: placeholder for Eggs only
+
+      const { PutCommand } = jest.requireMock('@aws-sdk/lib-dynamodb');
+      PutCommand.mockClear();
+
+      await handler(
+        makeEvent({ httpMethod: 'POST', body: JSON.stringify(validRecipe) }),
+      );
+
+      // PutCommand: 1 for recipe + 1 for Eggs (Pasta already exists)
+      expect(PutCommand).toHaveBeenCalledTimes(2);
+      const placeholderCall = PutCommand.mock.calls[1][0];
+      expect(placeholderCall.Item.name).toBe('Eggs');
+    });
+
+    it('uses Unit as fallback when ingredient unit is not a valid UnitType', async () => {
+      mockSend.mockResolvedValueOnce({});
+      mockSend.mockResolvedValueOnce({ Items: [] });
+      mockSend.mockResolvedValue({});
+
+      const { PutCommand } = jest.requireMock('@aws-sdk/lib-dynamodb');
+      PutCommand.mockClear();
+
+      const recipeWithInvalidUnit = {
+        ...validRecipe,
+        ingredients: [{ name: 'Pasta', quantity: 200, unit: 'cups' }],
+      };
+
+      await handler(
+        makeEvent({ httpMethod: 'POST', body: JSON.stringify(recipeWithInvalidUnit) }),
+      );
+
+      const placeholderCall = PutCommand.mock.calls[1][0];
+      expect(placeholderCall.Item.unit).toBe('Unit');
     });
 
     it('returns 400 for empty ingredients array', async () => {

@@ -1,10 +1,13 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   createRecipe,
   fetchRecipeWithAvailability,
   updateRecipe,
 } from '../../api/recipes/recipes';
 import type { RecipeIngredient } from '../../api/recipes/recipes';
+import { searchInventory } from '../../api/inventory/inventory';
+import AutocompleteDropdown from '../../components/AutocompleteDropdown/AutocompleteDropdown';
+import type { InventoryItem } from '../../components/AutocompleteDropdown/AutocompleteDropdown';
 
 export interface RecipeEditorProps {
   recipeId?: string; // undefined = create mode
@@ -23,6 +26,12 @@ interface FormErrors {
   ingredientRows?: Record<number, { name?: string; quantity?: string; unit?: string }>;
 }
 
+interface DropdownState {
+  visible: boolean;
+  items: InventoryItem[];
+  focusedIndex: number;
+}
+
 let nextId = 0;
 const makeRow = (): IngredientRow => ({ _id: ++nextId, name: '', quantity: 0, unit: '' });
 
@@ -38,6 +47,19 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
   const [loading, setLoading] = useState(isEdit);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Per-row ingredient name autocomplete dropdowns
+  const [dropdowns, setDropdowns] = useState<Record<number, DropdownState>>({});
+  const debounceTimers = useRef<Record<number, NodeJS.Timeout>>({});
+  const abortControllers = useRef<Record<number, AbortController>>({});
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(abortControllers.current).forEach((c) => c.abort());
+      Object.values(debounceTimers.current).forEach((t) => clearTimeout(t));
+    };
+  }, []);
 
   // In edit mode, fetch and pre-populate
   useEffect(() => {
@@ -96,8 +118,84 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
     [],
   );
 
-  const validate = useCallback((): FormErrors => {
-    const errs: FormErrors = {};
+  const closeDropdown = useCallback((rowId: number) => {
+    setDropdowns((prev) => ({ ...prev, [rowId]: { visible: false, items: [], focusedIndex: -1 } }));
+  }, []);
+
+  const handleIngredientNameChange = useCallback(
+    (rowId: number, value: string) => {
+      updateIngredientField(rowId, 'name', value);
+
+      if (debounceTimers.current[rowId]) clearTimeout(debounceTimers.current[rowId]);
+
+      if (value.length < 3) {
+        closeDropdown(rowId);
+        return;
+      }
+
+      debounceTimers.current[rowId] = setTimeout(async () => {
+        if (abortControllers.current[rowId]) abortControllers.current[rowId].abort();
+        const controller = new AbortController();
+        abortControllers.current[rowId] = controller;
+        try {
+          // Search by name, barcode, brand, category, and whereToBuy in parallel — all now return items
+          const [nameRes, barcodeRes, brandRes, categoryRes, whereToBuyRes] = await Promise.all([
+            searchInventory('name', value).catch(() => null),
+            searchInventory('barcode', value).catch(() => null),
+            searchInventory('brand', value).catch(() => null),
+            searchInventory('category', value).catch(() => null),
+            searchInventory('whereToBuy', value).catch(() => null),
+          ]);
+          if (controller.signal.aborted) return;
+
+          const seen = new Set<string>();
+          const merged: InventoryItem[] = [];
+          for (const item of [
+            ...(nameRes?.items ?? []),
+            ...(barcodeRes?.items ?? []),
+            ...(brandRes?.items ?? []),
+            ...(categoryRes?.items ?? []),
+            ...(whereToBuyRes?.items ?? []),
+          ] as InventoryItem[]) {
+            if (!seen.has(item.itemId)) {
+              seen.add(item.itemId);
+              merged.push(item);
+            }
+          }
+
+          setDropdowns((prev) => ({
+            ...prev,
+            [rowId]: {
+              visible: merged.length > 0,
+              items: merged,
+              focusedIndex: -1,
+            },
+          }));
+        } catch {
+          if (!controller.signal.aborted) closeDropdown(rowId);
+        }
+      }, 300);
+    },
+    [updateIngredientField, closeDropdown],
+  );
+
+  const handleIngredientSelect = useCallback(
+    (rowId: number, index: number) => {
+      const item = dropdowns[rowId]?.items[index];
+      if (!item) return;
+      setIngredients((prev) =>
+        prev.map((r) =>
+          r._id === rowId
+            ? { ...r, name: item.name, unit: (item as InventoryItem & { unit?: string }).unit ?? r.unit }
+            : r,
+        ),
+      );
+      closeDropdown(rowId);
+    },
+    [dropdowns, closeDropdown],
+  );
+
+  const validate = useCallback((): FormErrors => {    const errs: FormErrors = {};
     if (!name.trim()) errs.name = 'Recipe name is required.';
     if (!instructions.trim()) errs.instructions = 'Instructions are required.';
     if (ingredients.length === 0) errs.ingredients = 'At least one ingredient is required.';
@@ -276,15 +374,49 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
                       >
                         Name
                       </label>
-                      <input
-                        id={`ing-name-${row._id}`}
-                        type="text"
-                        value={row.name}
-                        onChange={(e) => updateIngredientField(row._id, 'name', e.target.value)}
-                        style={styles.input}
-                        aria-label={`Ingredient ${index + 1} name`}
-                        aria-invalid={!!rowErr?.name}
-                      />
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          id={`ing-name-${row._id}`}
+                          type="text"
+                          value={row.name}
+                          onChange={(e) => handleIngredientNameChange(row._id, e.target.value)}
+                          style={styles.input}
+                          aria-label={`Ingredient ${index + 1} name`}
+                          aria-invalid={!!rowErr?.name}
+                          aria-autocomplete={dropdowns[row._id]?.visible ? 'list' : undefined}
+                          aria-expanded={dropdowns[row._id]?.visible ?? false}
+                          aria-controls={dropdowns[row._id]?.visible ? `ing-dropdown-${row._id}` : undefined}
+                        />
+                        <AutocompleteDropdown
+                          isVisible={dropdowns[row._id]?.visible ?? false}
+                          items={dropdowns[row._id]?.items ?? []}
+                          focusedIndex={dropdowns[row._id]?.focusedIndex ?? -1}
+                          onSelect={(i) => handleIngredientSelect(row._id, i)}
+                          onClose={() => closeDropdown(row._id)}
+                          onFocusChange={(i) =>
+                            setDropdowns((prev) => ({
+                              ...prev,
+                              [row._id]: { ...prev[row._id], focusedIndex: i },
+                            }))
+                          }
+                          inputId={`ing-name-${row._id}`}
+                          dropdownId={`ing-dropdown-${row._id}`}
+                          renderItem={(item) => (
+                            <div>
+                              <div style={{ fontWeight: 600 }}>{item.name}</div>
+                              <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                                {item.category}
+                                {item.brand ? ` • ${item.brand}` : ''}
+                                {(item as InventoryItem & { unit?: string }).unit
+                                  ? ` • ${(item as InventoryItem & { unit?: string }).unit}`
+                                  : ''}
+                                {item.barcode ? ` • ${item.barcode}` : ''}
+                              </div>
+                            </div>
+                          )}
+                          ariaLabel="Ingredient name suggestions"
+                        />
+                      </div>
                       {rowErr?.name && (
                         <span style={styles.fieldError} role="alert">
                           {rowErr.name}

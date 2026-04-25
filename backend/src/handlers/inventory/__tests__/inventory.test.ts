@@ -690,9 +690,10 @@ describe('Inventory Lambda handler', () => {
       const body = JSON.parse(result.body);
 
       expect(result.statusCode).toBe(200);
-      expect(body.resultType).toBe('values');
-      expect(body.values).toEqual(['Dairy']);
-      expect(body.count).toBe(1);
+      expect(body.resultType).toBe('items');
+      expect(body.items).toHaveLength(2); // Milk and Cheese match 'da' in 'Dairy'
+      expect(body.values).toContain('Dairy');
+      expect(body.count).toBe(2);
     });
 
     it('searches by brand and returns distinct values', async () => {
@@ -714,9 +715,10 @@ describe('Inventory Lambda handler', () => {
       const body = JSON.parse(result.body);
 
       expect(result.statusCode).toBe(200);
-      expect(body.resultType).toBe('values');
-      expect(body.values).toEqual(['FarmFresh']);
-      expect(body.count).toBe(1);
+      expect(body.resultType).toBe('items');
+      expect(body.items).toHaveLength(2); // Milk and Cheese both have FarmFresh
+      expect(body.values).toContain('FarmFresh');
+      expect(body.count).toBe(2);
     });
 
     it('searches by whereToBuy and returns distinct values', async () => {
@@ -738,9 +740,10 @@ describe('Inventory Lambda handler', () => {
       const body = JSON.parse(result.body);
 
       expect(result.statusCode).toBe(200);
-      expect(body.resultType).toBe('values');
-      expect(body.values).toEqual(['Supermarket']);
-      expect(body.count).toBe(1);
+      expect(body.resultType).toBe('items');
+      expect(body.items).toHaveLength(2); // Milk and Cheese both match 'super'
+      expect(body.values).toContain('Supermarket');
+      expect(body.count).toBe(2);
     });
 
     it('searches by onlineStoreLink and returns distinct values', async () => {
@@ -762,8 +765,8 @@ describe('Inventory Lambda handler', () => {
       const body = JSON.parse(result.body);
 
       expect(result.statusCode).toBe(200);
-      expect(body.resultType).toBe('values');
-      expect(body.values).toHaveLength(2);
+      expect(body.resultType).toBe('items');
+      expect(body.items).toHaveLength(2);
       expect(body.count).toBe(2);
     });
 
@@ -996,7 +999,7 @@ describe('Inventory Lambda handler', () => {
       expect(body).not.toHaveProperty('values');
     });
 
-    it('returns correct result format for category field (values)', async () => {
+    it('returns correct result format for category field (items)', async () => {
       const items = [{ itemId: 'item-1', name: 'Milk', category: 'Dairy' }];
       mockSend.mockResolvedValueOnce({ Items: items });
 
@@ -1012,13 +1015,13 @@ describe('Inventory Lambda handler', () => {
 
       expect(body).toHaveProperty('field', 'category');
       expect(body).toHaveProperty('query', 'da');
-      expect(body).toHaveProperty('resultType', 'values');
+      expect(body).toHaveProperty('resultType', 'items');
+      expect(body).toHaveProperty('items');
       expect(body).toHaveProperty('values');
       expect(body).toHaveProperty('count', 1);
-      expect(body).not.toHaveProperty('items');
     });
 
-    it('returns correct result format for brand field (values)', async () => {
+    it('returns correct result format for brand field (items)', async () => {
       const items = [
         { itemId: 'item-1', name: 'Milk', brand: 'FarmFresh' },
         { itemId: 'item-2', name: 'Cheese', brand: 'OtherBrand' },
@@ -1037,13 +1040,13 @@ describe('Inventory Lambda handler', () => {
 
       expect(body).toHaveProperty('field', 'brand');
       expect(body).toHaveProperty('query', 'farm');
-      expect(body).toHaveProperty('resultType', 'values');
+      expect(body).toHaveProperty('resultType', 'items');
+      expect(body).toHaveProperty('items');
       expect(body).toHaveProperty('values');
       expect(body).toHaveProperty('count', 1);
-      expect(body).not.toHaveProperty('items');
     });
 
-    it('returns correct result format for whereToBuy field (values)', async () => {
+    it('returns correct result format for whereToBuy field (items)', async () => {
       const items = [
         { itemId: 'item-1', name: 'Milk', whereToBuy: 'Supermarket' },
         { itemId: 'item-2', name: 'Bread', whereToBuy: 'Bakery' },
@@ -1062,13 +1065,13 @@ describe('Inventory Lambda handler', () => {
 
       expect(body).toHaveProperty('field', 'whereToBuy');
       expect(body).toHaveProperty('query', 'super');
-      expect(body).toHaveProperty('resultType', 'values');
+      expect(body).toHaveProperty('resultType', 'items');
+      expect(body).toHaveProperty('items');
       expect(body).toHaveProperty('values');
       expect(body).toHaveProperty('count', 1);
-      expect(body).not.toHaveProperty('items');
     });
 
-    it('returns correct result format for onlineStoreLink field (values)', async () => {
+    it('returns correct result format for onlineStoreLink field (items)', async () => {
       const items = [
         { itemId: 'item-1', name: 'Milk', onlineStoreLink: 'https://store.com' },
         { itemId: 'item-2', name: 'Bread', onlineStoreLink: 'https://bakery.com' },
@@ -1087,10 +1090,10 @@ describe('Inventory Lambda handler', () => {
 
       expect(body).toHaveProperty('field', 'onlineStoreLink');
       expect(body).toHaveProperty('query', 'store');
-      expect(body).toHaveProperty('resultType', 'values');
+      expect(body).toHaveProperty('resultType', 'items');
+      expect(body).toHaveProperty('items');
       expect(body).toHaveProperty('values');
       expect(body).toHaveProperty('count', 1);
-      expect(body).not.toHaveProperty('items');
     });
 
     it('performs case-insensitive matching for name field', async () => {
@@ -1159,10 +1162,7 @@ describe('Inventory Lambda handler', () => {
       const body = JSON.parse(result.body);
 
       expect(result.statusCode).toBe(200);
-      expect(body.values).toHaveLength(3);
-      expect(body.values).toContain('FarmFresh');
-      expect(body.values).toContain('FARMFRESH');
-      expect(body.values).toContain('farmfresh');
+      expect(body.items).toHaveLength(3);
     });
 
     it('performs case-insensitive matching for whereToBuy field', async () => {
@@ -1184,10 +1184,7 @@ describe('Inventory Lambda handler', () => {
       const body = JSON.parse(result.body);
 
       expect(result.statusCode).toBe(200);
-      expect(body.values).toHaveLength(3);
-      expect(body.values).toContain('Supermarket');
-      expect(body.values).toContain('SUPERMARKET');
-      expect(body.values).toContain('supermarket');
+      expect(body.items).toHaveLength(3);
     });
 
     it('performs case-insensitive matching for onlineStoreLink field', async () => {
@@ -1209,7 +1206,7 @@ describe('Inventory Lambda handler', () => {
       const body = JSON.parse(result.body);
 
       expect(result.statusCode).toBe(200);
-      expect(body.values).toHaveLength(3);
+      expect(body.items).toHaveLength(3);
     });
 
     it('handles empty results for barcode search', async () => {
@@ -1264,8 +1261,8 @@ describe('Inventory Lambda handler', () => {
       const body = JSON.parse(result.body);
 
       expect(result.statusCode).toBe(200);
-      expect(body.resultType).toBe('values');
-      expect(body.values).toEqual([]);
+      expect(body.resultType).toBe('items');
+      expect(body.items).toEqual([]);
       expect(body.count).toBe(0);
     });
 
@@ -1306,8 +1303,10 @@ describe('Inventory Lambda handler', () => {
       const body = JSON.parse(result.body);
 
       expect(result.statusCode).toBe(200);
-      expect(body.values).toEqual(['Dairy']);
-      expect(body.count).toBe(1);
+      expect(body.resultType).toBe('items');
+      expect(body.items).toHaveLength(3); // all 3 items match
+      expect(body.values).toEqual(['Dairy']); // distinct value still deduplicated
+      expect(body.count).toBe(3);
     });
 
     it('returns distinct values only once for brand field', async () => {
@@ -1329,8 +1328,10 @@ describe('Inventory Lambda handler', () => {
       const body = JSON.parse(result.body);
 
       expect(result.statusCode).toBe(200);
+      expect(body.resultType).toBe('items');
+      expect(body.items).toHaveLength(3);
       expect(body.values).toEqual(['FarmFresh']);
-      expect(body.count).toBe(1);
+      expect(body.count).toBe(3);
     });
 
     it('supports substring matching in the middle of text for name field', async () => {
@@ -1372,7 +1373,7 @@ describe('Inventory Lambda handler', () => {
       const body = JSON.parse(result.body);
 
       expect(result.statusCode).toBe(200);
-      expect(body.values).toHaveLength(2);
+      expect(body.items).toHaveLength(2);
       expect(body.values).toContain('Fresh Dairy');
       expect(body.values).toContain('Aged Dairy');
     });
@@ -1396,8 +1397,10 @@ describe('Inventory Lambda handler', () => {
       const body = JSON.parse(result.body);
 
       expect(result.statusCode).toBe(200);
+      expect(body.resultType).toBe('items');
+      expect(body.items).toHaveLength(2); // only Milk and Yogurt have FarmFresh brand
       expect(body.values).toEqual(['FarmFresh']);
-      expect(body.count).toBe(1);
+      expect(body.count).toBe(2);
     });
 
     it('handles items with missing optional fields for whereToBuy search', async () => {
@@ -1419,6 +1422,8 @@ describe('Inventory Lambda handler', () => {
       const body = JSON.parse(result.body);
 
       expect(result.statusCode).toBe(200);
+      expect(body.resultType).toBe('items');
+      expect(body.items).toHaveLength(1); // only Yogurt matches 'store'
       expect(body.values).toEqual(['Local Store']);
       expect(body.count).toBe(1);
     });
@@ -1442,6 +1447,8 @@ describe('Inventory Lambda handler', () => {
       const body = JSON.parse(result.body);
 
       expect(result.statusCode).toBe(200);
+      expect(body.resultType).toBe('items');
+      expect(body.items).toHaveLength(1); // only Milk matches 'store'
       expect(body.values).toEqual(['https://store.com/milk']);
       expect(body.count).toBe(1);
     });

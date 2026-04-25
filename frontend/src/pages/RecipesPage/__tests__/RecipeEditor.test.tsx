@@ -1,18 +1,21 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import RecipeEditor from '../RecipeEditor';
 import * as recipesApi from '../../../api/recipes/recipes';
 import type { Recipe, RecipeWithAvailability } from '../../../api/recipes/recipes';
+import * as inventoryApi from '../../../api/inventory/inventory';
 
 jest.mock('../../../api/recipes/recipes');
+jest.mock('../../../api/inventory/inventory');
 
 const mockCreate = recipesApi.createRecipe as jest.MockedFunction<typeof recipesApi.createRecipe>;
 const mockUpdate = recipesApi.updateRecipe as jest.MockedFunction<typeof recipesApi.updateRecipe>;
 const mockFetch = recipesApi.fetchRecipeWithAvailability as jest.MockedFunction<
   typeof recipesApi.fetchRecipeWithAvailability
 >;
+const mockSearch = inventoryApi.searchInventory as jest.MockedFunction<typeof inventoryApi.searchInventory>;
 
 function makeRecipe(overrides: Partial<Recipe> = {}): Recipe {
   return {
@@ -42,6 +45,7 @@ describe('RecipeEditor — create mode', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSearch.mockResolvedValue({ field: 'name', query: '', resultType: 'items', items: [], count: 0 });
   });
 
   it('renders create form with empty fields', () => {
@@ -172,6 +176,133 @@ describe('RecipeEditor — create mode', () => {
     const payload = mockCreate.mock.calls[0][0];
     expect(payload.sourceUrl).toBeUndefined();
   });
+
+  it('shows autocomplete dropdown when typing 3+ chars in ingredient name', async () => {
+    jest.useFakeTimers();
+    mockSearch.mockResolvedValue({
+      field: 'name',
+      query: 'pas',
+      resultType: 'items',
+      items: [{ itemId: 'i1', name: 'Pasta', category: 'Dry Goods', unit: 'Gram' } as never],
+      count: 1,
+    });
+
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} />);
+
+    await user.type(screen.getByLabelText(/ingredient 1 name/i), 'pas');
+    act(() => jest.advanceTimersByTime(350));
+
+    await waitFor(() => expect(mockSearch).toHaveBeenCalledWith('name', 'pas'));
+    await waitFor(() => expect(screen.getByTestId('autocomplete-dropdown')).toBeInTheDocument());
+
+    jest.useRealTimers();
+  });
+
+  it('does not show autocomplete dropdown when typing fewer than 3 chars', async () => {
+    jest.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} />);
+
+    await user.type(screen.getByLabelText(/ingredient 1 name/i), 'pa');
+    act(() => jest.advanceTimersByTime(350));
+
+    expect(mockSearch).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('autocomplete-dropdown')).not.toBeInTheDocument();
+
+    jest.useRealTimers();
+  });
+
+  it('searches across name, barcode, brand, category, and whereToBuy fields in parallel', async () => {
+    jest.useFakeTimers();
+    mockSearch.mockResolvedValue({ field: 'name', query: 'pas', resultType: 'items', items: [], count: 0 });
+
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} />);
+
+    await user.type(screen.getByLabelText(/ingredient 1 name/i), 'pas');
+    act(() => jest.advanceTimersByTime(350));
+
+    await waitFor(() => expect(mockSearch).toHaveBeenCalledTimes(5));
+    expect(mockSearch).toHaveBeenCalledWith('name', 'pas');
+    expect(mockSearch).toHaveBeenCalledWith('barcode', 'pas');
+    expect(mockSearch).toHaveBeenCalledWith('brand', 'pas');
+    expect(mockSearch).toHaveBeenCalledWith('category', 'pas');
+    expect(mockSearch).toHaveBeenCalledWith('whereToBuy', 'pas');
+
+    jest.useRealTimers();
+  });
+
+  it('deduplicates results from multiple field searches by itemId', async () => {
+    jest.useFakeTimers();
+    const item = { itemId: 'i1', name: 'Pasta', category: 'Dry Goods', unit: 'Gram' } as never;
+    // Same item returned by both name and category search
+    mockSearch.mockResolvedValue({ field: 'name', query: 'pas', resultType: 'items', items: [item], count: 1 });
+
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} />);
+
+    await user.type(screen.getByLabelText(/ingredient 1 name/i), 'pas');
+    act(() => jest.advanceTimersByTime(350));
+
+    await waitFor(() => screen.getByTestId('autocomplete-dropdown'));
+    // Should only show one item despite 5 searches returning the same item
+    expect(screen.getAllByTestId(/dropdown-item-/)).toHaveLength(1);
+
+    jest.useRealTimers();
+  });
+
+  it('shows item found by category search in dropdown', async () => {
+    jest.useFakeTimers();
+    mockSearch.mockImplementation(async (field: string) => {
+      if (field === 'category') {
+        return {
+          field: 'category',
+          query: 'bak',
+          resultType: 'items',
+          items: [{ itemId: 'i2', name: 'Flour', category: 'Baking', unit: 'Gram' } as never],
+          count: 1,
+        };
+      }
+      return { field, query: 'bak', resultType: 'items', items: [], count: 0 };
+    });
+
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} />);
+
+    await user.type(screen.getByLabelText(/ingredient 1 name/i), 'bak');
+    act(() => jest.advanceTimersByTime(350));
+
+    await waitFor(() => screen.getByTestId('dropdown-item-0'));
+    expect(screen.getByText('Flour')).toBeInTheDocument();
+
+    jest.useRealTimers();
+  });
+
+  it('autofills ingredient name and unit when selecting from dropdown', async () => {
+    jest.useFakeTimers();
+    mockSearch.mockResolvedValue({
+      field: 'name',
+      query: 'pas',
+      resultType: 'items',
+      items: [{ itemId: 'i1', name: 'Pasta', category: 'Dry Goods', unit: 'Gram' } as never],
+      count: 1,
+    });
+
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} />);
+
+    await user.type(screen.getByLabelText(/ingredient 1 name/i), 'pas');
+    act(() => jest.advanceTimersByTime(350));
+
+    await waitFor(() => screen.getByTestId('dropdown-item-0'));
+    await user.click(screen.getByTestId('dropdown-item-0'));
+
+    expect(screen.getByLabelText(/ingredient 1 name/i)).toHaveValue('Pasta');
+    expect(screen.getByLabelText(/ingredient 1 unit/i)).toHaveValue('Gram');
+
+    jest.useRealTimers();
+  });
 });
 
 describe('RecipeEditor — edit mode', () => {
@@ -180,6 +311,7 @@ describe('RecipeEditor — edit mode', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSearch.mockResolvedValue({ field: 'name', query: '', resultType: 'items', items: [], count: 0 });
   });
 
   it('shows loading state while fetching recipe', () => {

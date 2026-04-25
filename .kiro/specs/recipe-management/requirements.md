@@ -17,7 +17,7 @@ Shared infrastructure terms (Pantry_App, Beautiful_User, Storage_Location, etc.)
 - **RecipesPage**: The frontend page at `frontend/src/pages/RecipesPage/` that hosts all recipe UI.
 - **RecipeList**: Frontend component showing the user's recipe collection with search.
 - **RecipeDetail**: Frontend component showing a full recipe with ingredient availability.
-- **RecipeEditor**: Frontend component for creating and editing recipes.
+- **RecipeEditor**: Frontend component for creating and editing recipes with inventory name autocomplete.
 - **IngredientAvailability**: Frontend component rendering per-ingredient availability status.
 
 ## Requirements
@@ -89,6 +89,10 @@ Shared infrastructure terms (Pantry_App, Beautiful_User, Storage_Location, etc.)
 6. IF the user submits a recipe form with no ingredients or an ingredient missing quantity or unit, THEN THE RecipeEditor SHALL display a validation error and not submit.
 7. WHEN the user deletes a recipe that is assigned to a meal plan, THE RecipeEditor SHALL display a warning before confirming deletion.
 8. WHEN a recipe has a `sourceUrl`, THE RecipeDetail SHALL render a link that opens the original recipe page in a new tab.
+9. WHEN the user types 3 or more characters in an ingredient name field, THE RecipeEditor SHALL query the inventory search API across all relevant fields (name, barcode, brand, category, whereToBuy) in parallel and display matching inventory items as autocomplete suggestions.
+10. WHEN the user selects an autocomplete suggestion for an ingredient name, THE RecipeEditor SHALL fill the ingredient name and autofill the unit from the matched inventory item.
+11. THE inventory search API SHALL return matching inventory items for all searchable fields (name, barcode, brand, category, whereToBuy, onlineStoreLink), not just name and barcode.
+12. WHEN the user saves a recipe (create or update), THE Pantry_App SHALL automatically create a placeholder inventory item for each ingredient whose name does not match any existing inventory item (case-insensitive). The placeholder SHALL have quantity 0, category "Unknown", isLowStock true, and the ingredient's unit (falling back to "Unit" if the unit is not a recognised UnitType).
 
 ### Requirement 6: Ingredient Availability Display
 

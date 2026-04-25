@@ -96,11 +96,27 @@ async function setupMockAPI(page: Page) {
   });
 
   await page.route('**/inventory/search**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ field: 'name', query: '', resultType: 'items', items: [], count: 0 }),
-    });
+    const url = route.request().url();
+    const query = new URL(url).searchParams.get('query') ?? '';
+    if (query.length >= 3) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          field: 'name',
+          query,
+          resultType: 'items',
+          items: [{ itemId: 'inv-1', name: 'Flour', category: 'Baking', unit: 'Gram' }],
+          count: 1,
+        }),
+      });
+    } else {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ field: 'name', query, resultType: 'items', items: [], count: 0 }),
+      });
+    }
   });
 
   // GET /recipes — list
@@ -403,5 +419,170 @@ test.describe('Recipe Management', () => {
     await expect(page.getByRole('heading', { name: 'Tomato Soup' })).toBeVisible({ timeout: 5000 });
 
     await expect(page.getByText('All ingredients available')).toBeVisible();
+  });
+
+  test('ingredient name autocomplete shows inventory suggestions and autofills unit on select', async ({ page }) => {
+    await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
+
+    // Type 3+ chars to trigger autocomplete (matches by name)
+    await page.getByLabel('Ingredient 1 name').fill('Flo');
+
+    // Dropdown should appear with the inventory match
+    const option = page.locator('[role="option"]').filter({ hasText: 'Flour' });
+    await expect(option).toBeVisible({ timeout: 3000 });
+
+    // Select the option
+    await option.click();
+
+    // Name and unit should be autofilled
+    await expect(page.getByLabel('Ingredient 1 name')).toHaveValue('Flour');
+    await expect(page.getByLabel('Ingredient 1 unit')).toHaveValue('Gram');
+  });
+
+  test('ingredient autocomplete searches across all fields — category match shows items', async ({ page }) => {
+    // Override search to return a result only for category field
+    await page.route('**/inventory/search**', async (route) => {
+      const url = route.request().url();
+      const params = new URL(url).searchParams;
+      const field = params.get('field') ?? '';
+      const query = params.get('query') ?? '';
+      if (field === 'category' && query.length >= 3) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            field: 'category',
+            query,
+            resultType: 'items',
+            items: [{ itemId: 'inv-2', name: 'Butter', category: 'Dairy', unit: 'Gram' }],
+            count: 1,
+          }),
+        });
+      } else {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ field, query, resultType: 'items', items: [], count: 0 }),
+        });
+      }
+    });
+
+    await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
+
+    // Type a category name
+    await page.getByLabel('Ingredient 1 name').fill('Dai');
+
+    // Dropdown should show the item from the Dairy category
+    const option = page.locator('[role="option"]').filter({ hasText: 'Butter' });
+    await expect(option).toBeVisible({ timeout: 3000 });
+
+    // Select it
+    await option.click();
+
+    await expect(page.getByLabel('Ingredient 1 name')).toHaveValue('Butter');
+    await expect(page.getByLabel('Ingredient 1 unit')).toHaveValue('Gram');
+  });
+
+  test('saving recipe with unrecognized ingredient — new item appears in inventory with quantity 0', async ({ page }) => {
+    // Track POST /recipes calls
+    const recipeRequests: string[] = [];
+    await page.route('**/recipes', async (route) => {
+      if (route.request().method() === 'POST') {
+        recipeRequests.push(route.request().url());
+        await route.fulfill({
+          status: 201,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            recipe: {
+              recipeId: 'recipe-new2',
+              userId: 'test-user',
+              name: 'Mystery Stew',
+              ingredients: [{ name: 'Dragon Fruit', quantity: 1, unit: 'Unit' }],
+              instructions: 'Cook it.',
+              createdAt: '2024-01-05T00:00:00Z',
+              updatedAt: '2024-01-05T00:00:00Z',
+              syncVersion: 1,
+            },
+          }),
+        });
+      } else if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ recipes: mockRecipes }),
+        });
+      }
+    });
+
+    // Mock the detail view for the new recipe
+    await page.route('**/recipes/recipe-new2', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          recipe: {
+            recipeId: 'recipe-new2',
+            name: 'Mystery Stew',
+            ingredients: [{ name: 'Dragon Fruit', quantity: 1, unit: 'Unit' }],
+            instructions: 'Cook it.',
+          },
+          ingredientAvailability: [
+            { name: 'Dragon Fruit', required: 1, unit: 'Unit', available: 0, status: 'missing' as const },
+          ],
+          missingCount: 1,
+        }),
+      });
+    });
+
+    // Mock inventory to return the auto-created placeholder after recipe save
+    await page.route('**/inventory', async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            items: [{
+              itemId: 'auto-1',
+              name: 'Dragon Fruit',
+              category: 'Unknown',
+              quantity: 0,
+              unit: 'Unit',
+              isLowStock: true,
+              location: 'unknown',
+              expirationDate: '2099-12-31',
+            }],
+          }),
+        });
+      }
+    });
+
+    // Create the recipe
+    await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
+
+    await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Mystery Stew');
+    await page.getByRole('textbox', { name: 'Instructions' }).fill('Cook it.');
+    await page.getByLabel('Ingredient 1 name').fill('Dragon Fruit');
+    await page.getByLabel('Ingredient 1 quantity').fill('1');
+    await page.getByLabel('Ingredient 1 unit').fill('Unit');
+
+    await page.getByRole('button', { name: 'Create Recipe' }).click();
+
+    // Should navigate to detail — ingredient shows as missing (quantity 0)
+    await expect(page.getByRole('heading', { name: 'Mystery Stew' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('1 ingredient(s) missing or partial')).toBeVisible();
+    await expect(page.getByText('missing', { exact: true })).toBeVisible();
+
+    // Navigate to Inventory page and verify the auto-created placeholder is there
+    await page.getByRole('button', { name: 'Inventory' }).click();
+    await page.waitForSelector('h2:has-text("Inventory")', { timeout: 5000 });
+
+    // The auto-created item should appear under the "Unknown" category card
+    await expect(page.getByText('Unknown')).toBeVisible({ timeout: 3000 });
+    // Click the Unknown category to drill in
+    await page.getByText('Unknown').click();
+    await expect(page.getByText('Dragon Fruit')).toBeVisible({ timeout: 3000 });
   });
 });

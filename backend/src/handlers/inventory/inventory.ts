@@ -504,7 +504,7 @@ async function searchInventory(
   }
 
   try {
-    // Full item searches (barcode, name)
+    // Full item searches (barcode, name, category, brand, whereToBuy, onlineStoreLink)
     if (field === 'barcode') {
       const result = await docClient.send(
         new QueryCommand({
@@ -561,6 +561,7 @@ async function searchInventory(
     }
 
     // Distinct value searches (category, brand, whereToBuy, onlineStoreLink)
+    // Also return matching items so callers can use them for autofill
     const result = await docClient.send(
       new QueryCommand({
         TableName: TABLE_NAME,
@@ -573,26 +574,30 @@ async function searchInventory(
     );
 
     const allItems = result.Items ?? [];
-    const distinctValues = new Set<string>();
-
-    for (const item of allItems) {
-      const value = item[field];
-      if (value && typeof value === 'string' && value.trim() !== '') {
-        distinctValues.add(value);
-      }
-    }
-
     const lowerQuery = trimmedQuery.toLowerCase();
-    const matchingValues = Array.from(distinctValues)
-      .filter((value) => value.toLowerCase().includes(lowerQuery))
+
+    // Collect matching items (where the field value matches the query)
+    const matchingItems = allItems
+      .filter((item) => {
+        const value = item[field];
+        return value && typeof value === 'string' && value.toLowerCase().includes(lowerQuery);
+      })
       .slice(0, 10);
+
+    // Also collect distinct matching values for backward compatibility
+    const distinctValues = new Set<string>();
+    for (const item of matchingItems) {
+      const value = item[field];
+      if (value && typeof value === 'string') distinctValues.add(value);
+    }
 
     return response(200, {
       field,
       query: trimmedQuery,
-      resultType: 'values',
-      values: matchingValues,
-      count: matchingValues.length,
+      resultType: 'items',
+      items: matchingItems,
+      values: Array.from(distinctValues),
+      count: matchingItems.length,
     } as InventorySearchResponse);
   } catch (err) {
     console.error('Inventory search error:', err);

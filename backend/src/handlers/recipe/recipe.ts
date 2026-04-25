@@ -9,6 +9,7 @@ import {
   DeleteCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { randomUUID } from 'crypto';
+import { VALID_UNITS } from '../../types/units';
 
 const TABLE_NAME = process.env.TABLE_NAME ?? 'PantryApp';
 
@@ -100,6 +101,62 @@ export function computeAvailability(
   return { ingredientAvailability, missingCount };
 }
 
+// ─── Auto-create placeholder inventory items for unrecognized ingredients ────
+
+async function autoCreateMissingIngredients(
+  userId: string,
+  ingredients: RecipeIngredient[],
+): Promise<void> {
+  // Fetch all existing inventory items for this user
+  const inventoryResult = await docClient.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+      ExpressionAttributeValues: {
+        ':pk': `USER#${userId}`,
+        ':skPrefix': 'ITEM#',
+      },
+    }),
+  );
+
+  const existingNames = new Set(
+    (inventoryResult.Items ?? []).map((item) => (item.name as string).toLowerCase()),
+  );
+
+  const now = new Date().toISOString();
+
+  await Promise.all(
+    ingredients
+      .filter((ing) => !existingNames.has(ing.name.toLowerCase()))
+      .map((ing) => {
+        const itemId = randomUUID();
+        const unit = VALID_UNITS.includes(ing.unit as typeof VALID_UNITS[number])
+          ? ing.unit
+          : 'Unit';
+        const item = {
+          PK: `USER#${userId}`,
+          SK: `ITEM#${itemId}`,
+          entityType: 'InventoryItem',
+          itemId,
+          userId,
+          name: ing.name,
+          category: 'Unknown',
+          expirationDate: '2099-12-31',
+          location: 'unknown',
+          quantity: 0,
+          unit,
+          isLowStock: true,
+          createdAt: now,
+          updatedAt: now,
+          syncVersion: 1,
+          GSI1PK: `USER#${userId}#LOWSTOCK`,
+          GSI1SK: `ITEM#${itemId}`,
+        };
+        return docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
+      }),
+  );
+}
+
 // ─── Handlers ────────────────────────────────────────────────────────────────
 
 async function listRecipes(userId: string): Promise<APIGatewayProxyResult> {
@@ -171,6 +228,9 @@ async function createRecipe(
   }
 
   await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: recipe }));
+
+  // Auto-create placeholder inventory items for any unrecognized ingredients
+  await autoCreateMissingIngredients(userId, parsed.ingredients as RecipeIngredient[]);
 
   return response(201, { recipe });
 }
@@ -273,6 +333,11 @@ async function updateRecipe(
         ReturnValues: 'ALL_NEW',
       }),
     );
+
+    // Auto-create placeholder inventory items for any unrecognized ingredients
+    if (parsed.ingredients !== undefined) {
+      await autoCreateMissingIngredients(userId, parsed.ingredients as RecipeIngredient[]);
+    }
 
     return response(200, { recipe: result.Attributes });
   } catch (err: unknown) {
