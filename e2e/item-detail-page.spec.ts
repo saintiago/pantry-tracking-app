@@ -88,12 +88,22 @@ async function loginAndGoToInventory(page: Page) {
   await page.waitForSelector('h2:has-text("Inventory")', { timeout: 10000 });
 }
 
+// Drill into a category then click an item by name
+async function clickInventoryItem(page: Page, category: string, itemName: string) {
+  // Click the category card to expand it
+  const categoryCard = page.getByTestId(`category-card-${category}`);
+  await expect(categoryCard).toBeVisible({ timeout: 5000 });
+  await categoryCard.click();
+  // Now click the item
+  await page.getByText(itemName).first().click();
+}
+
 test.describe('ItemDetailPage', () => {
   test('tapping an inventory item navigates to ItemDetailPage with fields pre-populated', async ({ page }) => {
     await setupMockAPI(page);
     await loginAndGoToInventory(page);
 
-    await page.getByText('Organic Milk').first().click();
+    await clickInventoryItem(page, 'Dairy', 'Organic Milk');
 
     await expect(page.getByRole('heading', { name: 'Organic Milk' })).toBeVisible({ timeout: 5000 });
     // Should NOT be a dialog/overlay
@@ -112,7 +122,7 @@ test.describe('ItemDetailPage', () => {
     await setupMockAPI(page, [mockLowStockItem]);
     await loginAndGoToInventory(page);
 
-    await page.getByText('Almost Gone Eggs').first().click();
+    await clickInventoryItem(page, 'Dairy', 'Almost Gone Eggs');
     await expect(page.getByRole('heading', { name: 'Almost Gone Eggs' })).toBeVisible({ timeout: 5000 });
 
     await expect(page.getByText(/low stock/i)).toBeVisible();
@@ -134,7 +144,7 @@ test.describe('ItemDetailPage', () => {
     });
     await loginAndGoToInventory(page);
 
-    await page.getByText('Organic Milk').first().click();
+    await clickInventoryItem(page, 'Dairy', 'Organic Milk');
     await expect(page.getByRole('heading', { name: 'Organic Milk' })).toBeVisible({ timeout: 5000 });
 
     await page.getByLabel('Product Name').fill('Updated Milk');
@@ -159,7 +169,7 @@ test.describe('ItemDetailPage', () => {
     });
     await loginAndGoToInventory(page);
 
-    await page.getByText('Organic Milk').first().click();
+    await clickInventoryItem(page, 'Dairy', 'Organic Milk');
     await expect(page.getByRole('heading', { name: 'Organic Milk' })).toBeVisible({ timeout: 5000 });
 
     await page.getByTestId('save-button').click();
@@ -174,7 +184,7 @@ test.describe('ItemDetailPage', () => {
     await setupMockAPI(page);
     await loginAndGoToInventory(page);
 
-    await page.getByText('Organic Milk').first().click();
+    await clickInventoryItem(page, 'Dairy', 'Organic Milk');
     await expect(page.getByRole('heading', { name: 'Organic Milk' })).toBeVisible({ timeout: 5000 });
 
     await page.getByLabel('Product Name').fill('Should Not Save');
@@ -182,7 +192,10 @@ test.describe('ItemDetailPage', () => {
     await page.getByTestId('cancel-button').click();
 
     await expect(page.getByRole('heading', { name: 'Inventory' })).toBeVisible({ timeout: 3000 });
-    // Original name should still be in the list
+    // Original name should still be in the list — drill into category to verify
+    const categoryCard = page.getByTestId('category-card-Dairy');
+    await expect(categoryCard).toBeVisible();
+    await categoryCard.click();
     await expect(page.getByText('Organic Milk')).toBeVisible();
   });
 
@@ -190,7 +203,7 @@ test.describe('ItemDetailPage', () => {
     await setupMockAPI(page);
     await loginAndGoToInventory(page);
 
-    await page.getByText('Organic Milk').first().click();
+    await clickInventoryItem(page, 'Dairy', 'Organic Milk');
     await expect(page.getByRole('heading', { name: 'Organic Milk' })).toBeVisible({ timeout: 5000 });
 
     await page.getByRole('button', { name: 'Go back' }).click();
@@ -202,7 +215,7 @@ test.describe('ItemDetailPage', () => {
     await setupMockAPI(page);
     await loginAndGoToInventory(page);
 
-    await page.getByText('Organic Milk').first().click();
+    await clickInventoryItem(page, 'Dairy', 'Organic Milk');
     await expect(page.getByRole('heading', { name: 'Organic Milk' })).toBeVisible({ timeout: 5000 });
 
     const nav = page.getByRole('navigation', { name: 'Main navigation' });
@@ -216,7 +229,7 @@ test.describe('ItemDetailPage', () => {
     await setupMockAPI(page);
     await loginAndGoToInventory(page);
 
-    await page.getByText('Organic Milk').first().click();
+    await clickInventoryItem(page, 'Dairy', 'Organic Milk');
     await expect(page.getByRole('heading', { name: 'Organic Milk' })).toBeVisible({ timeout: 5000 });
 
     const actionBar = page.getByTestId('action-bar');
