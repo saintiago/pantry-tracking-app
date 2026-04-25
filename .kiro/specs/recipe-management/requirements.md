@@ -92,7 +92,8 @@ Shared infrastructure terms (Pantry_App, Beautiful_User, Storage_Location, etc.)
 9. WHEN the user types 3 or more characters in an ingredient name field, THE RecipeEditor SHALL query the inventory search API across all relevant fields (name, barcode, brand, category, whereToBuy) in parallel and display matching inventory items as autocomplete suggestions.
 10. WHEN the user selects an autocomplete suggestion for an ingredient name, THE RecipeEditor SHALL fill the ingredient name and autofill the unit from the matched inventory item.
 11. THE inventory search API SHALL return matching inventory items for all searchable fields (name, barcode, brand, category, whereToBuy, onlineStoreLink), not just name and barcode.
-12. WHEN the user saves a recipe (create or update), THE Pantry_App SHALL automatically create a placeholder inventory item for each ingredient whose name does not match any existing inventory item (case-insensitive). The placeholder SHALL have quantity 0, category "Unknown", isLowStock true, and the ingredient's unit (falling back to "Unit" if the unit is not a recognised UnitType).
+12. WHEN the user saves a recipe (create or update), THE Pantry_App SHALL automatically create a placeholder inventory item for each ingredient whose name does not match any existing inventory item (case-insensitive). The placeholder SHALL have quantity 0, isLowStock true, category "Unknown", and the ingredient's unit. The placeholder SHALL appear under the "Unknown" category in the inventory list.
+13. THE RecipeEditor ingredient unit field SHALL be a dropdown constrained to the same `UnitType` enum used by the inventory system (`Gram`, `Kilo`, `Milliliter`, `Liter`, `Unit`).
 
 ### Requirement 6: Ingredient Availability Display
 

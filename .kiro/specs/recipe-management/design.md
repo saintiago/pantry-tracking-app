@@ -193,7 +193,7 @@ interface RecipeEditorProps {
 
 - In edit mode, fetches the recipe on mount and pre-populates the form
 - Fields: name (required), instructions (required), sourceUrl (optional), ingredients list
-- Ingredient rows: name, quantity (number), unit (text) — with add/remove row controls
+- Ingredient rows: name, quantity (number), unit (dropdown constrained to `VALID_UNITS`: Gram, Kilo, Milliliter, Liter, Unit) — with add/remove row controls
 - Client-side validation: at least one ingredient; each ingredient must have quantity > 0 and non-empty unit
 - On submit: calls `createRecipe` or `updateRecipe`, then `onSaved(recipeId)`
 - **Ingredient name autocomplete**: when the user types 3+ characters in an ingredient name field, fans out parallel searches across `name`, `barcode`, `brand`, `category`, and `whereToBuy` fields via `searchInventory()`, deduplicates results by `itemId`, and shows up to 10 matching inventory items in an `AutocompleteDropdown`. Selecting an item fills the ingredient name and autofills the unit. The dropdown subtitle shows category, brand, and barcode to help the user identify the match.
@@ -282,7 +282,7 @@ Placeholder item fields:
 - `unit`: ingredient's unit if it is a valid `UnitType`, otherwise `"Unit"`
 - `location`: `"unknown"` (sentinel — bypasses the required location field)
 - `expirationDate`: `"2099-12-31"` (far-future — bypasses the required expiration field)
-- `GSI1PK`: `USER#<userId>#LOWSTOCK` (since `isLowStock: true`)
+- `GSI1PK`: `USER#<userId>#CAT#Unknown` (category key so items appear in the "Unknown" category view in inventory)
 
 The `GET /inventory/search` endpoint now returns `resultType: 'items'` for all fields including `category`, `brand`, `whereToBuy`, and `onlineStoreLink` (previously returned `resultType: 'values'`). The response includes both `items` (matching inventory items) and `values` (distinct field values, for backward compatibility). This enables the RecipeEditor to fan out searches across all fields and show full item results regardless of which field matched.
 

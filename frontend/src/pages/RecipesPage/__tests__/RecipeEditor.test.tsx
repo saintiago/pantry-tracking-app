@@ -123,7 +123,7 @@ describe('RecipeEditor — create mode', () => {
     await user.type(screen.getByLabelText(/ingredient 1 name/i), 'Pasta');
     await user.clear(screen.getByLabelText(/ingredient 1 quantity/i));
     await user.type(screen.getByLabelText(/ingredient 1 quantity/i), '200');
-    await user.type(screen.getByLabelText(/ingredient 1 unit/i), 'g');
+    await user.selectOptions(screen.getByLabelText(/ingredient 1 unit/i), 'Gram');
 
     await user.click(screen.getByRole('button', { name: /create recipe/i }));
 
@@ -132,7 +132,7 @@ describe('RecipeEditor — create mode', () => {
       expect.objectContaining({
         name: 'Pasta',
         instructions: 'Cook it',
-        ingredients: [{ name: 'Pasta', quantity: 200, unit: 'g' }],
+        ingredients: [{ name: 'Pasta', quantity: 200, unit: 'Gram' }],
       }),
     );
     expect(onSaved).toHaveBeenCalledWith('new-id');
@@ -149,7 +149,7 @@ describe('RecipeEditor — create mode', () => {
     await user.type(screen.getByLabelText(/ingredient 1 name/i), 'Pasta');
     await user.clear(screen.getByLabelText(/ingredient 1 quantity/i));
     await user.type(screen.getByLabelText(/ingredient 1 quantity/i), '200');
-    await user.type(screen.getByLabelText(/ingredient 1 unit/i), 'g');
+    await user.selectOptions(screen.getByLabelText(/ingredient 1 unit/i), 'Gram');
 
     await user.click(screen.getByRole('button', { name: /create recipe/i }));
 
@@ -168,7 +168,7 @@ describe('RecipeEditor — create mode', () => {
     await user.type(screen.getByLabelText(/ingredient 1 name/i), 'Pasta');
     await user.clear(screen.getByLabelText(/ingredient 1 quantity/i));
     await user.type(screen.getByLabelText(/ingredient 1 quantity/i), '200');
-    await user.type(screen.getByLabelText(/ingredient 1 unit/i), 'g');
+    await user.selectOptions(screen.getByLabelText(/ingredient 1 unit/i), 'Gram');
 
     await user.click(screen.getByRole('button', { name: /create recipe/i }));
 

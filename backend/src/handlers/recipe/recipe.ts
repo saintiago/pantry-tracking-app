@@ -149,7 +149,9 @@ async function autoCreateMissingIngredients(
           createdAt: now,
           updatedAt: now,
           syncVersion: 1,
-          GSI1PK: `USER#${userId}#LOWSTOCK`,
+          // Use category GSI key so items appear in the "Unknown" category view,
+          // even though isLowStock is true (quantity 0 = out of stock)
+          GSI1PK: `USER#${userId}#CAT#Unknown`,
           GSI1SK: `ITEM#${itemId}`,
         };
         return docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: item }));

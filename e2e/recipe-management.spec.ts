@@ -225,7 +225,7 @@ test.describe('Recipe Management', () => {
     // Fill in the first ingredient row
     await page.getByLabel('Ingredient 1 name').fill('Flour');
     await page.getByLabel('Ingredient 1 quantity').fill('300');
-    await page.getByLabel('Ingredient 1 unit').fill('g');
+    await page.getByLabel('Ingredient 1 unit').selectOption('Gram');
 
     // Submit
     await page.getByRole('button', { name: 'Create Recipe' }).click();
@@ -566,7 +566,7 @@ test.describe('Recipe Management', () => {
     await page.getByRole('textbox', { name: 'Instructions' }).fill('Cook it.');
     await page.getByLabel('Ingredient 1 name').fill('Dragon Fruit');
     await page.getByLabel('Ingredient 1 quantity').fill('1');
-    await page.getByLabel('Ingredient 1 unit').fill('Unit');
+    await page.getByLabel('Ingredient 1 unit').selectOption('Unit');
 
     await page.getByRole('button', { name: 'Create Recipe' }).click();
 

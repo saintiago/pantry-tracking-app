@@ -8,6 +8,7 @@ import type { RecipeIngredient } from '../../api/recipes/recipes';
 import { searchInventory } from '../../api/inventory/inventory';
 import AutocompleteDropdown from '../../components/AutocompleteDropdown/AutocompleteDropdown';
 import type { InventoryItem } from '../../components/AutocompleteDropdown/AutocompleteDropdown';
+import { VALID_UNITS } from '../../types/units';
 
 export interface RecipeEditorProps {
   recipeId?: string; // undefined = create mode
@@ -460,16 +461,19 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
                         >
                           Unit
                         </label>
-                        <input
+                        <select
                           id={`ing-unit-${row._id}`}
-                          type="text"
                           value={row.unit}
                           onChange={(e) => updateIngredientField(row._id, 'unit', e.target.value)}
-                          style={styles.input}
-                          placeholder="e.g. g, ml, cup"
+                          style={styles.select}
                           aria-label={`Ingredient ${index + 1} unit`}
                           aria-invalid={!!rowErr?.unit}
-                        />
+                        >
+                          <option value="">Select unit</option>
+                          {VALID_UNITS.map((u) => (
+                            <option key={u} value={u}>{u}</option>
+                          ))}
+                        </select>
                         {rowErr?.unit && (
                           <span style={styles.fieldError} role="alert">
                             {rowErr.unit}
@@ -660,6 +664,17 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: '0.2rem',
+  },
+  select: {
+    minHeight: 44,
+    padding: '0.5rem 0.75rem',
+    fontSize: '1rem',
+    border: '1px solid #d1d5db',
+    borderRadius: 6,
+    outline: 'none',
+    width: '100%',
+    boxSizing: 'border-box',
+    backgroundColor: '#ffffff',
   },
   removeButton: {
     flexShrink: 0,

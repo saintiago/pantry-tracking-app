@@ -218,6 +218,7 @@ describe('Recipe Lambda handler', () => {
         expect(item.Item.location).toBe('unknown');
         expect(item.Item.expirationDate).toBe('2099-12-31');
         expect(item.Item.entityType).toBe('InventoryItem');
+        expect(item.Item.GSI1PK).toBe('USER#user-123#CAT#Unknown');
       }
     });
 
