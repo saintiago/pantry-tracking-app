@@ -55,7 +55,11 @@ VITE_USER_POOL_ID="$USER_POOL_ID" \
 VITE_USER_POOL_CLIENT_ID="$USER_POOL_CLIENT_ID" \
 VITE_API_URL="$API_URL" \
 npm run build
-echo "✅ Frontend built"
+
+# Inject app version into built sw.js so each deploy gets a unique cache name
+APP_VERSION=$(node -e "console.log(require('./package.json').version)")
+sed -i "s/__VERSION__/$APP_VERSION/g" "$ROOT_DIR/frontend/build/sw.js"
+echo "✅ Frontend built (v$APP_VERSION)"
 
 # ─── Step 4: Upload to S3 ────────────────────────────────────────────
 echo "📤 Uploading to S3..."

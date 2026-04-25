@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pantry-app-v1';
+const CACHE_NAME = 'pantry-app-__VERSION__';
 const STATIC_ASSETS = ['/manifest.json'];
 
 self.addEventListener('install', (event) => {
