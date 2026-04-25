@@ -167,6 +167,11 @@ describe('Feature: inventory-category-view, Property 5: Category card aria-label
       category: fc.string({ minLength: 1, maxLength: 20 }),
       itemCount: fc.integer({ min: 1, max: 100 }),
       totalQuantity: fc.integer({ min: 0, max: 1000 }),
+      quantityByUnit: fc.dictionary(
+        fc.constantFrom('Gram', 'Kilo', 'Milliliter', 'Liter', 'Unit'),
+        fc.integer({ min: 0, max: 500 }),
+        { minKeys: 1, maxKeys: 3 },
+      ),
       lowStockCount: fc.integer({ min: 0, max: 10 }),
     });
 
@@ -181,7 +186,6 @@ describe('Feature: inventory-category-view, Property 5: Category card aria-label
 
         expect(label).toContain(summary.category);
         expect(label).toContain(String(summary.itemCount));
-        expect(label).toContain(String(summary.totalQuantity));
 
         unmount();
       }),

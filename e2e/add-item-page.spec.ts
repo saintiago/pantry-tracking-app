@@ -130,7 +130,6 @@ test.describe('AddItemPage', () => {
     await expect(page.getByText('Expiration date is required.')).toBeVisible();
     await expect(page.getByText('Storage location is required.')).toBeVisible();
     await expect(page.getByText('Quantity is required.')).toBeVisible();
-    await expect(page.getByText('Unit is required.')).toBeVisible();
   });
 
   test('successful form submission shows success message then returns to InventoryPage', async ({ page }) => {

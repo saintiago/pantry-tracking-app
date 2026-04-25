@@ -108,15 +108,15 @@ test.describe('Inventory Category View', () => {
   });
 
   test('category card displays correct item count and total quantity', async ({ page }) => {
-    // Dairy: 2 items, quantity 2+3=5 total
+    // Dairy: 2 items, mixed units (Liter + Unit)
     const dairyCard = page.getByTestId('category-card-Dairy');
     await expect(dairyCard).toContainText('2 items');
-    await expect(dairyCard).toContainText('5 total');
+    await expect(dairyCard).toContainText('mixed units');
 
-    // Snacks: 1 item, quantity 5 total
+    // Snacks: 1 item, quantity 5 Unit
     const snacksCard = page.getByTestId('category-card-Snacks');
     await expect(snacksCard).toContainText('1 items');
-    await expect(snacksCard).toContainText('5 total');
+    await expect(snacksCard).toContainText('5 Unit');
   });
 
   test('clicking a category card navigates to item list showing only items from that category', async ({ page }) => {

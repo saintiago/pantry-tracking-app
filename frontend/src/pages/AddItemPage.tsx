@@ -41,7 +41,7 @@ const INITIAL_FORM = {
   expirationDate: '',
   locationId: '',
   quantity: '',
-  unit: '',
+  unit: 'Unit',
   barcode: '',
   brand: '',
   whereToBuy: '',
@@ -115,7 +115,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
       if ((triggerField === 'name' || !prev.name) && item.name) { updates.name = item.name; newPrefilledFields.add('name'); }
       if (!prev.category && item.category) { updates.category = item.category; newPrefilledFields.add('category'); }
       if (!prev.brand && item.brand) { updates.brand = item.brand; newPrefilledFields.add('brand'); }
-      if (!prev.unit && item.unit && VALID_UNITS.includes(item.unit as never)) { updates.unit = item.unit; newPrefilledFields.add('unit'); }
+      if ((!prev.unit || prev.unit === 'Unit') && item.unit && VALID_UNITS.includes(item.unit as never)) { updates.unit = item.unit; newPrefilledFields.add('unit'); }
       if (!prev.locationId && item.location) { updates.locationId = item.location; newPrefilledFields.add('locationId'); }
       if (!prev.quantity) { updates.quantity = '1'; newPrefilledFields.add('quantity'); }
       if (!prev.whereToBuy && item.whereToBuy) { updates.whereToBuy = item.whereToBuy; newPrefilledFields.add('whereToBuy'); }
@@ -198,6 +198,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
             if (!prev.name && product.name) { updates.name = product.name; newPrefilledFields.add('name'); }
             if (!prev.category && product.category) { updates.category = product.category; newPrefilledFields.add('category'); }
             if (!prev.brand && product.brand) { updates.brand = product.brand; newPrefilledFields.add('brand'); }
+            if (!prev.quantity) { updates.quantity = '1'; newPrefilledFields.add('quantity'); }
             if (newPrefilledFields.size > 0) {
               setPrefilledFields((p) => new Set([...p, ...newPrefilledFields]));
             }

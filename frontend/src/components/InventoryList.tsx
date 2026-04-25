@@ -26,7 +26,17 @@ export interface CategorySummary {
   category: string;
   itemCount: number;
   totalQuantity: number;
+  quantityByUnit: Record<string, number>;
   lowStockCount: number;
+}
+
+export function formatQuantityByUnit(quantityByUnit: Record<string, number>): string {
+  const entries = Object.entries(quantityByUnit);
+  if (entries.length === 1) {
+    const [unit, qty] = entries[0];
+    return `${qty} ${unit}`;
+  }
+  return 'mixed units';
 }
 
 export function groupItemsByCategory(items: InventoryItem[]): CategorySummary[] {
@@ -37,12 +47,14 @@ export function groupItemsByCategory(items: InventoryItem[]): CategorySummary[] 
     if (existing) {
       existing.itemCount += 1;
       existing.totalQuantity += item.quantity;
+      existing.quantityByUnit[item.unit] = (existing.quantityByUnit[item.unit] ?? 0) + item.quantity;
       if (item.isLowStock) existing.lowStockCount += 1;
     } else {
       map.set(item.category, {
         category: item.category,
         itemCount: 1,
         totalQuantity: item.quantity,
+        quantityByUnit: { [item.unit]: item.quantity },
         lowStockCount: item.isLowStock ? 1 : 0,
       });
     }
@@ -172,7 +184,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ summary, onClick }) 
       tabIndex={0}
       onClick={onClick}
       onKeyDown={handleKeyDown}
-      aria-label={`${summary.category}, ${summary.itemCount} items, ${summary.totalQuantity} total`}
+      aria-label={`${summary.category}, ${summary.itemCount} items, ${formatQuantityByUnit(summary.quantityByUnit)}`}
       style={styles.categoryCard}
       data-testid={`category-card-${summary.category}`}
     >
@@ -187,7 +199,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ summary, onClick }) 
       <div style={styles.categoryCardStats}>
         <span>{summary.itemCount} items</span>
         <span style={styles.categoryCardDot}>·</span>
-        <span>{summary.totalQuantity} total</span>
+        <span>{formatQuantityByUnit(summary.quantityByUnit)}</span>
       </div>
     </div>
   );
