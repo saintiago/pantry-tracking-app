@@ -37,6 +37,7 @@ const mockInventoryItems = [
     category: 'Dairy',
     brand: 'Organic Valley',
     unit: 'Liter',
+    location: 'loc-1',
     whereToBuy: 'Whole Foods',
     onlineStoreLink: 'https://example.com/milk',
   },
@@ -47,6 +48,7 @@ const mockInventoryItems = [
     category: 'Dairy',
     brand: 'Silk',
     unit: 'Liter',
+    location: 'loc-2',
     whereToBuy: 'Trader Joes',
     onlineStoreLink: 'https://example.com/almond-milk',
   },
@@ -56,6 +58,7 @@ const mockInventoryItems = [
     category: 'Dairy',
     brand: 'Organic Valley',
     unit: 'Unit',
+    location: 'loc-1',
   },
 ];
 
@@ -311,5 +314,47 @@ test.describe('Barcode Autofill Feature', () => {
 
     await expect(nameInput).toHaveValue('My Custom Name');
     await expect(dlg.getByLabel('Category')).toHaveValue('Dairy');
+  });
+
+  test('selecting from barcode dropdown fills barcode itself even though user typed a partial value', async ({ page }) => {
+    await openAddItemModal(page);
+    const dlg = modal(page);
+
+    // User types partial barcode — this is what triggered the dropdown
+    await dlg.getByLabel('Barcode').fill('012');
+    await page.waitForTimeout(400);
+
+    // Select the full item — barcode field must be overwritten with the full value
+    await selectOption(page, 'Organic Milk');
+
+    await expect(dlg.getByLabel('Barcode')).toHaveValue('012345678901');
+    await expect(dlg.getByLabel('Product Name')).toHaveValue('Organic Milk');
+    await expect(dlg.getByLabel('Category')).toHaveValue('Dairy');
+    await expect(dlg.getByLabel('Brand')).toHaveValue('Organic Valley');
+    await expect(dlg.getByLabel('Unit')).toHaveValue('Liter');
+    await expect(dlg.getByLabel('Storage Location')).toHaveValue('loc-1');
+    await expect(dlg.getByLabel('Where to Buy')).toHaveValue('Whole Foods');
+    await expect(dlg.getByLabel('Online Store Link')).toHaveValue('https://example.com/milk');
+  });
+
+  test('selecting from name dropdown fills name itself and all other fields', async ({ page }) => {
+    await openAddItemModal(page);
+    const dlg = modal(page);
+
+    // User types partial name
+    await dlg.getByLabel('Product Name').fill('Org');
+    await page.waitForTimeout(400);
+
+    // Select the full item — name field must be overwritten with the full value
+    await selectOption(page, 'Organic Milk');
+
+    await expect(dlg.getByLabel('Product Name')).toHaveValue('Organic Milk');
+    await expect(dlg.getByLabel('Barcode')).toHaveValue('012345678901');
+    await expect(dlg.getByLabel('Category')).toHaveValue('Dairy');
+    await expect(dlg.getByLabel('Brand')).toHaveValue('Organic Valley');
+    await expect(dlg.getByLabel('Unit')).toHaveValue('Liter');
+    await expect(dlg.getByLabel('Storage Location')).toHaveValue('loc-1');
+    await expect(dlg.getByLabel('Where to Buy')).toHaveValue('Whole Foods');
+    await expect(dlg.getByLabel('Online Store Link')).toHaveValue('https://example.com/milk');
   });
 });

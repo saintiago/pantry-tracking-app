@@ -34,14 +34,17 @@ if [[ ! -f "$OUTPUTS_FILE" ]]; then
   exit 1
 fi
 
-# Parse outputs (works with the CDK outputs JSON format)
-STACK_NAME=$(cat "$OUTPUTS_FILE" | python3 -c "import sys,json; print(list(json.load(sys.stdin).keys())[0])")
-API_URL=$(cat "$OUTPUTS_FILE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d[list(d.keys())[0]]['ApiUrl'])")
-USER_POOL_ID=$(cat "$OUTPUTS_FILE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d[list(d.keys())[0]]['UserPoolId'])")
-USER_POOL_CLIENT_ID=$(cat "$OUTPUTS_FILE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d[list(d.keys())[0]]['UserPoolClientId'])")
-WEBSITE_BUCKET=$(cat "$OUTPUTS_FILE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d[list(d.keys())[0]]['WebsiteBucketName'])")
-DISTRIBUTION_ID=$(cat "$OUTPUTS_FILE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d[list(d.keys())[0]]['DistributionId'])")
-CLOUDFRONT_URL=$(cat "$OUTPUTS_FILE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d[list(d.keys())[0]]['CloudFrontUrl'])")
+# Parse outputs — pipe via stdin to avoid Windows path issues
+_parse_output() { node -e "let d=''; process.stdin.on('data',c=>d+=c).on('end',()=>{const j=JSON.parse(d);const k=Object.keys(j)[0];console.log(j[k]['$1'])})"; }
+_parse_key()    { node -e "let d=''; process.stdin.on('data',c=>d+=c).on('end',()=>{console.log(Object.keys(JSON.parse(d))[0])})"; }
+
+STACK_NAME=$(cat "$OUTPUTS_FILE" | _parse_key)
+API_URL=$(cat "$OUTPUTS_FILE" | _parse_output ApiUrl)
+USER_POOL_ID=$(cat "$OUTPUTS_FILE" | _parse_output UserPoolId)
+USER_POOL_CLIENT_ID=$(cat "$OUTPUTS_FILE" | _parse_output UserPoolClientId)
+WEBSITE_BUCKET=$(cat "$OUTPUTS_FILE" | _parse_output WebsiteBucketName)
+DISTRIBUTION_ID=$(cat "$OUTPUTS_FILE" | _parse_output DistributionId)
+CLOUDFRONT_URL=$(cat "$OUTPUTS_FILE" | _parse_output CloudFrontUrl)
 
 echo "📦 Using outputs from stack: $STACK_NAME"
 

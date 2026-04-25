@@ -52,7 +52,18 @@ function modal(page: Page): Locator {
 await modal(page).getByLabel('Product Name')
 ```
 
-## Running Tests
+## Coverage Expectation
+
+Every user-facing interaction should have an e2e test. When implementing a new feature or fixing a bug that involves UI interaction, write or update e2e tests to cover it. This includes:
+
+- Clicking buttons, links, menu items
+- Filling and submitting forms
+- Dropdown/autocomplete selection
+- Keyboard navigation
+- Error states visible to the user
+- Any conditional UI (loading states, empty states, success/error messages)
+
+If a user can do it in the browser, there should be a test for it.
 
 ```bash
 npm run test:e2e           # headless

@@ -433,10 +433,29 @@ export async function barcodeLookup(
       return response(200, { found: false });
     }
 
+    // Pick the best category from categories_tags.
+    // Tags look like "en:dairy-products", "fr:laits", "en:milks".
+    // Prefer English tags, strip the locale prefix, convert slug to title case.
+    const categoryTag = (() => {
+      const tags = data.product.categories_tags ?? [];
+      const enTag = tags.find((t) => t.startsWith('en:')) ?? tags[0];
+      if (!enTag) return undefined;
+      const slug = enTag.replace(/^[a-z]{2}:/, '');
+      return slug
+        .split('-')
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ');
+    })();
+
+    // brands can be comma-separated — take just the first one
+    const brand = data.product.brands
+      ? data.product.brands.split(',')[0].trim() || undefined
+      : undefined;
+
     const product: ProductInfo = {
       name: data.product.product_name,
-      brand: data.product.brands || undefined,
-      category: data.product.categories_tags?.[0] || undefined,
+      brand,
+      category: categoryTag,
     };
 
     barcodeCache.set(trimmedBarcode, { product, timestamp: Date.now() });

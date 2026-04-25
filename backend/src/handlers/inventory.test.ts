@@ -1906,4 +1906,131 @@ describe('Inventory Lambda handler', () => {
       );
     });
   });
+
+  describe('POST /inventory/barcode-lookup', () => {
+    const mockFetch = jest.fn();
+
+    beforeEach(() => {
+      global.fetch = mockFetch;
+      mockFetch.mockReset();
+    });
+
+    function makeLookupEvent(barcode: string) {
+      return makeEvent({
+        httpMethod: 'POST',
+        resource: '/inventory/barcode-lookup',
+        path: '/inventory/barcode-lookup',
+        body: JSON.stringify({ barcode }),
+      });
+    }
+
+    function mockOpenFoodFacts(product: Record<string, unknown> | null) {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () =>
+          product
+            ? { status: 1, product }
+            : { status: 0, product: null },
+      });
+    }
+
+    it('strips locale prefix from categories_tags (en:dairy-products → Dairy Products)', async () => {
+      mockOpenFoodFacts({
+        product_name: 'Organic Milk',
+        brands: 'Organic Valley',
+        categories_tags: ['en:dairy-products', 'en:milks'],
+      });
+
+      const result = await handler(makeLookupEvent('012345678901'));
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.found).toBe(true);
+      expect(body.product.category).toBe('Dairy Products');
+    });
+
+    it('prefers English tag over other language tags', async () => {
+      mockOpenFoodFacts({
+        product_name: 'Brie',
+        brands: 'President',
+        categories_tags: ['fr:fromages', 'en:cheeses', 'de:kase'],
+      });
+
+      const result = await handler(makeLookupEvent('012345678902'));
+      const body = JSON.parse(result.body);
+
+      expect(body.product.category).toBe('Cheeses');
+    });
+
+    it('falls back to first tag when no English tag exists', async () => {
+      mockOpenFoodFacts({
+        product_name: 'Baguette',
+        brands: 'Poilane',
+        categories_tags: ['fr:pains', 'de:brote'],
+      });
+
+      const result = await handler(makeLookupEvent('012345678903'));
+      const body = JSON.parse(result.body);
+
+      expect(body.product.category).toBe('Pains');
+    });
+
+    it('takes only the first brand when multiple are comma-separated', async () => {
+      mockOpenFoodFacts({
+        product_name: 'Mixed Nuts',
+        brands: 'Planters, Kraft, Heinz',
+        categories_tags: ['en:snacks'],
+      });
+
+      const result = await handler(makeLookupEvent('012345678904'));
+      const body = JSON.parse(result.body);
+
+      expect(body.product.brand).toBe('Planters');
+    });
+
+    it('converts hyphenated slug to title case (plant-based-foods → Plant Based Foods)', async () => {
+      mockOpenFoodFacts({
+        product_name: 'Oat Milk',
+        brands: 'Oatly',
+        categories_tags: ['en:plant-based-foods', 'en:non-dairy-milks'],
+      });
+
+      const result = await handler(makeLookupEvent('012345678905'));
+      const body = JSON.parse(result.body);
+
+      expect(body.product.category).toBe('Plant Based Foods');
+    });
+
+    it('returns found: false when product has no name', async () => {
+      mockOpenFoodFacts({ brands: 'Unknown', categories_tags: ['en:snacks'] });
+
+      const result = await handler(makeLookupEvent('012345678906'));
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.found).toBe(false);
+    });
+
+    it('returns found: false when Open Food Facts returns status 0', async () => {
+      mockOpenFoodFacts(null);
+
+      const result = await handler(makeLookupEvent('012345678907'));
+      const body = JSON.parse(result.body);
+
+      expect(body.found).toBe(false);
+    });
+
+    it('returns 400 when barcode is missing', async () => {
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'POST',
+          resource: '/inventory/barcode-lookup',
+          path: '/inventory/barcode-lookup',
+          body: JSON.stringify({}),
+        }),
+      );
+
+      expect(result.statusCode).toBe(400);
+    });
+  });
 });

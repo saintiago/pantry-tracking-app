@@ -181,18 +181,20 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onSubmit, 
   }, [isOpen, onClose]);
 
   // Full autofill function for barcode and name fields
-  const performFullAutofill = useCallback((item: InventoryItem) => {
+  // triggerField: the field that was used to search (always overwrite it with the full value)
+  const performFullAutofill = useCallback((item: InventoryItem, triggerField: string) => {
     setForm(prev => {
       const updates: Partial<typeof prev> = {};
       const newPrefilledFields = new Set<string>();
 
-      if (!prev.name && item.name) { updates.name = item.name; newPrefilledFields.add('name'); }
+      if ((triggerField === 'name' || !prev.name) && item.name) { updates.name = item.name; newPrefilledFields.add('name'); }
       if (!prev.category && item.category) { updates.category = item.category; newPrefilledFields.add('category'); }
       if (!prev.brand && item.brand) { updates.brand = item.brand; newPrefilledFields.add('brand'); }
       if (!prev.unit && item.unit && VALID_UNITS.includes(item.unit as any)) { updates.unit = item.unit; newPrefilledFields.add('unit'); }
+      if (!prev.locationId && item.location) { updates.locationId = item.location; newPrefilledFields.add('locationId'); }
       if (!prev.whereToBuy && item.whereToBuy) { updates.whereToBuy = item.whereToBuy; newPrefilledFields.add('whereToBuy'); }
       if (!prev.onlineStoreLink && item.onlineStoreLink) { updates.onlineStoreLink = item.onlineStoreLink; newPrefilledFields.add('onlineStoreLink'); }
-      if (!prev.barcode && item.barcode) { updates.barcode = item.barcode; newPrefilledFields.add('barcode'); }
+      if ((triggerField === 'barcode' || !prev.barcode) && item.barcode) { updates.barcode = item.barcode; newPrefilledFields.add('barcode'); }
 
       if (newPrefilledFields.size > 0) {
         setPrefilledFields(p => new Set([...p, ...newPrefilledFields]));
@@ -371,7 +373,7 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onSubmit, 
     if (field === 'barcode' || field === 'name') {
       // Full autofill fields
       if (dropdown.items && dropdown.items[index]) {
-        performFullAutofill(dropdown.items[index]);
+        performFullAutofill(dropdown.items[index], field);
       }
     } else {
       // Single autofill fields
