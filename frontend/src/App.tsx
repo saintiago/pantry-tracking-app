@@ -29,7 +29,6 @@ interface ItemDetailPageState {
 }
 
 const mainPages: Partial<Record<PageId, React.FC>> = {
-  inventory: InventoryPage,
   recipes: RecipesPage,
   'meal-plan': MealPlanPage,
   'shopping-list': ShoppingListPage,
