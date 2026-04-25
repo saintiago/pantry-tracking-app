@@ -1,7 +1,8 @@
 import { API_URL } from '../../config';
 import { getCurrentSession } from '../../auth/cognitoClient/cognitoClient';
+import type { InventoryItem } from '../../components/InventoryList/InventoryList';
 
-export type { InventoryItem } from '../components/InventoryList/InventoryList';
+export type { InventoryItem } from '../../components/InventoryList/InventoryList';
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const session = await getCurrentSession();
@@ -15,12 +16,12 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 }
 
 export interface FetchInventoryResponse {
-  items: import('../components/InventoryList/InventoryList').InventoryItem[];
+  items: InventoryItem[];
   lastEvaluatedKey?: string;
 }
 
 export interface MutationResponse {
-  item: import('../components/InventoryList/InventoryList').InventoryItem;
+  item: InventoryItem;
   lowStockTransition?: boolean;
   notification?: { type: string; message: string; itemId: string };
 }
@@ -81,7 +82,7 @@ export async function deleteInventoryItem(itemId: string): Promise<void> {
 }
 
 export async function fetchLowStockItems(): Promise<{
-  items: import('../components/InventoryList/InventoryList').InventoryItem[];
+  items: InventoryItem[];
 }> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${API_URL}/inventory/low-stock`, { headers });
@@ -123,7 +124,7 @@ export interface InventorySearchResponse {
   field: string;
   query: string;
   resultType: 'items' | 'values';
-  items?: import('../components/InventoryList/InventoryList').InventoryItem[];
+  items?: InventoryItem[];
   values?: string[];
   count: number;
 }

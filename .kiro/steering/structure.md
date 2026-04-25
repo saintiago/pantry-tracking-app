@@ -50,12 +50,14 @@ pantry-tracking-app/
 - Frontend pages go in `frontend/src/pages/` as `<Name>Page.tsx`
 - Shared frontend components go in `frontend/src/components/`
 - Feature-specific frontend modules get their own folder (e.g., `frontend/src/auth/`)
+- API client modules go in `frontend/src/api/<feature>/` as `<feature>.ts` with `__tests__/<feature>.test.ts`
 - Backend handlers go in `backend/src/handlers/` (one file per Lambda)
 - Tests go in `__tests__/` sibling directories next to the source they test
   - Unit tests use `.test.ts` / `.test.tsx` suffix
   - Property-based tests use `.property.test.ts` / `.property.test.tsx` suffix
   - Test file names match the source file they cover (e.g., `InventoryList.test.tsx` tests `InventoryList.tsx`)
-- E2E tests go in `e2e/` at the project root using `.spec.ts` suffix
+- E2E tests go in `e2e/` at the project root using `.spec.ts` suffix — one file per page/feature
 - DynamoDB uses single-table design with PK/SK and GSI1PK/GSI1SK
 - Frontend uses simple state-based page routing via Layout component (no router library)
+- **Prefer full-page navigation over modals/overlays.** New features that require a form or detail view must use a dedicated `<Name>Page.tsx` registered as a `PageId` in `App.tsx`, following the pattern established by `AddItemPage` and `ItemDetailPage`. Modals are only acceptable for simple confirmations (e.g., delete confirmation dialogs).
 - Environment config is injected at build time via Vite `define` and read from `config.ts`

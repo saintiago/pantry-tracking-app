@@ -12,7 +12,6 @@ The Pantry Tracking App is a web-based Progressive Web Application (PWA) that he
 - **Receipt_Processor**: Backend service using AWS Textract for OCR processing of supermarket receipts
 - **Inventory_Item**: A food or household product stored in one of the storage locations with quantity, expiration date, and threshold information
 - **Storage_Location**: A beautiful user-defined named location where items are stored. Each beautiful user starts with a default "Pantry" location and can add, rename, or remove additional locations
-- **Recipe**: A collection of ingredients with quantities and preparation instructions
 - **Meal_Plan**: A scheduled assignment of recipes to specific meals (breakfast, lunch, dinner) on calendar dates
 - **Shopping_List**: A calculated list of items needed based on meal plans and current inventory
 - **Threshold**: A beautiful user-defined minimum quantity that triggers low-stock notifications
@@ -144,28 +143,11 @@ The Pantry Tracking App is a web-based Progressive Web Application (PWA) that he
 
 ### Requirement 10: Recipe Management
 
-**User Story:** As a beautiful user, I want to add and manage recipes, so that I can plan meals and generate shopping lists.
-
-#### Acceptance Criteria
-
-1. THE Pantry_App SHALL allow beautiful users to create recipes with a name, ingredients list, instructions, and an optional source URL
-2. WHEN creating a recipe, THE Pantry_App SHALL require at least one ingredient with a quantity and unit
-3. WHEN the beautiful user saves a valid recipe, THE Pantry_App SHALL store the recipe in the beautiful user's recipe collection
-4. THE Pantry_App SHALL allow beautiful users to edit existing recipes
-5. WHEN the beautiful user deletes a recipe, THE Pantry_App SHALL remove it from the recipe collection
-6. IF a recipe is assigned to a meal plan, THEN THE Pantry_App SHALL warn the beautiful user before deletion
-7. WHEN a recipe has a source URL, THE Pantry_App SHALL display a link to open the original recipe page
+> Moved to `.kiro/specs/recipe-management/requirements.md` (Requirements 1 & 2).
 
 ### Requirement 11: Recipe Ingredient Availability Check
 
-**User Story:** As a beautiful user, I want to see which recipe ingredients I already have, so that I know what I need to buy.
-
-#### Acceptance Criteria
-
-1. WHEN viewing a recipe, THE Pantry_App SHALL compare recipe ingredients against current inventory across all storage locations
-2. THE Pantry_App SHALL display each ingredient with its availability status (available, partial, missing)
-3. WHEN an ingredient is partially available, THE Pantry_App SHALL show the quantity needed versus quantity in inventory
-4. THE Pantry_App SHALL calculate and display the total number of missing ingredients for each recipe
+> Moved to `.kiro/specs/recipe-management/requirements.md` (Requirements 1 & 2).
 
 ### Requirement 13: Meal Planner Calendar
 

@@ -143,7 +143,7 @@ export class PantryStack extends cdk.Stack {
       functionName: 'PantryAuthFunction',
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'handler',
-      entry: path.join(__dirname, '../../backend/src/handlers/auth.ts'),
+      entry: path.join(__dirname, '../../backend/src/handlers/auth/auth.ts'),
       environment: {
         USER_POOL_ID: this.userPool.userPoolId,
         USER_POOL_CLIENT_ID: this.userPoolClient.userPoolClientId,
@@ -166,7 +166,7 @@ export class PantryStack extends cdk.Stack {
       functionName: 'PantryStorageLocationFunction',
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'handler',
-      entry: path.join(__dirname, '../../backend/src/handlers/storage-location.ts'),
+      entry: path.join(__dirname, '../../backend/src/handlers/storage-location/storage-location.ts'),
       environment: {
         TABLE_NAME: this.table.tableName,
       },
@@ -196,7 +196,7 @@ export class PantryStack extends cdk.Stack {
       functionName: 'PantryInventoryFunction',
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'handler',
-      entry: path.join(__dirname, '../../backend/src/handlers/inventory.ts'),
+      entry: path.join(__dirname, '../../backend/src/handlers/inventory/inventory.ts'),
       environment: {
         TABLE_NAME: this.table.tableName,
         STORAGE_BUCKET: this.storageBucket.bucketName,
@@ -227,6 +227,33 @@ export class PantryStack extends cdk.Stack {
     const inventoryItemIdResource = inventoryResource.addResource('{itemId}');
     inventoryItemIdResource.addMethod('PUT', inventoryIntegration, authMethodOptions);
     inventoryItemIdResource.addMethod('DELETE', inventoryIntegration, authMethodOptions);
+
+    // ─── Recipe Lambda ──────────────────────────────────────────────
+    const recipeLambda = new NodejsFunction(this, 'RecipeLambda', {
+      functionName: 'PantryRecipeFunction',
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'handler',
+      entry: path.join(__dirname, '../../backend/src/handlers/recipe/recipe.ts'),
+      environment: {
+        TABLE_NAME: this.table.tableName,
+      },
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 256,
+    });
+
+    this.table.grantReadWriteData(recipeLambda);
+
+    // API Gateway: /recipes routes (authenticated)
+    const recipesResource = this.api.root.addResource('recipes');
+    const recipeIntegration = new apigateway.LambdaIntegration(recipeLambda);
+
+    recipesResource.addMethod('GET', recipeIntegration, authMethodOptions);
+    recipesResource.addMethod('POST', recipeIntegration, authMethodOptions);
+
+    const recipeIdResource = recipesResource.addResource('{recipeId}');
+    recipeIdResource.addMethod('GET', recipeIntegration, authMethodOptions);
+    recipeIdResource.addMethod('PUT', recipeIntegration, authMethodOptions);
+    recipeIdResource.addMethod('DELETE', recipeIntegration, authMethodOptions);
 
     // ─── CloudFront Distribution ─────────────────────────────────────
     const originAccessIdentity = new cloudfront.OriginAccessIdentity(

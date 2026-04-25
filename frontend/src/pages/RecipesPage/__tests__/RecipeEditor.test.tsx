@@ -1,0 +1,263 @@
+import React from 'react';
+import { render, screen, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom';
+import userEvent from '@testing-library/user-event';
+import RecipeEditor from '../RecipeEditor';
+import * as recipesApi from '../../../api/recipes/recipes';
+import type { Recipe, RecipeWithAvailability } from '../../../api/recipes/recipes';
+
+jest.mock('../../../api/recipes/recipes');
+
+const mockCreate = recipesApi.createRecipe as jest.MockedFunction<typeof recipesApi.createRecipe>;
+const mockUpdate = recipesApi.updateRecipe as jest.MockedFunction<typeof recipesApi.updateRecipe>;
+const mockFetch = recipesApi.fetchRecipeWithAvailability as jest.MockedFunction<
+  typeof recipesApi.fetchRecipeWithAvailability
+>;
+
+function makeRecipe(overrides: Partial<Recipe> = {}): Recipe {
+  return {
+    recipeId: 'r1',
+    userId: 'user-1',
+    name: 'Pasta Carbonara',
+    instructions: 'Boil pasta. Mix eggs and cheese. Combine.',
+    ingredients: [{ name: 'Pasta', quantity: 200, unit: 'g' }],
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    syncVersion: 1,
+    ...overrides,
+  };
+}
+
+function makeAvailability(recipe: Recipe): RecipeWithAvailability {
+  return {
+    recipe,
+    ingredientAvailability: [],
+    missingCount: 0,
+  };
+}
+
+describe('RecipeEditor — create mode', () => {
+  const onSaved = jest.fn();
+  const onCancel = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('renders create form with empty fields', () => {
+    render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} />);
+    expect(screen.getByRole('heading', { name: /new recipe/i })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /^name$/i })).toHaveValue('');
+    expect(screen.getByRole('textbox', { name: /instructions/i })).toHaveValue('');
+    expect(screen.getByRole('textbox', { name: /source url/i })).toHaveValue('');
+  });
+
+  it('renders one empty ingredient row by default', () => {
+    render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} />);
+    expect(screen.getByLabelText(/ingredient 1 name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/ingredient 1 quantity/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/ingredient 1 unit/i)).toBeInTheDocument();
+  });
+
+  it('calls onCancel when Cancel button is clicked', async () => {
+    const user = userEvent.setup();
+    render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} />);
+    await user.click(screen.getByRole('button', { name: /cancel/i }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows validation errors when submitting empty form', async () => {
+    const user = userEvent.setup();
+    render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} />);
+    await user.click(screen.getByRole('button', { name: /create recipe/i }));
+    expect(await screen.findByText(/recipe name is required/i)).toBeInTheDocument();
+    expect(screen.getByText(/instructions are required/i)).toBeInTheDocument();
+  });
+
+  it('shows ingredient validation errors on submit', async () => {
+    const user = userEvent.setup();
+    render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} />);
+    // Fill required top-level fields but leave ingredient empty
+    await user.type(screen.getByRole('textbox', { name: /^name$/i }), 'My Recipe');
+    await user.type(screen.getByLabelText(/instructions/i), 'Do stuff');
+    await user.click(screen.getByRole('button', { name: /create recipe/i }));
+    expect(await screen.findByText(/name is required/i)).toBeInTheDocument();
+    expect(screen.getByText(/must be > 0/i)).toBeInTheDocument();
+    expect(screen.getByText(/unit is required/i)).toBeInTheDocument();
+  });
+
+  it('adds a new ingredient row when Add Ingredient is clicked', async () => {
+    const user = userEvent.setup();
+    render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} />);
+    await user.click(screen.getByRole('button', { name: /add ingredient/i }));
+    expect(screen.getByLabelText(/ingredient 2 name/i)).toBeInTheDocument();
+  });
+
+  it('remove button is disabled when only one ingredient row exists', () => {
+    render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} />);
+    expect(screen.getByRole('button', { name: /remove ingredient 1/i })).toBeDisabled();
+  });
+
+  it('removes an ingredient row when remove is clicked (with 2+ rows)', async () => {
+    const user = userEvent.setup();
+    render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} />);
+    await user.click(screen.getByRole('button', { name: /add ingredient/i }));
+    expect(screen.getByLabelText(/ingredient 2 name/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /remove ingredient 2/i }));
+    expect(screen.queryByLabelText(/ingredient 2 name/i)).not.toBeInTheDocument();
+  });
+
+  it('calls createRecipe and onSaved on successful submit', async () => {
+    const user = userEvent.setup();
+    const newRecipe = makeRecipe({ recipeId: 'new-id' });
+    mockCreate.mockResolvedValue(newRecipe);
+
+    render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} />);
+
+    await user.type(screen.getByRole('textbox', { name: /^name$/i }), 'Pasta');
+    await user.type(screen.getByRole('textbox', { name: /instructions/i }), 'Cook it');
+    await user.type(screen.getByLabelText(/ingredient 1 name/i), 'Pasta');
+    await user.clear(screen.getByLabelText(/ingredient 1 quantity/i));
+    await user.type(screen.getByLabelText(/ingredient 1 quantity/i), '200');
+    await user.type(screen.getByLabelText(/ingredient 1 unit/i), 'g');
+
+    await user.click(screen.getByRole('button', { name: /create recipe/i }));
+
+    await waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1));
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Pasta',
+        instructions: 'Cook it',
+        ingredients: [{ name: 'Pasta', quantity: 200, unit: 'g' }],
+      }),
+    );
+    expect(onSaved).toHaveBeenCalledWith('new-id');
+  });
+
+  it('shows submit error banner when createRecipe fails', async () => {
+    const user = userEvent.setup();
+    mockCreate.mockRejectedValue(new Error('Server error'));
+
+    render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} />);
+
+    await user.type(screen.getByRole('textbox', { name: /^name$/i }), 'Pasta');
+    await user.type(screen.getByRole('textbox', { name: /instructions/i }), 'Cook it');
+    await user.type(screen.getByLabelText(/ingredient 1 name/i), 'Pasta');
+    await user.clear(screen.getByLabelText(/ingredient 1 quantity/i));
+    await user.type(screen.getByLabelText(/ingredient 1 quantity/i), '200');
+    await user.type(screen.getByLabelText(/ingredient 1 unit/i), 'g');
+
+    await user.click(screen.getByRole('button', { name: /create recipe/i }));
+
+    expect(await screen.findByText('Server error')).toBeInTheDocument();
+    expect(onSaved).not.toHaveBeenCalled();
+  });
+
+  it('omits sourceUrl from payload when left empty', async () => {
+    const user = userEvent.setup();
+    mockCreate.mockResolvedValue(makeRecipe());
+
+    render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} />);
+
+    await user.type(screen.getByRole('textbox', { name: /^name$/i }), 'Pasta');
+    await user.type(screen.getByRole('textbox', { name: /instructions/i }), 'Cook it');
+    await user.type(screen.getByLabelText(/ingredient 1 name/i), 'Pasta');
+    await user.clear(screen.getByLabelText(/ingredient 1 quantity/i));
+    await user.type(screen.getByLabelText(/ingredient 1 quantity/i), '200');
+    await user.type(screen.getByLabelText(/ingredient 1 unit/i), 'g');
+
+    await user.click(screen.getByRole('button', { name: /create recipe/i }));
+
+    await waitFor(() => expect(mockCreate).toHaveBeenCalled());
+    const payload = mockCreate.mock.calls[0][0];
+    expect(payload.sourceUrl).toBeUndefined();
+  });
+});
+
+describe('RecipeEditor — edit mode', () => {
+  const onSaved = jest.fn();
+  const onCancel = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('shows loading state while fetching recipe', () => {
+    mockFetch.mockReturnValue(new Promise(() => {}));
+    render(<RecipeEditor recipeId="r1" onSaved={onSaved} onCancel={onCancel} />);
+    expect(screen.getByRole('status', { name: /loading recipe/i })).toBeInTheDocument();
+  });
+
+  it('shows error state when fetch fails', async () => {
+    mockFetch.mockRejectedValue(new Error('Not found'));
+    render(<RecipeEditor recipeId="r1" onSaved={onSaved} onCancel={onCancel} />);
+    expect(await screen.findByText('Not found')).toBeInTheDocument();
+  });
+
+  it('pre-populates form fields from fetched recipe', async () => {
+    const recipe = makeRecipe({
+      name: 'Chicken Soup',
+      instructions: 'Boil chicken',
+      sourceUrl: 'https://example.com',
+      ingredients: [
+        { name: 'Chicken', quantity: 500, unit: 'g' },
+        { name: 'Water', quantity: 1, unit: 'L' },
+      ],
+    });
+    mockFetch.mockResolvedValue(makeAvailability(recipe));
+
+    render(<RecipeEditor recipeId="r1" onSaved={onSaved} onCancel={onCancel} />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: /^name$/i })).toHaveValue('Chicken Soup'),
+    );
+    expect(screen.getByRole('textbox', { name: /instructions/i })).toHaveValue('Boil chicken');
+    expect(screen.getByRole('textbox', { name: /source url/i })).toHaveValue('https://example.com');
+    expect(screen.getByLabelText(/ingredient 1 name/i)).toHaveValue('Chicken');
+    expect(screen.getByLabelText(/ingredient 2 name/i)).toHaveValue('Water');
+  });
+
+  it('renders Edit Recipe heading in edit mode', async () => {
+    mockFetch.mockResolvedValue(makeAvailability(makeRecipe()));
+    render(<RecipeEditor recipeId="r1" onSaved={onSaved} onCancel={onCancel} />);
+    await waitFor(() => expect(screen.getByRole('heading', { name: /edit recipe/i })).toBeInTheDocument());
+  });
+
+  it('calls updateRecipe and onSaved on successful submit', async () => {
+    const user = userEvent.setup();
+    const recipe = makeRecipe();
+    mockFetch.mockResolvedValue(makeAvailability(recipe));
+    mockUpdate.mockResolvedValue({ ...recipe, name: 'Updated Name' });
+
+    render(<RecipeEditor recipeId="r1" onSaved={onSaved} onCancel={onCancel} />);
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: /^name$/i })).toHaveValue('Pasta Carbonara'),
+    );
+
+    // Clear and retype name
+    await user.clear(screen.getByRole('textbox', { name: /^name$/i }));
+    await user.type(screen.getByRole('textbox', { name: /^name$/i }), 'Updated Name');
+
+    await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+    await waitFor(() => expect(mockUpdate).toHaveBeenCalledTimes(1));
+    expect(mockUpdate).toHaveBeenCalledWith('r1', expect.objectContaining({ name: 'Updated Name' }));
+    expect(onSaved).toHaveBeenCalledWith('r1');
+  });
+
+  it('shows submit error banner when updateRecipe fails', async () => {
+    const user = userEvent.setup();
+    mockFetch.mockResolvedValue(makeAvailability(makeRecipe()));
+    mockUpdate.mockRejectedValue(new Error('Update failed'));
+
+    render(<RecipeEditor recipeId="r1" onSaved={onSaved} onCancel={onCancel} />);
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: /^name$/i })).toHaveValue('Pasta Carbonara'),
+    );
+
+    await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+    expect(await screen.findByText('Update failed')).toBeInTheDocument();
+    expect(onSaved).not.toHaveBeenCalled();
+  });
+});

@@ -180,10 +180,9 @@ sequenceDiagram
 - **InAppNotification**: Displays low-stock notifications within the app
 
 #### 4. Recipe Module
-- **RecipeList**: Recipe collection with search
-- **RecipeDetail**: Full recipe view with ingredient availability
-- **RecipeEditor**: Create/edit recipe form
-- **IngredientAvailability**: Shows inventory match status across all storage locations
+
+> Moved to `.kiro/specs/recipe-management/design.md`.
+> Components: RecipeList, RecipeDetail, RecipeEditor, IngredientAvailability.
 
 #### 5. Meal Planning Module
 - **MealCalendar**: Weekly/monthly calendar view
@@ -272,26 +271,9 @@ interface BarcodeLookupResponse {
 ```
 
 #### 3. Recipe Lambda
-```typescript
-// GET /recipes - List all recipes
-// POST /recipes - Create recipe
-interface CreateRecipeRequest {
-  name: string;
-  ingredients: RecipeIngredient[];
-  instructions: string;
-  sourceUrl?: string;
-}
 
-// GET /recipes/{recipeId} - Get recipe with availability
-interface RecipeWithAvailability {
-  recipe: Recipe;
-  ingredientAvailability: IngredientStatus[];
-  missingCount: number;
-}
-
-// PUT /recipes/{recipeId} - Update recipe
-// DELETE /recipes/{recipeId} - Delete recipe
-```
+> Moved to `.kiro/specs/recipe-management/design.md`.
+> Routes: GET /recipes, POST /recipes, GET /recipes/{recipeId}, PUT /recipes/{recipeId}, DELETE /recipes/{recipeId}.
 
 #### 5. Meal Plan Lambda
 ```typescript
@@ -504,29 +486,8 @@ interface StorageLocation {
 ```
 
 #### Recipe
-```typescript
-interface Recipe {
-  PK: string;           // USER#<userId>
-  SK: string;           // RECIPE#<recipeId>
-  entityType: 'Recipe';
-  recipeId: string;
-  userId: string;
-  name: string;
-  ingredients: RecipeIngredient[];
-  instructions: string;
-  sourceUrl?: string;   // Optional link to original recipe page
-  createdAt: string;
-  updatedAt: string;
-  syncVersion: number;
-}
 
-interface RecipeIngredient {
-  name: string;
-  quantity: number;
-  unit: string;
-  inventoryItemId?: string; // Optional link to inventory item
-}
-```
+> Moved to `.kiro/specs/recipe-management/design.md`. Schema defined in `data-model.md`.
 
 #### MealPlan
 ```typescript
@@ -618,12 +579,10 @@ interface PantryAppDB {
     };
   };
   recipes: {
+    // See .kiro/specs/recipe-management/design.md
     key: string;        // recipeId
     value: Recipe;
-    indexes: {
-      byName: string;
-      bySyncVersion: number;
-    };
+    indexes: { byName: string; bySyncVersion: number; };
   };
   mealPlans: {
     key: string;        // planId
@@ -715,32 +674,9 @@ interface PantryAppDB {
 
 **Validates: Requirements 3.5, 4.1, 17.3**
 
-### Property 10: Recipe CRUD Persistence
+### Property 10–13: Recipe Properties
 
-*For any* valid recipe data, creating a recipe and then retrieving it should return matching data. Updating a recipe should persist the changes. Deleting a recipe should remove it from the collection.
-
-**Validates: Requirements 10.1, 10.3, 10.4, 10.5**
-
-### Property 11: Recipe Requires Ingredients
-
-*For any* recipe creation or update attempt, if the ingredients list is empty or any ingredient lacks a quantity or unit, the operation should be rejected with a validation error.
-
-**Validates: Requirements 10.2**
-
-### Property 12: Ingredient Availability Calculation
-
-*For any* recipe ingredient and inventory state (across all storage locations), the availability status should be:
-- "available" if total inventory quantity >= required quantity
-- "partial" if 0 < total inventory quantity < required quantity
-- "missing" if total inventory quantity = 0 or ingredient not in inventory
-
-**Validates: Requirements 11.1, 11.2, 11.3**
-
-### Property 13: Missing Ingredient Count Accuracy
-
-*For any* recipe, the total missing ingredient count should equal the number of ingredients with status "partial" or "missing".
-
-**Validates: Requirements 11.4**
+> Moved to `.kiro/specs/recipe-management/requirements.md` and `.kiro/specs/recipe-management/design.md`.
 
 ### Property 16: Meal Plan CRUD Persistence
 
