@@ -277,12 +277,12 @@ async function autoCreateMissingIngredients(userId, ingredients): Promise<void>
 
 Placeholder item fields:
 - `quantity`: 0
-- `category`: `"Unknown"`
+- `category`: `"Uncategorized"`
 - `isLowStock`: `true` (quantity 0 means out of stock)
 - `unit`: ingredient's unit if it is a valid `UnitType`, otherwise `"Unit"`
 - `location`: `"unknown"` (sentinel — bypasses the required location field)
 - `expirationDate`: `"2099-12-31"` (far-future — bypasses the required expiration field)
-- `GSI1PK`: `USER#<userId>#CAT#Unknown` (category key so items appear in the "Unknown" category view in inventory)
+- `GSI1PK`: `USER#<userId>#CAT#Uncategorized` (category key so items appear in the "Uncategorized" category view in inventory)
 
 The `GET /inventory/search` endpoint now returns `resultType: 'items'` for all fields including `category`, `brand`, `whereToBuy`, and `onlineStoreLink` (previously returned `resultType: 'values'`). The response includes both `items` (matching inventory items) and `values` (distinct field values, for backward compatibility). This enables the RecipeEditor to fan out searches across all fields and show full item results regardless of which field matched.
 

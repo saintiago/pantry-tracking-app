@@ -123,11 +123,15 @@ async function autoCreateMissingIngredients(
     (inventoryResult.Items ?? []).map((item) => (item.name as string).toLowerCase()),
   );
 
+  console.log(`autoCreateMissingIngredients: found ${inventoryResult.Items?.length ?? 0} existing items, checking ${ingredients.length} ingredients`);
+
+  const toCreate = ingredients.filter((ing) => !existingNames.has(ing.name.toLowerCase()));
+  console.log(`autoCreateMissingIngredients: creating ${toCreate.length} placeholder items:`, toCreate.map(i => i.name));
+
   const now = new Date().toISOString();
 
   await Promise.all(
-    ingredients
-      .filter((ing) => !existingNames.has(ing.name.toLowerCase()))
+    toCreate
       .map((ing) => {
         const itemId = randomUUID();
         const unit = VALID_UNITS.includes(ing.unit as typeof VALID_UNITS[number])
@@ -140,7 +144,7 @@ async function autoCreateMissingIngredients(
           itemId,
           userId,
           name: ing.name,
-          category: 'Unknown',
+          category: 'Uncategorized',
           expirationDate: '2099-12-31',
           location: 'unknown',
           quantity: 0,

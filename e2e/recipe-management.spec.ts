@@ -546,7 +546,7 @@ test.describe('Recipe Management', () => {
             items: [{
               itemId: 'auto-1',
               name: 'Dragon Fruit',
-              category: 'Unknown',
+              category: 'Uncategorized',
               quantity: 0,
               unit: 'Unit',
               isLowStock: true,
@@ -579,10 +579,10 @@ test.describe('Recipe Management', () => {
     await page.getByRole('button', { name: 'Inventory' }).click();
     await page.waitForSelector('h2:has-text("Inventory")', { timeout: 5000 });
 
-    // The auto-created item should appear under the "Unknown" category card
-    await expect(page.getByText('Unknown')).toBeVisible({ timeout: 3000 });
-    // Click the Unknown category to drill in
-    await page.getByText('Unknown').click();
+    // The auto-created item should appear under the "Uncategorized" category card
+    await expect(page.getByText('Uncategorized')).toBeVisible({ timeout: 3000 });
+    // Click the Uncategorized category to drill in
+    await page.getByText('Uncategorized').click();
     await expect(page.getByText('Dragon Fruit')).toBeVisible({ timeout: 3000 });
   });
 });

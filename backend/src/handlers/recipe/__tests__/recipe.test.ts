@@ -212,7 +212,7 @@ describe('Recipe Lambda handler', () => {
       // Check the placeholder items have correct fields
       const placeholderCalls = PutCommand.mock.calls.slice(1);
       for (const [item] of placeholderCalls) {
-        expect(item.Item.category).toBe('Unknown');
+        expect(item.Item.category).toBe('Uncategorized');
         expect(item.Item.quantity).toBe(0);
         expect(item.Item.isLowStock).toBe(true);
         expect(item.Item.location).toBe('unknown');

@@ -79,10 +79,15 @@ const LoadingSpinner: React.FC = () => (
 
 const AuthenticatedApp: React.FC = () => {
   const [activePage, setActivePage] = useState<PageId>('inventory');
+  const [inventoryKey, setInventoryKey] = useState(0);
   const [addItemPageProps, setAddItemPageProps] = useState<AddItemPageState | null>(null);
   const [itemDetailPageProps, setItemDetailPageProps] = useState<ItemDetailPageState | null>(null);
 
   const handleNavigate = (page: PageId) => {
+    // Bump key when navigating back to inventory from another page — forces a fresh data fetch
+    if (page === 'inventory' && activePage !== 'inventory' && activePage !== 'add-item' && activePage !== 'item-detail') {
+      setInventoryKey((k) => k + 1);
+    }
     setActivePage(page);
   };
 
@@ -134,6 +139,7 @@ const AuthenticatedApp: React.FC = () => {
     if (activePage === 'inventory' || activePage === 'add-item' || activePage === 'item-detail') {
       return (
         <InventoryPage
+          key={inventoryKey}
           onNavigate={handleNavigate}
           onNavigateToAddItem={handleNavigateToAddItem}
           onNavigateToItemDetail={handleNavigateToItemDetail}
