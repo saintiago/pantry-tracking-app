@@ -6,12 +6,14 @@ dist/
 build/
 cdk.out
 scripts/cdk-outputs.json
+infrastructure/scripts/cdk-outputs.json
 scripts/.env.deploy/
 
 # Environment files
 .env
 .env.local
 .env.*.local
+.env.test
 
 # IDE
 .idea/
@@ -29,6 +31,10 @@ Thumbs.db
 
 # Test coverage
 coverage/
+
+# Playwright
+playwright-report/
+test-results/
 
 # Logs
 *.log

@@ -14,9 +14,13 @@
     "test": "npm run test --workspaces --if-present",
     "test:unit": "npm run test:unit --workspaces --if-present",
     "test:property": "npm run test:property --workspaces --if-present",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
     "type-check": "npm run type-check --workspaces --if-present"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "eslint": "^8.57.0",

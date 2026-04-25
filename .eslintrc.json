@@ -14,5 +14,13 @@
     "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
     "@typescript-eslint/no-explicit-any": "warn"
   },
-  "ignorePatterns": ["dist", "build", "cdk.out", "node_modules", "coverage"]
+  "ignorePatterns": ["dist", "build", "cdk.out", "node_modules", "coverage"],
+  "overrides": [
+    {
+      "files": ["frontend/public/sw.js"],
+      "env": {
+        "serviceworker": true
+      }
+    }
+  ]
 }

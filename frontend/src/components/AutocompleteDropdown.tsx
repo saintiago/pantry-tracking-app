@@ -168,7 +168,7 @@ const AutocompleteDropdown: React.FC<AutocompleteDropdownProps> = ({
             id={getItemId(index)}
             role="option"
             aria-selected={index === focusedIndex}
-            onClick={() => onSelect(index)}
+            onMouseDown={(e) => { e.preventDefault(); onSelect(index); }}
             onMouseEnter={() => onFocusChange(index)}
             style={{
               ...styles.dropdownItem,
@@ -188,7 +188,7 @@ const AutocompleteDropdown: React.FC<AutocompleteDropdownProps> = ({
             id={getItemId(index)}
             role="option"
             aria-selected={index === focusedIndex}
-            onClick={() => onSelect(index)}
+            onMouseDown={(e) => { e.preventDefault(); onSelect(index); }}
             onMouseEnter={() => onFocusChange(index)}
             style={{
               ...styles.dropdownItem,

@@ -46,7 +46,7 @@ function makeEvent(overrides: Partial<APIGatewayProxyEvent> = {}): APIGatewayPro
 
 const nameArb = fc
   .string({ minLength: 1, maxLength: 50 })
-  .map((s) => s.replace(/[\x00-\x1f]/g, 'a').trim())
+  .map((s) => s.replace(/[\x00-\x1f]/g, 'a').trim()) // eslint-disable-line no-control-regex
   .filter((s) => s.length > 0);
 
 const categoryArb = fc.constantFrom('Dairy', 'Bakery', 'Produce', 'Meat', 'Frozen', 'Snacks');

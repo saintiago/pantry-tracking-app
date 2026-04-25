@@ -45,7 +45,7 @@ function makeEvent(overrides: Partial<APIGatewayProxyEvent> = {}): APIGatewayPro
 /** Arbitrary for valid location names: non-empty trimmed strings */
 const locationNameArb = fc
   .string({ minLength: 1, maxLength: 50 })
-  .map((s) => s.replace(/[\x00-\x1f]/g, 'a').trim())
+  .map((s) => s.replace(/[\x00-\x1f]/g, 'a').trim()) // eslint-disable-line no-control-regex
   .filter((s) => s.length > 0);
 
 describe('Storage Location Property Tests', () => {

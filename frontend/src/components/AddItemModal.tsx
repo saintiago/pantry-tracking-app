@@ -182,51 +182,36 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onSubmit, 
 
   // Full autofill function for barcode and name fields
   const performFullAutofill = useCallback((item: InventoryItem) => {
-    const newPrefilledFields = new Set<string>();
-    const updates: Partial<typeof form> = {};
+    setForm(prev => {
+      const updates: Partial<typeof prev> = {};
+      const newPrefilledFields = new Set<string>();
 
-    // Only populate fields that don't have user-entered data
-    if (!form.name && item.name) {
-      updates.name = item.name;
-      newPrefilledFields.add('name');
-    }
-    if (!form.category && item.category) {
-      updates.category = item.category;
-      newPrefilledFields.add('category');
-    }
-    if (!form.brand && item.brand) {
-      updates.brand = item.brand;
-      newPrefilledFields.add('brand');
-    }
-    if (!form.unit && item.unit && VALID_UNITS.includes(item.unit as any)) {
-      updates.unit = item.unit;
-      newPrefilledFields.add('unit');
-    }
-    if (!form.whereToBuy && item.whereToBuy) {
-      updates.whereToBuy = item.whereToBuy;
-      newPrefilledFields.add('whereToBuy');
-    }
-    if (!form.onlineStoreLink && item.onlineStoreLink) {
-      updates.onlineStoreLink = item.onlineStoreLink;
-      newPrefilledFields.add('onlineStoreLink');
-    }
-    if (!form.barcode && item.barcode) {
-      updates.barcode = item.barcode;
-      newPrefilledFields.add('barcode');
-    }
+      if (!prev.name && item.name) { updates.name = item.name; newPrefilledFields.add('name'); }
+      if (!prev.category && item.category) { updates.category = item.category; newPrefilledFields.add('category'); }
+      if (!prev.brand && item.brand) { updates.brand = item.brand; newPrefilledFields.add('brand'); }
+      if (!prev.unit && item.unit && VALID_UNITS.includes(item.unit as any)) { updates.unit = item.unit; newPrefilledFields.add('unit'); }
+      if (!prev.whereToBuy && item.whereToBuy) { updates.whereToBuy = item.whereToBuy; newPrefilledFields.add('whereToBuy'); }
+      if (!prev.onlineStoreLink && item.onlineStoreLink) { updates.onlineStoreLink = item.onlineStoreLink; newPrefilledFields.add('onlineStoreLink'); }
+      if (!prev.barcode && item.barcode) { updates.barcode = item.barcode; newPrefilledFields.add('barcode'); }
 
-    setForm(prev => ({ ...prev, ...updates }));
-    setPrefilledFields(prev => new Set([...prev, ...newPrefilledFields]));
-  }, [form]);
+      if (newPrefilledFields.size > 0) {
+        setPrefilledFields(p => new Set([...p, ...newPrefilledFields]));
+      }
+      return { ...prev, ...updates };
+    });
+  }, []);
 
   // Single autofill function for category, brand, whereToBuy, onlineStoreLink fields
   const performSingleAutofill = useCallback((field: string, value: string) => {
-    // Only populate if field doesn't have user-entered data
-    if (!form[field as keyof typeof form]) {
-      setForm(prev => ({ ...prev, [field]: value }));
-      setPrefilledFields(prev => new Set([...prev, field]));
-    }
-  }, [form]);
+    // Always set the field the user selected from — they explicitly chose this value
+    setForm(prev => ({ ...prev, [field]: value }));
+    setPrefilledFields(prev => new Set([...prev, field]));
+    setUserEditedFields(prev => {
+      const next = new Set(prev);
+      next.delete(field);
+      return next;
+    });
+  }, []);
 
   // Trigger search for autocomplete
   const triggerSearch = useCallback(async (field: string, query: string) => {
@@ -278,31 +263,26 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onSubmit, 
       
       if (response.found && response.product) {
         const product = response.product;
-        const newPrefilledFields = new Set<string>();
-        const updates: Partial<typeof form> = {};
+        setForm(prev => {
+          const updates: Partial<typeof prev> = {};
+          const newPrefilledFields = new Set<string>();
 
-        if (!form.name && product.name) {
-          updates.name = product.name;
-          newPrefilledFields.add('name');
-        }
-        if (!form.category && product.category) {
-          updates.category = product.category;
-          newPrefilledFields.add('category');
-        }
-        if (!form.brand && product.brand) {
-          updates.brand = product.brand;
-          newPrefilledFields.add('brand');
-        }
+          if (!prev.name && product.name) { updates.name = product.name; newPrefilledFields.add('name'); }
+          if (!prev.category && product.category) { updates.category = product.category; newPrefilledFields.add('category'); }
+          if (!prev.brand && product.brand) { updates.brand = product.brand; newPrefilledFields.add('brand'); }
 
-        setForm(prev => ({ ...prev, ...updates }));
-        setPrefilledFields(prev => new Set([...prev, ...newPrefilledFields]));
+          if (newPrefilledFields.size > 0) {
+            setPrefilledFields(p => new Set([...p, ...newPrefilledFields]));
+          }
+          return { ...prev, ...updates };
+        });
       }
     } catch (error) {
       setLookupError('Unable to lookup barcode. Please check your connection and try again.');
     } finally {
       setLookupLoading(false);
     }
-  }, [lastLookupBarcode, lookupLoading, form]);
+  }, [lastLookupBarcode, lookupLoading]);
 
   const handleChange = useCallback(
     (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -729,7 +709,7 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ isOpen, onClose, onSubmit, 
                 aria-expanded={autocompleteDropdowns.barcode.visible}
               />
               {lookupLoading && (
-                <div style={styles.loadingIndicator}>Loading...</div>
+                <div style={styles.loadingIndicator}>Looking up...</div>
               )}
               {lookupError && (
                 <span style={styles.fieldError} role="alert">

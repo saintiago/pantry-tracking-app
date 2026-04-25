@@ -101,7 +101,7 @@ describe('AutocompleteDropdown', () => {
       const onSelect = jest.fn();
       render(<AutocompleteDropdown {...defaultProps} items={mockItems} onSelect={onSelect} />);
       
-      fireEvent.click(screen.getByText('Banana'));
+      fireEvent.mouseDown(screen.getByText('Banana'));
       expect(onSelect).toHaveBeenCalledWith(1);
     });
 
