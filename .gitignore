@@ -15,6 +15,7 @@ scripts/.env.deploy/
 
 # IDE
 .idea/
+.vscode/
 *.swp
 *.swo
 *~
