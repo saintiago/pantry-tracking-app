@@ -91,7 +91,7 @@ describe('RecipeEditor — create mode', () => {
     await user.type(screen.getByLabelText(/instructions/i), 'Do stuff');
     await user.click(screen.getByRole('button', { name: /create recipe/i }));
     expect(await screen.findByText(/name is required/i)).toBeInTheDocument();
-    expect(screen.getByText(/must be > 0/i)).toBeInTheDocument();
+    expect(screen.getByText(/enter a valid quantity/i)).toBeInTheDocument();
     expect(screen.getByText(/unit is required/i)).toBeInTheDocument();
   });
 
@@ -128,7 +128,7 @@ describe('RecipeEditor — create mode', () => {
     await user.type(screen.getByLabelText(/ingredient 1 name/i), 'Pasta');
     await user.clear(screen.getByLabelText(/ingredient 1 quantity/i));
     await user.type(screen.getByLabelText(/ingredient 1 quantity/i), '200');
-    await user.selectOptions(screen.getByLabelText(/ingredient 1 unit/i), 'Gram');
+    await user.selectOptions(screen.getByLabelText(/ingredient 1 unit/i), 'g');
     await user.type(screen.getByLabelText(/portions/i), '2');
 
     await user.click(screen.getByRole('button', { name: /create recipe/i }));
@@ -138,7 +138,7 @@ describe('RecipeEditor — create mode', () => {
       expect.objectContaining({
         name: 'Pasta',
         instructions: 'Cook it',
-        ingredients: [{ name: 'Pasta', quantity: 200, unit: 'Gram' }],
+        ingredients: [{ name: 'Pasta', quantity: 200, unit: 'g' }],
       }),
     );
     expect(onSaved).toHaveBeenCalledWith('new-id');
@@ -155,7 +155,7 @@ describe('RecipeEditor — create mode', () => {
     await user.type(screen.getByLabelText(/ingredient 1 name/i), 'Pasta');
     await user.clear(screen.getByLabelText(/ingredient 1 quantity/i));
     await user.type(screen.getByLabelText(/ingredient 1 quantity/i), '200');
-    await user.selectOptions(screen.getByLabelText(/ingredient 1 unit/i), 'Gram');
+    await user.selectOptions(screen.getByLabelText(/ingredient 1 unit/i), 'g');
     await user.type(screen.getByLabelText(/portions/i), '2');
 
     await user.click(screen.getByRole('button', { name: /create recipe/i }));
@@ -175,7 +175,7 @@ describe('RecipeEditor — create mode', () => {
     await user.type(screen.getByLabelText(/ingredient 1 name/i), 'Pasta');
     await user.clear(screen.getByLabelText(/ingredient 1 quantity/i));
     await user.type(screen.getByLabelText(/ingredient 1 quantity/i), '200');
-    await user.selectOptions(screen.getByLabelText(/ingredient 1 unit/i), 'Gram');
+    await user.selectOptions(screen.getByLabelText(/ingredient 1 unit/i), 'g');
     await user.type(screen.getByLabelText(/portions/i), '2');
 
     await user.click(screen.getByRole('button', { name: /create recipe/i }));
@@ -307,7 +307,7 @@ describe('RecipeEditor — create mode', () => {
     await user.click(screen.getByTestId('dropdown-item-0'));
 
     expect(screen.getByLabelText(/ingredient 1 name/i)).toHaveValue('Pasta');
-    expect(screen.getByLabelText(/ingredient 1 unit/i)).toHaveValue('Gram');
+    expect(screen.getByLabelText(/ingredient 1 unit/i)).toHaveValue('g');
 
     jest.useRealTimers();
   });
@@ -325,9 +325,8 @@ describe('RecipeEditor — create mode', () => {
     await user.type(screen.getByRole('textbox', { name: /^name$/i }), 'Pasta');
     await user.type(screen.getByRole('textbox', { name: /instructions/i }), 'Cook it');
     await user.type(screen.getByLabelText(/ingredient 1 name/i), 'Pasta');
-    await user.clear(screen.getByLabelText(/ingredient 1 quantity/i));
     await user.type(screen.getByLabelText(/ingredient 1 quantity/i), '200');
-    await user.selectOptions(screen.getByLabelText(/ingredient 1 unit/i), 'Gram');
+    await user.selectOptions(screen.getByLabelText(/ingredient 1 unit/i), 'g');
     // Leave portions empty
 
     await user.click(screen.getByRole('button', { name: /create recipe/i }));
@@ -343,9 +342,8 @@ describe('RecipeEditor — create mode', () => {
     await user.type(screen.getByRole('textbox', { name: /^name$/i }), 'Pasta');
     await user.type(screen.getByRole('textbox', { name: /instructions/i }), 'Cook it');
     await user.type(screen.getByLabelText(/ingredient 1 name/i), 'Pasta');
-    await user.clear(screen.getByLabelText(/ingredient 1 quantity/i));
     await user.type(screen.getByLabelText(/ingredient 1 quantity/i), '200');
-    await user.selectOptions(screen.getByLabelText(/ingredient 1 unit/i), 'Gram');
+    await user.selectOptions(screen.getByLabelText(/ingredient 1 unit/i), 'g');
     await user.type(screen.getByLabelText(/portions/i), '0');
 
     await user.click(screen.getByRole('button', { name: /create recipe/i }));
@@ -359,14 +357,13 @@ describe('RecipeEditor — create mode', () => {
     render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} />);
 
     // Set an ingredient quantity
-    await user.clear(screen.getByLabelText(/ingredient 1 quantity/i));
     await user.type(screen.getByLabelText(/ingredient 1 quantity/i), '200');
 
     // Change portions
     await user.type(screen.getByLabelText(/portions/i), '4');
 
-    // Quantity should remain unchanged
-    expect(screen.getByLabelText(/ingredient 1 quantity/i)).toHaveValue(200);
+    // Quantity should remain unchanged (text input now)
+    expect(screen.getByLabelText(/ingredient 1 quantity/i)).toHaveValue('200');
   });
 
   it('includes portions in the create API call payload', async () => {
@@ -378,9 +375,8 @@ describe('RecipeEditor — create mode', () => {
     await user.type(screen.getByRole('textbox', { name: /^name$/i }), 'Pasta');
     await user.type(screen.getByRole('textbox', { name: /instructions/i }), 'Cook it');
     await user.type(screen.getByLabelText(/ingredient 1 name/i), 'Pasta');
-    await user.clear(screen.getByLabelText(/ingredient 1 quantity/i));
     await user.type(screen.getByLabelText(/ingredient 1 quantity/i), '200');
-    await user.selectOptions(screen.getByLabelText(/ingredient 1 unit/i), 'Gram');
+    await user.selectOptions(screen.getByLabelText(/ingredient 1 unit/i), 'g');
     await user.type(screen.getByLabelText(/portions/i), '4');
 
     await user.click(screen.getByRole('button', { name: /create recipe/i }));
@@ -523,37 +519,37 @@ describe('RecipeEditor — edit mode portions scaler', () => {
     const user = userEvent.setup();
     const recipe = makeRecipe({
       portions: 2,
-      ingredients: [{ name: 'Flour', quantity: 100, unit: 'Gram' }],
+      ingredients: [{ name: 'Flour', quantity: 100, unit: 'g' }],
     });
     mockFetch.mockResolvedValue(makeAvailability(recipe));
     render(<RecipeEditor recipeId="r1" onSaved={onSaved} onCancel={onCancel} />);
 
-    await waitFor(() => expect(screen.getByLabelText(/ingredient 1 quantity/i)).toHaveValue(100));
+    await waitFor(() => expect(screen.getByLabelText(/ingredient 1 quantity/i)).toHaveValue('100'));
 
     await user.click(screen.getByRole('button', { name: /increase portions/i }));
 
     // 100 * (3/2) = 150
-    expect(screen.getByLabelText(/ingredient 1 quantity/i)).toHaveValue(150);
+    expect(screen.getByLabelText(/ingredient 1 quantity/i)).toHaveValue('150');
   });
 
   it('recalculates ingredient quantity fields when – is tapped', async () => {
     const user = userEvent.setup();
     const recipe = makeRecipe({
       portions: 4,
-      ingredients: [{ name: 'Flour', quantity: 200, unit: 'Gram' }],
+      ingredients: [{ name: 'Flour', quantity: 200, unit: 'g' }],
     });
     mockFetch.mockResolvedValue(makeAvailability(recipe));
     render(<RecipeEditor recipeId="r1" onSaved={onSaved} onCancel={onCancel} />);
 
-    await waitFor(() => expect(screen.getByLabelText(/ingredient 1 quantity/i)).toHaveValue(200));
+    await waitFor(() => expect(screen.getByLabelText(/ingredient 1 quantity/i)).toHaveValue('200'));
 
     // Tap + to go from 4 → 5 portions: 200 * (5/4) = 250
     await user.click(screen.getByRole('button', { name: /increase portions/i }));
-    expect(screen.getByLabelText(/ingredient 1 quantity/i)).toHaveValue(250);
+    expect(screen.getByLabelText(/ingredient 1 quantity/i)).toHaveValue('250');
 
     // Tap – to go from 5 → 4 portions: 250 * (4/5) = 200
     await user.click(screen.getByRole('button', { name: /decrease portions/i }));
-    expect(screen.getByLabelText(/ingredient 1 quantity/i)).toHaveValue(200);
+    expect(screen.getByLabelText(/ingredient 1 quantity/i)).toHaveValue('200');
   });
 
   it('includes selectedPortions as portions in the update API call payload', async () => {

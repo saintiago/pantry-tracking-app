@@ -231,7 +231,7 @@ test.describe('Recipe Management', () => {
     // Fill in the first ingredient row
     await page.getByLabel('Ingredient 1 name').fill('Flour');
     await page.getByLabel('Ingredient 1 quantity').fill('300');
-    await page.getByLabel('Ingredient 1 unit').selectOption('Gram');
+    await page.getByLabel('Ingredient 1 unit').selectOption('g');
 
     // Fill in Portions
     await page.getByLabel('Portions').fill('2');
@@ -513,7 +513,7 @@ test.describe('Recipe Management', () => {
     await page.getByLabel('Cook time (min)').fill('25');
     await page.getByLabel('Ingredient 1 name').fill('Flour');
     await page.getByLabel('Ingredient 1 quantity').fill('300');
-    await page.getByLabel('Ingredient 1 unit').selectOption('Gram');
+    await page.getByLabel('Ingredient 1 unit').selectOption('g');
     await page.getByLabel('Portions').fill('2');
 
     await page.getByRole('button', { name: 'Create Recipe' }).click();
@@ -590,7 +590,7 @@ test.describe('Recipe Management', () => {
     await page.getByLabel('Prep time (min)').fill('-5');
     await page.getByLabel('Ingredient 1 name').fill('Flour');
     await page.getByLabel('Ingredient 1 quantity').fill('100');
-    await page.getByLabel('Ingredient 1 unit').selectOption('Gram');
+    await page.getByLabel('Ingredient 1 unit').selectOption('g');
     await page.getByLabel('Portions').fill('2');
 
     await page.getByRole('button', { name: 'Create Recipe' }).click();
@@ -616,7 +616,7 @@ test.describe('Recipe Management', () => {
 
     // Name and unit should be autofilled
     await expect(page.getByLabel('Ingredient 1 name')).toHaveValue('Flour');
-    await expect(page.getByLabel('Ingredient 1 unit')).toHaveValue('Gram');
+    await expect(page.getByLabel('Ingredient 1 unit')).toHaveValue('g');
   });
 
   test('ingredient autocomplete searches across all fields — category match shows items', async ({ page }) => {
@@ -661,7 +661,7 @@ test.describe('Recipe Management', () => {
     await option.click();
 
     await expect(page.getByLabel('Ingredient 1 name')).toHaveValue('Butter');
-    await expect(page.getByLabel('Ingredient 1 unit')).toHaveValue('Gram');
+    await expect(page.getByLabel('Ingredient 1 unit')).toHaveValue('g');
   });
 
   test('saving recipe with unrecognized ingredient — new item appears in inventory with quantity 0', async ({ page }) => {
@@ -745,7 +745,7 @@ test.describe('Recipe Management', () => {
     await page.getByRole('textbox', { name: 'Instructions' }).fill('Cook it.');
     await page.getByLabel('Ingredient 1 name').fill('Dragon Fruit');
     await page.getByLabel('Ingredient 1 quantity').fill('1');
-    await page.getByLabel('Ingredient 1 unit').selectOption('Unit');
+    await page.getByLabel('Ingredient 1 unit').selectOption('piece');
     await page.getByLabel('Portions').fill('2');
 
     await page.getByRole('button', { name: 'Create Recipe' }).click();
@@ -818,7 +818,7 @@ test.describe('Recipe Management', () => {
     await page.getByRole('textbox', { name: 'Instructions' }).fill('Mix and bake.');
     await page.getByLabel('Ingredient 1 name').fill('Flour');
     await page.getByLabel('Ingredient 1 quantity').fill('300');
-    await page.getByLabel('Ingredient 1 unit').selectOption('Gram');
+    await page.getByLabel('Ingredient 1 unit').selectOption('g');
     await page.getByLabel('Portions').fill('4');
 
     await page.getByRole('button', { name: 'Create Recipe' }).click();
@@ -841,7 +841,7 @@ test.describe('Recipe Management', () => {
     await page.getByRole('textbox', { name: 'Instructions' }).fill('Do stuff.');
     await page.getByLabel('Ingredient 1 name').fill('Flour');
     await page.getByLabel('Ingredient 1 quantity').fill('100');
-    await page.getByLabel('Ingredient 1 unit').selectOption('Gram');
+    await page.getByLabel('Ingredient 1 unit').selectOption('g');
     // Leave Portions empty
 
     await page.getByRole('button', { name: 'Create Recipe' }).click();

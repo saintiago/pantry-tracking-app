@@ -3,7 +3,7 @@ import type { InventoryItem } from '../../components/InventoryList/InventoryList
 import { LowStockBadge } from '../../components/InventoryList/InventoryList';
 import type { StorageLocation } from '../../api/locations/locations';
 import { updateInventoryItem } from '../../api/inventory/inventory';
-import { VALID_UNITS } from '../../types/units';
+import { VALID_UNITS, getUnitLabel, resolveUnit } from '../../types/units';
 
 export interface ItemDetailPageProps {
   item: InventoryItem;
@@ -61,7 +61,7 @@ function initForm(item: InventoryItem): EditFormState {
     category: item.category,
     locationId: item.location,
     quantity: String(item.quantity),
-    unit: item.unit,
+    unit: resolveUnit(item.unit),
     expirationDate: item.expirationDate,
     brand: item.brand ?? '',
     barcode: item.barcode ?? '',
@@ -244,7 +244,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({ item, locations, onBack
           >
             <option value="">Select a unit</option>
             {VALID_UNITS.map((u) => (
-              <option key={u} value={u}>{u}</option>
+              <option key={u} value={u}>{getUnitLabel(u, 1)}</option>
             ))}
           </select>
           {errors.unit && <span style={styles.fieldError} role="alert">{errors.unit}</span>}

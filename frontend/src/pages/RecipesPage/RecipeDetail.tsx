@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { deleteRecipe, fetchRecipeWithAvailability, computeTotalTime, scaleIngredients } from '../../api/recipes/recipes';
 import type { RecipeWithAvailability } from '../../api/recipes/recipes';
 import IngredientAvailability from './IngredientAvailability';
+import { formatQuantity } from '../../utils/quantity';
+import { getUnitLabel, resolveUnit } from '../../types/units';
 
 interface RecipeDetailProps {
   recipeId: string;
@@ -108,6 +110,7 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipeId, onEdit, onBack, o
   const displayedIngredients = recipe.ingredients.map((ing, i) => ({
     ...ing,
     quantity: scaledQuantities[i],
+    unit: resolveUnit(ing.unit),
   }));
 
   // Scale the "required" quantity in availability rows to match the current selectedPortions
@@ -185,7 +188,7 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipeId, onEdit, onBack, o
               {displayedIngredients.map((ing, i) => (
                 <li key={i} style={styles.ingredientItem}>
                   <span>
-                    {ing.quantity} {ing.unit}
+                    {formatQuantity(ing.quantity)} {getUnitLabel(ing.unit, ing.quantity)}
                   </span>
                   <span>{ing.name}</span>
                 </li>

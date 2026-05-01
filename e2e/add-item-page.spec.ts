@@ -142,7 +142,7 @@ test.describe('AddItemPage', () => {
     await page.getByLabel('Expiration Date').fill('2026-12-31');
     await page.getByLabel('Storage Location').selectOption('loc-1');
     await page.getByLabel('Quantity').fill('2');
-    await page.getByLabel('Unit').selectOption('Liter');
+    await page.getByLabel('Unit').selectOption('l');
 
     await page.getByRole('button', { name: 'Add Item' }).click();
 

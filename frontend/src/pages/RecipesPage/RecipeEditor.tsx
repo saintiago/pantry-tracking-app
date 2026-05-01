@@ -9,7 +9,8 @@ import type { RecipeIngredient } from '../../api/recipes/recipes';
 import { searchInventory } from '../../api/inventory/inventory';
 import AutocompleteDropdown from '../../components/AutocompleteDropdown/AutocompleteDropdown';
 import type { InventoryItem } from '../../components/AutocompleteDropdown/AutocompleteDropdown';
-import { VALID_UNITS } from '../../types/units';
+import { VALID_UNITS, getUnitLabel, resolveUnit } from '../../types/units';
+import { parseFractionalQuantity, formatQuantity } from '../../utils/quantity';
 
 export interface RecipeEditorProps {
   recipeId?: string; // undefined = create mode
@@ -17,8 +18,9 @@ export interface RecipeEditorProps {
   onCancel: () => void;
 }
 
-interface IngredientRow extends RecipeIngredient {
+interface IngredientRow extends Omit<RecipeIngredient, 'quantity'> {
   _id: number;
+  quantityStr: string;
 }
 
 interface FormErrors {
@@ -38,7 +40,7 @@ interface DropdownState {
 }
 
 let nextId = 0;
-const makeRow = (): IngredientRow => ({ _id: ++nextId, name: '', quantity: 0, unit: '' });
+const makeRow = (): IngredientRow => ({ _id: ++nextId, name: '', quantityStr: '', unit: '' });
 
 /**
  * Validates a time field string value.
@@ -119,7 +121,12 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
         setSourceUrl(recipe.sourceUrl ?? '');
         setIngredients(
           recipe.ingredients.length > 0
-            ? recipe.ingredients.map((ing) => ({ ...ing, _id: ++nextId }))
+            ? recipe.ingredients.map((ing) => ({
+                ...ing,
+                _id: ++nextId,
+                quantityStr: formatQuantity(ing.quantity),
+                unit: resolveUnit(ing.unit),
+              }))
             : [makeRow()],
         );
         // Pre-populate time fields
@@ -150,7 +157,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
   }, []);
 
   const updateIngredientField = useCallback(
-    (id: number, field: keyof RecipeIngredient, value: string | number) => {
+    (id: number, field: keyof Omit<IngredientRow, '_id'>, value: string) => {
       setIngredients((prev) =>
         prev.map((r) => (r._id === id ? { ...r, [field]: value } : r)),
       );
@@ -170,8 +177,13 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
 
   const handlePortionsIncrement = useCallback(() => {
     setIngredients((prev) => {
-      const scaled = scaleIngredients(prev, selectedPortions, selectedPortions + 1);
-      return prev.map((row, i) => ({ ...row, quantity: scaled[i] }));
+      const quantities = prev.map((row) => parseFractionalQuantity(row.quantityStr) ?? 0);
+      const scaled = scaleIngredients(
+        prev.map((r, i) => ({ ...r, quantity: quantities[i] })),
+        selectedPortions,
+        selectedPortions + 1,
+      );
+      return prev.map((row, i) => ({ ...row, quantityStr: formatQuantity(scaled[i]) }));
     });
     setSelectedPortions((p) => p + 1);
   }, [selectedPortions]);
@@ -179,8 +191,13 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
   const handlePortionsDecrement = useCallback(() => {
     if (selectedPortions <= 1) return;
     setIngredients((prev) => {
-      const scaled = scaleIngredients(prev, selectedPortions, selectedPortions - 1);
-      return prev.map((row, i) => ({ ...row, quantity: scaled[i] }));
+      const quantities = prev.map((row) => parseFractionalQuantity(row.quantityStr) ?? 0);
+      const scaled = scaleIngredients(
+        prev.map((r, i) => ({ ...r, quantity: quantities[i] })),
+        selectedPortions,
+        selectedPortions - 1,
+      );
+      return prev.map((row, i) => ({ ...row, quantityStr: formatQuantity(scaled[i]) }));
     });
     setSelectedPortions((p) => p - 1);
   }, [selectedPortions]);
@@ -252,7 +269,11 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
       setIngredients((prev) =>
         prev.map((r) =>
           r._id === rowId
-            ? { ...r, name: item.name, unit: (item as InventoryItem & { unit?: string }).unit ?? r.unit }
+            ? {
+                ...r,
+                name: item.name,
+                unit: resolveUnit((item as InventoryItem & { unit?: string }).unit ?? r.unit),
+              }
             : r,
         ),
       );
@@ -270,7 +291,10 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
     ingredients.forEach((row) => {
       const rowErr: { name?: string; quantity?: string; unit?: string } = {};
       if (!row.name.trim()) rowErr.name = 'Name is required.';
-      if (row.quantity <= 0) rowErr.quantity = 'Must be > 0.';
+      const parsedQty = parseFractionalQuantity(row.quantityStr);
+      if (!parsedQty || parsedQty <= 0) {
+        rowErr.quantity = 'Enter a valid quantity (e.g. 1, 1/2, 1 1/4).';
+      }
       if (!row.unit.trim()) rowErr.unit = 'Unit is required.';
       if (Object.keys(rowErr).length > 0) rowErrors[row._id] = rowErr;
     });
@@ -305,7 +329,11 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
         name: name.trim(),
         instructions: instructions.trim(),
         sourceUrl: sourceUrl.trim() || undefined,
-        ingredients: ingredients.map(({ name: n, quantity, unit }) => ({ name: n, quantity, unit })),
+        ingredients: ingredients.map(({ name: n, quantityStr, unit }) => ({
+          name: n,
+          quantity: parseFractionalQuantity(quantityStr)!,
+          unit,
+        })),
       };
 
       // Build time field payload
@@ -647,16 +675,15 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
                         </label>
                         <input
                           id={`ing-qty-${row._id}`}
-                          type="number"
-                          min="0.001"
-                          step="any"
-                          value={row.quantity === 0 ? '' : row.quantity}
+                          type="text"
+                          value={row.quantityStr}
                           onChange={(e) =>
-                            updateIngredientField(row._id, 'quantity', parseFloat(e.target.value) || 0)
+                            updateIngredientField(row._id, 'quantityStr', e.target.value)
                           }
                           style={styles.input}
                           aria-label={`Ingredient ${index + 1} quantity`}
                           aria-invalid={!!rowErr?.quantity}
+                          placeholder="e.g. 1 1/2"
                         />
                         {rowErr?.quantity && (
                           <span style={styles.fieldError} role="alert">
@@ -682,7 +709,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
                         >
                           <option value="">Select unit</option>
                           {VALID_UNITS.map((u) => (
-                            <option key={u} value={u}>{u}</option>
+                            <option key={u} value={u}>{getUnitLabel(u, 1)}</option>
                           ))}
                         </select>
                         {rowErr?.unit && (

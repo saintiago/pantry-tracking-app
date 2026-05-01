@@ -242,7 +242,7 @@ describe('Recipe Lambda handler', () => {
       expect(placeholderCall.Item.name).toBe('Eggs');
     });
 
-    it('uses Unit as fallback when ingredient unit is not a valid UnitType', async () => {
+    it('uses piece as fallback when ingredient unit is not a valid UnitType or legacy key', async () => {
       mockSend.mockResolvedValueOnce({});
       mockSend.mockResolvedValueOnce({ Items: [] });
       mockSend.mockResolvedValue({});
@@ -260,7 +260,7 @@ describe('Recipe Lambda handler', () => {
       );
 
       const placeholderCall = PutCommand.mock.calls[1][0];
-      expect(placeholderCall.Item.unit).toBe('Unit');
+      expect(placeholderCall.Item.unit).toBe('piece');
     });
 
     it('returns 400 for empty ingredients array', async () => {

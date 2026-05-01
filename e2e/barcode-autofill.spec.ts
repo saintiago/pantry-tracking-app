@@ -193,7 +193,7 @@ test.describe('Barcode Autofill Feature', () => {
     await expect(page.getByLabel('Product Name')).toHaveValue('Organic Milk');
     await expect(page.getByLabel('Category')).toHaveValue('Dairy');
     await expect(page.getByLabel('Brand')).toHaveValue('Organic Valley');
-    await expect(page.getByLabel('Unit')).toHaveValue('Liter');
+    await expect(page.getByLabel('Unit')).toHaveValue('l');
     await expect(page.getByLabel('Where to Buy')).toHaveValue('Whole Foods');
     await expect(page.getByLabel('Online Store Link')).toHaveValue('https://example.com/milk');
   });
@@ -312,7 +312,7 @@ test.describe('Barcode Autofill Feature', () => {
     await expect(page.getByLabel('Product Name')).toHaveValue('Organic Milk');
     await expect(page.getByLabel('Category')).toHaveValue('Dairy');
     await expect(page.getByLabel('Brand')).toHaveValue('Organic Valley');
-    await expect(page.getByLabel('Unit')).toHaveValue('Liter');
+    await expect(page.getByLabel('Unit')).toHaveValue('l');
     await expect(page.getByLabel('Storage Location')).toHaveValue('loc-1');
     await expect(page.getByLabel('Quantity')).toHaveValue('1');
     await expect(page.getByLabel('Where to Buy')).toHaveValue('Whole Foods');
@@ -330,7 +330,7 @@ test.describe('Barcode Autofill Feature', () => {
     await expect(page.getByLabel('Barcode')).toHaveValue('012345678901');
     await expect(page.getByLabel('Category')).toHaveValue('Dairy');
     await expect(page.getByLabel('Brand')).toHaveValue('Organic Valley');
-    await expect(page.getByLabel('Unit')).toHaveValue('Liter');
+    await expect(page.getByLabel('Unit')).toHaveValue('l');
     await expect(page.getByLabel('Storage Location')).toHaveValue('loc-1');
     await expect(page.getByLabel('Quantity')).toHaveValue('1');
     await expect(page.getByLabel('Where to Buy')).toHaveValue('Whole Foods');

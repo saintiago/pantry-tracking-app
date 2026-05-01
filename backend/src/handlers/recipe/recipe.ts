@@ -9,7 +9,9 @@ import {
   DeleteCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { randomUUID } from 'crypto';
-import { VALID_UNITS } from '../../types/units';
+import { VALID_UNITS, LEGACY_UNIT_MAP, resolveUnit } from '../../types/units';
+
+const ACCEPTED_UNITS = new Set([...VALID_UNITS, ...Object.keys(LEGACY_UNIT_MAP)]);
 
 const TABLE_NAME = process.env.TABLE_NAME ?? 'PantryApp';
 
@@ -193,9 +195,7 @@ async function autoCreateMissingIngredients(
     toCreate
       .map((ing) => {
         const itemId = randomUUID();
-        const unit = VALID_UNITS.includes(ing.unit as typeof VALID_UNITS[number])
-          ? ing.unit
-          : 'Unit';
+        const unit = resolveUnit(ing.unit);
         const item = {
           PK: `USER#${userId}`,
           SK: `ITEM#${itemId}`,

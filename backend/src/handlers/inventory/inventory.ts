@@ -9,7 +9,9 @@ import {
   GetCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { randomUUID } from 'crypto';
-import { VALID_UNITS } from '../../types/units';
+import { VALID_UNITS, LEGACY_UNIT_MAP } from '../../types/units';
+
+const ACCEPTED_UNITS = new Set([...VALID_UNITS, ...Object.keys(LEGACY_UNIT_MAP)]);
 
 const TABLE_NAME = process.env.TABLE_NAME ?? 'PantryApp';
 const STORAGE_BUCKET = process.env.STORAGE_BUCKET ?? '';
@@ -63,7 +65,7 @@ function validateAddRequest(
     parsed.unit !== undefined &&
     parsed.unit !== null &&
     parsed.unit !== '' &&
-    !VALID_UNITS.includes(parsed.unit as string as typeof VALID_UNITS[number])
+    !ACCEPTED_UNITS.has(parsed.unit as string)
   ) {
     errors.push({ field: 'unit', message: `unit must be one of: ${VALID_UNITS.join(', ')}` });
   }
@@ -221,7 +223,7 @@ async function updateInventoryItem(
 
   if (
     parsed.unit !== undefined &&
-    !VALID_UNITS.includes(parsed.unit as string as typeof VALID_UNITS[number])
+    !ACCEPTED_UNITS.has(parsed.unit as string)
   ) {
     return response(400, {
       error: 'VALIDATION_ERROR',

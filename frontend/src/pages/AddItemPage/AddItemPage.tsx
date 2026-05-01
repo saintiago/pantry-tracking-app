@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { StorageLocation } from '../../api/locations/locations';
-import { VALID_UNITS } from '../../types/units';
+import { VALID_UNITS, LEGACY_UNIT_MAP, getUnitLabel, resolveUnit } from '../../types/units';
+import type { UnitType } from '../../types/units';
 import { searchInventory, lookupBarcode } from '../../api/inventory/inventory';
 import type { InventoryItem } from '../../api/inventory/inventory';
 import AutocompleteDropdown from '../../components/AutocompleteDropdown/AutocompleteDropdown';
@@ -53,7 +54,7 @@ const INITIAL_FORM = {
   expirationDate: '',
   locationId: '',
   quantity: '',
-  unit: 'Unit',
+  unit: 'piece',
   barcode: '',
   brand: '',
   whereToBuy: '',
@@ -134,7 +135,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
       if ((triggerField === 'name' || !prev.name) && item.name) { updates.name = item.name; newPrefilledFields.add('name'); }
       if (!prev.category && item.category) { updates.category = item.category; newPrefilledFields.add('category'); }
       if (!prev.brand && item.brand) { updates.brand = item.brand; newPrefilledFields.add('brand'); }
-      if ((!prev.unit || prev.unit === 'Unit') && item.unit && VALID_UNITS.includes(item.unit as never)) { updates.unit = item.unit; newPrefilledFields.add('unit'); }
+      if ((!prev.unit || prev.unit === 'piece') && item.unit && (VALID_UNITS.includes(item.unit as UnitType) || item.unit in LEGACY_UNIT_MAP)) { updates.unit = resolveUnit(item.unit); newPrefilledFields.add('unit'); }
       if (!prev.locationId && item.location) { updates.locationId = item.location; newPrefilledFields.add('locationId'); }
       if (!prev.quantity) { updates.quantity = '1'; newPrefilledFields.add('quantity'); }
       if (!prev.whereToBuy && item.whereToBuy) { updates.whereToBuy = item.whereToBuy; newPrefilledFields.add('whereToBuy'); }
@@ -554,7 +555,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
           >
             <option value="">Select a unit</option>
             {VALID_UNITS.map((u) => (
-              <option key={u} value={u}>{u}</option>
+              <option key={u} value={u}>{getUnitLabel(u, 1)}</option>
             ))}
           </select>
           {errors.unit && <span style={styles.fieldError} role="alert">{errors.unit}</span>}

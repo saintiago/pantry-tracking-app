@@ -113,7 +113,7 @@ test.describe('ItemDetailPage', () => {
     await expect(page.getByLabel('Category')).toHaveValue('Dairy');
     await expect(page.getByLabel('Brand')).toHaveValue('Organic Valley');
     await expect(page.getByLabel('Quantity')).toHaveValue('2');
-    await expect(page.getByLabel('Unit')).toHaveValue('Liter');
+    await expect(page.getByLabel('Unit')).toHaveValue('l');
     await expect(page.getByLabel('Expiration Date')).toHaveValue('2026-12-31');
     await expect(page.getByLabel('Storage Location')).toHaveValue('loc-1');
   });
