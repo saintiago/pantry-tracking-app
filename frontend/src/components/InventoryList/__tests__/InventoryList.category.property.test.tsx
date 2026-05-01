@@ -26,7 +26,7 @@ const inventoryItemArb = fc.record({
   expirationDate: fc.constant('2025-12-31'),
   location: fc.constant('loc-1'),
   quantity: fc.integer({ min: 0, max: 100 }),
-  unit: fc.constant('pcs'),
+  unit: fc.constant('piece'),
   isLowStock: fc.boolean(),
   createdAt: fc.constant('2024-01-01T00:00:00Z'),
   updatedAt: fc.constant('2024-01-01T00:00:00Z'),
@@ -168,7 +168,7 @@ describe('Feature: inventory-category-view, Property 5: Category card aria-label
       itemCount: fc.integer({ min: 1, max: 100 }),
       totalQuantity: fc.integer({ min: 0, max: 1000 }),
       quantityByUnit: fc.dictionary(
-        fc.constantFrom('Gram', 'Kilo', 'Milliliter', 'Liter', 'Unit'),
+        fc.constantFrom('g', 'kg', 'ml', 'l', 'piece'),
         fc.integer({ min: 0, max: 500 }),
         { minKeys: 1, maxKeys: 3 },
       ),

@@ -259,7 +259,7 @@ test.describe('Recipe Management', () => {
     await expect(availability.getByText('available', { exact: true })).toBeVisible();
 
     await expect(availability.getByText('Eggs', { exact: true })).toBeVisible();
-    await expect(availability.getByText('have 1 / need 3 Unit')).toBeVisible();
+    await expect(availability.getByText('have 1 / need 3 pieces')).toBeVisible();
 
     await expect(availability.getByText('Bacon', { exact: true })).toBeVisible();
     await expect(availability.getByText('missing', { exact: true })).toBeVisible();

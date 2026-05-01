@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import type { StorageLocation } from '../../api/locations';
+import { getUnitLabel } from '../../types/units';
 
 export interface InventoryItem {
   itemId: string;
@@ -34,7 +35,7 @@ export function formatQuantityByUnit(quantityByUnit: Record<string, number>): st
   const entries = Object.entries(quantityByUnit);
   if (entries.length === 1) {
     const [unit, qty] = entries[0];
-    return `${qty} ${unit}`;
+    return `${qty} ${getUnitLabel(unit, qty)}`;
   }
   return 'mixed units';
 }
@@ -296,7 +297,7 @@ export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
 
       <div style={styles.cardDetails}>
         <span>
-          {item.quantity} {item.unit}
+          {item.quantity} {getUnitLabel(item.unit, item.quantity)}
         </span>
         <span style={styles.expiration}>Exp: {item.expirationDate}</span>
       </div>

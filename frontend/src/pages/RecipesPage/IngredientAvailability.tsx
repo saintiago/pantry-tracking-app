@@ -1,5 +1,6 @@
 import React from 'react';
 import { IngredientStatus } from '../../api/recipes/recipes';
+import { getUnitLabel } from '../../types/units';
 
 interface IngredientAvailabilityProps {
   availability: IngredientStatus[];
@@ -50,7 +51,7 @@ const IngredientAvailability: React.FC<IngredientAvailabilityProps> = ({ availab
 
         let label: string;
         if (item.status === 'partial') {
-          label = `have ${item.available} / need ${item.required} ${item.unit}`;
+          label = `have ${item.available} / need ${item.required} ${getUnitLabel(item.unit, item.required)}`;
         } else if (item.status === 'missing') {
           label = 'missing';
         } else {

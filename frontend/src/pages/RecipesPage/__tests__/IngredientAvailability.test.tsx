@@ -38,7 +38,7 @@ describe('IngredientAvailability', () => {
 
   it('shows "have X / need Y unit" for partial ingredients', () => {
     render(<IngredientAvailability availability={[partial]} missingCount={1} />);
-    expect(screen.getByText('have 2 / need 4 Gram')).toBeInTheDocument();
+    expect(screen.getByText('have 2 / need 4 grams')).toBeInTheDocument();
   });
 
   it('applies green chip color for available status', () => {
@@ -49,7 +49,7 @@ describe('IngredientAvailability', () => {
 
   it('applies amber chip color for partial status', () => {
     render(<IngredientAvailability availability={[partial]} missingCount={1} />);
-    const chip = screen.getByText('have 2 / need 4 Gram');
+    const chip = screen.getByText('have 2 / need 4 grams');
     expect(chip).toHaveStyle({ backgroundColor: '#f59e0b' });
   });
 

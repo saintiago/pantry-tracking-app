@@ -17,7 +17,7 @@ const mockInventoryItems = [
     expirationDate: '2025-12-01',
     location: 'loc-1',
     quantity: 2,
-    unit: 'Liter',
+    unit: 'l',
     isLowStock: false,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
@@ -29,7 +29,7 @@ const mockInventoryItems = [
     expirationDate: '2025-11-01',
     location: 'loc-2',
     quantity: 3,
-    unit: 'Unit',
+    unit: 'piece',
     isLowStock: true,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
@@ -41,7 +41,7 @@ const mockInventoryItems = [
     expirationDate: '2025-10-01',
     location: 'loc-1',
     quantity: 5,
-    unit: 'Unit',
+    unit: 'piece',
     isLowStock: false,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
@@ -113,10 +113,10 @@ test.describe('Inventory Category View', () => {
     await expect(dairyCard).toContainText('2 items');
     await expect(dairyCard).toContainText('mixed units');
 
-    // Snacks: 1 item, quantity 5 Unit
+    // Snacks: 1 item, quantity 5 pieces
     const snacksCard = page.getByTestId('category-card-Snacks');
     await expect(snacksCard).toContainText('1 items');
-    await expect(snacksCard).toContainText('5 Unit');
+    await expect(snacksCard).toContainText('5 pieces');
   });
 
   test('clicking a category card navigates to item list showing only items from that category', async ({ page }) => {

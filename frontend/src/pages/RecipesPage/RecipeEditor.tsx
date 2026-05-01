@@ -648,7 +648,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
                                 {item.category}
                                 {item.brand ? ` • ${item.brand}` : ''}
                                 {(item as InventoryItem & { unit?: string }).unit
-                                  ? ` • ${(item as InventoryItem & { unit?: string }).unit}`
+                                  ? ` • ${getUnitLabel((item as InventoryItem & { unit?: string }).unit!, 2)}`
                                   : ''}
                                 {item.barcode ? ` • ${item.barcode}` : ''}
                               </div>

@@ -31,10 +31,10 @@ function makeItem(overrides: Partial<InventoryItem> & { itemId: string; name: st
 }
 
 const sampleItems: InventoryItem[] = [
-  makeItem({ itemId: '1', name: 'Milk', category: 'Dairy', location: 'loc-2', quantity: 2, unit: 'liters' }),
+  makeItem({ itemId: '1', name: 'Milk', category: 'Dairy', location: 'loc-2', quantity: 2, unit: 'l' }),
   makeItem({ itemId: '2', name: 'Rice', category: 'Grains', location: 'loc-1', quantity: 10, unit: 'kg' }),
-  makeItem({ itemId: '3', name: 'Cheese', category: 'Dairy', location: 'loc-2', isLowStock: true, quantity: 1, unit: 'pcs' }),
-  makeItem({ itemId: '4', name: 'Bread', category: 'Bakery', location: 'loc-1', isLowStock: true, quantity: 1, unit: 'loaf' }),
+  makeItem({ itemId: '3', name: 'Cheese', category: 'Dairy', location: 'loc-2', isLowStock: true, quantity: 1, unit: 'piece' }),
+  makeItem({ itemId: '4', name: 'Bread', category: 'Bakery', location: 'loc-1', isLowStock: true, quantity: 1, unit: 'slice' }),
 ];
 
 /** Helper: drill into a category from the category-summary view */
@@ -409,65 +409,65 @@ describe('InventoryList — category view interactions', () => {
 
 describe('formatQuantityByUnit', () => {
   it('returns quantity with unit when all items share the same unit', () => {
-    expect(formatQuantityByUnit({ Unit: 7 })).toBe('7 Unit');
+    expect(formatQuantityByUnit({ piece: 7 })).toBe('7 pieces');
   });
 
   it('returns "mixed units" when multiple units are present', () => {
-    expect(formatQuantityByUnit({ Gram: 500, Unit: 3 })).toBe('mixed units');
+    expect(formatQuantityByUnit({ g: 500, piece: 3 })).toBe('mixed units');
   });
 
   it('handles a single unit with zero quantity', () => {
-    expect(formatQuantityByUnit({ Liter: 0 })).toBe('0 Liter');
+    expect(formatQuantityByUnit({ l: 0 })).toBe('0 liters');
   });
 });
 
 describe('groupItemsByCategory – quantityByUnit', () => {
   it('groups quantities by unit within a category', () => {
     const items = [
-      makeItem({ itemId: '1', name: 'Milk', category: 'Dairy', quantity: 2, unit: 'Liter' }),
-      makeItem({ itemId: '2', name: 'Cheese', category: 'Dairy', quantity: 3, unit: 'Unit' }),
+      makeItem({ itemId: '1', name: 'Milk', category: 'Dairy', quantity: 2, unit: 'l' }),
+      makeItem({ itemId: '2', name: 'Cheese', category: 'Dairy', quantity: 3, unit: 'piece' }),
     ];
     const groups = groupItemsByCategory(items);
     expect(groups).toHaveLength(1);
-    expect(groups[0].quantityByUnit).toEqual({ Liter: 2, Unit: 3 });
+    expect(groups[0].quantityByUnit).toEqual({ l: 2, piece: 3 });
   });
 
   it('sums quantities for the same unit within a category', () => {
     const items = [
-      makeItem({ itemId: '1', name: 'Milk', category: 'Dairy', quantity: 2, unit: 'Liter' }),
-      makeItem({ itemId: '2', name: 'Juice', category: 'Dairy', quantity: 5, unit: 'Liter' }),
+      makeItem({ itemId: '1', name: 'Milk', category: 'Dairy', quantity: 2, unit: 'l' }),
+      makeItem({ itemId: '2', name: 'Juice', category: 'Dairy', quantity: 5, unit: 'l' }),
     ];
     const groups = groupItemsByCategory(items);
-    expect(groups[0].quantityByUnit).toEqual({ Liter: 7 });
+    expect(groups[0].quantityByUnit).toEqual({ l: 7 });
   });
 
   it('keeps separate quantityByUnit per category', () => {
     const items = [
-      makeItem({ itemId: '1', name: 'Milk', category: 'Dairy', quantity: 2, unit: 'Liter' }),
-      makeItem({ itemId: '2', name: 'Rice', category: 'Grains', quantity: 1, unit: 'Kilo' }),
+      makeItem({ itemId: '1', name: 'Milk', category: 'Dairy', quantity: 2, unit: 'l' }),
+      makeItem({ itemId: '2', name: 'Rice', category: 'Grains', quantity: 1, unit: 'kg' }),
     ];
     const groups = groupItemsByCategory(items);
     const dairy = groups.find((g) => g.category === 'Dairy');
     const grains = groups.find((g) => g.category === 'Grains');
-    expect(dairy?.quantityByUnit).toEqual({ Liter: 2 });
-    expect(grains?.quantityByUnit).toEqual({ Kilo: 1 });
+    expect(dairy?.quantityByUnit).toEqual({ l: 2 });
+    expect(grains?.quantityByUnit).toEqual({ kg: 1 });
   });
 });
 
 describe('CategoryCard – quantity display', () => {
   it('shows formatted quantity when all items share the same unit', () => {
     const items = [
-      makeItem({ itemId: '1', name: 'Milk', category: 'Dairy', quantity: 3, unit: 'Liter' }),
-      makeItem({ itemId: '2', name: 'Juice', category: 'Dairy', quantity: 4, unit: 'Liter' }),
+      makeItem({ itemId: '1', name: 'Milk', category: 'Dairy', quantity: 3, unit: 'l' }),
+      makeItem({ itemId: '2', name: 'Juice', category: 'Dairy', quantity: 4, unit: 'l' }),
     ];
     render(<InventoryList items={items} locations={locations} removeMode={false} />);
-    expect(screen.getByText('7 Liter')).toBeInTheDocument();
+    expect(screen.getByText('7 liters')).toBeInTheDocument();
   });
 
   it('shows "mixed units" when items have different units', () => {
     const items = [
-      makeItem({ itemId: '1', name: 'Milk', category: 'Dairy', quantity: 2, unit: 'Liter' }),
-      makeItem({ itemId: '2', name: 'Cheese', category: 'Dairy', quantity: 3, unit: 'Unit' }),
+      makeItem({ itemId: '1', name: 'Milk', category: 'Dairy', quantity: 2, unit: 'l' }),
+      makeItem({ itemId: '2', name: 'Cheese', category: 'Dairy', quantity: 3, unit: 'piece' }),
     ];
     render(<InventoryList items={items} locations={locations} removeMode={false} />);
     expect(screen.getByText('mixed units')).toBeInTheDocument();
