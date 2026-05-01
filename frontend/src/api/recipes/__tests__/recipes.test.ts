@@ -261,3 +261,53 @@ describe('deleteRecipe', () => {
     await expect(deleteRecipe('bad-id')).rejects.toThrow('Failed to delete recipe');
   });
 });
+
+describe('createRecipe — time fields', () => {
+  it('sends prepTime and cookTime in request body when provided', async () => {
+    mockFetch().mockResolvedValue({
+      ok: true,
+      json: async () => ({ recipe: { ...mockRecipe, prepTime: 10, cookTime: 20 } }),
+    } as Response);
+
+    const data = {
+      name: 'Pasta',
+      ingredients: [{ name: 'Pasta', quantity: 200, unit: 'Gram' }],
+      instructions: 'Boil pasta.',
+      prepTime: 10,
+      cookTime: 20,
+    };
+
+    await createRecipe(data);
+
+    const callBody = JSON.parse((mockFetch().mock.calls[0][1] as RequestInit).body as string);
+    expect(callBody.prepTime).toBe(10);
+    expect(callBody.cookTime).toBe(20);
+  });
+});
+
+describe('updateRecipe — time fields', () => {
+  it('sends null for prepTime when explicitly clearing the field', async () => {
+    mockFetch().mockResolvedValue({
+      ok: true,
+      json: async () => ({ recipe: mockRecipe }),
+    } as Response);
+
+    await updateRecipe('recipe-1', { prepTime: null });
+
+    const callBody = JSON.parse((mockFetch().mock.calls[0][1] as RequestInit).body as string);
+    expect(callBody.prepTime).toBeNull();
+  });
+
+  it('does not include time fields in body when not provided', async () => {
+    mockFetch().mockResolvedValue({
+      ok: true,
+      json: async () => ({ recipe: mockRecipe }),
+    } as Response);
+
+    await updateRecipe('recipe-1', { name: 'Updated' });
+
+    const callBody = JSON.parse((mockFetch().mock.calls[0][1] as RequestInit).body as string);
+    expect(callBody).not.toHaveProperty('prepTime');
+    expect(callBody).not.toHaveProperty('cookTime');
+  });
+});

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { deleteRecipe, fetchRecipeWithAvailability } from '../../api/recipes/recipes';
+import { deleteRecipe, fetchRecipeWithAvailability, computeTotalTime } from '../../api/recipes/recipes';
 import type { RecipeWithAvailability } from '../../api/recipes/recipes';
 import IngredientAvailability from './IngredientAvailability';
 
@@ -88,6 +88,8 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipeId, onEdit, onBack, o
 
   const { recipe, ingredientAvailability, missingCount } = data;
 
+  const totalTime = computeTotalTime(recipe.prepTime, recipe.cookTime);
+
   return (
     <div style={styles.page}>
       {/* Header */}
@@ -107,6 +109,21 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipeId, onEdit, onBack, o
 
       {/* Content */}
       <div style={styles.content}>
+        {/* Time display */}
+        {totalTime !== undefined && (
+          <section style={styles.timeSection} aria-label="Recipe time">
+            {recipe.prepTime !== undefined && recipe.cookTime !== undefined ? (
+              <>
+                <span style={styles.timeItem}>Prep: {recipe.prepTime} min</span>
+                <span style={styles.timeItem}>Cook: {recipe.cookTime} min</span>
+                <span style={{ ...styles.timeItem, ...styles.totalTime }}>Total: {totalTime} min</span>
+              </>
+            ) : (
+              <span style={{ ...styles.timeItem, ...styles.totalTime }}>Total: {totalTime} min</span>
+            )}
+          </section>
+        )}
+
         {/* Ingredient availability */}
         <IngredientAvailability availability={ingredientAvailability} missingCount={missingCount} />
 
@@ -286,5 +303,22 @@ const styles: Record<string, React.CSSProperties> = {
   disabledButton: {
     opacity: 0.5,
     cursor: 'not-allowed',
+  },
+  timeSection: {
+    display: 'flex',
+    flexWrap: 'wrap' as const,
+    gap: '0.75rem',
+    padding: '0.75rem 1rem',
+    backgroundColor: '#f3f4f6',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  timeItem: {
+    fontSize: '0.9375rem',
+    color: '#374151',
+  },
+  totalTime: {
+    fontWeight: 700,
+    color: '#111827',
   },
 };

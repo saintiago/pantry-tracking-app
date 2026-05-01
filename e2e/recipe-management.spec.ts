@@ -21,6 +21,8 @@ const mockRecipes = [
     ],
     instructions: 'Boil pasta. Fry bacon. Mix eggs. Combine.',
     sourceUrl: 'https://example.com/carbonara',
+    prepTime: 10,
+    cookTime: 20,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
     syncVersion: 1,
@@ -419,6 +421,173 @@ test.describe('Recipe Management', () => {
     await expect(page.getByRole('heading', { name: 'Tomato Soup' })).toBeVisible({ timeout: 5000 });
 
     await expect(page.getByText('All ingredients available')).toBeVisible();
+  });
+
+  // ─── Time fields ──────────────────────────────────────────────────────────────
+
+  test('recipe list shows time badge for recipes with time fields', async ({ page }) => {
+    // Pasta Carbonara has prepTime: 10, cookTime: 20 → total: 30
+    await expect(page.getByLabel('30 minutes total')).toBeVisible();
+    // Tomato Soup has no time fields — no badge
+    const badges = page.getByLabel(/minutes total/);
+    await expect(badges).toHaveCount(1);
+  });
+
+  test('recipe list does not show time badge for recipes without time fields', async ({ page }) => {
+    // Tomato Soup has no time fields
+    const tomatoRow = page.getByRole('button', { name: 'View Tomato Soup' });
+    await expect(tomatoRow).toBeVisible();
+    // The badge group inside Tomato Soup row should not contain a time badge
+    await expect(tomatoRow.getByLabel(/minutes total/)).not.toBeVisible();
+  });
+
+  test('recipe detail shows prep, cook, and total time when both fields are set', async ({ page }) => {
+    await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+
+    const timeSection = page.getByRole('region', { name: 'Recipe time' });
+    await expect(timeSection).toBeVisible();
+    await expect(timeSection.getByText(/prep: 10 min/i)).toBeVisible();
+    await expect(timeSection.getByText(/cook: 20 min/i)).toBeVisible();
+    await expect(timeSection.getByText(/total: 30 min/i)).toBeVisible();
+  });
+
+  test('creates a recipe with time fields and detail view shows total time', async ({ page }) => {
+    const recipeWithTime = {
+      recipeId: 'recipe-timed',
+      userId: 'test-user',
+      name: 'Timed Recipe',
+      ingredients: [{ name: 'Flour', quantity: 300, unit: 'g' }],
+      instructions: 'Mix and bake.',
+      prepTime: 15,
+      cookTime: 25,
+      createdAt: '2024-01-03T00:00:00Z',
+      updatedAt: '2024-01-03T00:00:00Z',
+      syncVersion: 1,
+    };
+
+    await page.route('**/recipes', async (route) => {
+      if (route.request().method() === 'POST') {
+        await route.fulfill({
+          status: 201,
+          contentType: 'application/json',
+          body: JSON.stringify({ recipe: recipeWithTime }),
+        });
+      } else if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ recipes: mockRecipes }),
+        });
+      }
+    });
+
+    await page.route('**/recipes/recipe-timed', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          recipe: recipeWithTime,
+          ingredientAvailability: [
+            { name: 'Flour', required: 300, unit: 'g', available: 0, status: 'missing' as const },
+          ],
+          missingCount: 1,
+        }),
+      });
+    });
+
+    await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
+
+    await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Timed Recipe');
+    await page.getByRole('textbox', { name: 'Instructions' }).fill('Mix and bake.');
+    await page.getByLabel('Prep time (min)').fill('15');
+    await page.getByLabel('Cook time (min)').fill('25');
+    await page.getByLabel('Ingredient 1 name').fill('Flour');
+    await page.getByLabel('Ingredient 1 quantity').fill('300');
+    await page.getByLabel('Ingredient 1 unit').selectOption('Gram');
+
+    await page.getByRole('button', { name: 'Create Recipe' }).click();
+
+    await expect(page.getByRole('heading', { name: 'Timed Recipe' })).toBeVisible({ timeout: 5000 });
+    const timeSection = page.getByRole('region', { name: 'Recipe time' });
+    await expect(timeSection).toBeVisible();
+    await expect(timeSection.getByText(/total: 40 min/i)).toBeVisible();
+  });
+
+  test('editing and clearing a time field updates the detail view', async ({ page }) => {
+    const updatedWithoutPrepTime = {
+      ...mockRecipes[0],
+      prepTime: undefined,
+      cookTime: 20,
+      updatedAt: '2024-01-05T00:00:00Z',
+    };
+
+    let saved = false;
+    await page.route('**/recipes/recipe-1', async (route) => {
+      if (route.request().method() === 'PUT') {
+        saved = true;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ recipe: updatedWithoutPrepTime }),
+        });
+      } else if (route.request().method() === 'GET') {
+        const responseData = saved
+          ? {
+              recipe: updatedWithoutPrepTime,
+              ingredientAvailability: mockRecipeWithAvailability.ingredientAvailability,
+              missingCount: 2,
+            }
+          : mockRecipeWithAvailability;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(responseData),
+        });
+      } else if (route.request().method() === 'DELETE') {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+      }
+    });
+
+    await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+
+    await page.getByTestId('edit-button').click();
+    await expect(page.getByRole('heading', { name: 'Edit Recipe' })).toBeVisible({ timeout: 5000 });
+
+    // Verify time fields are pre-populated
+    await expect(page.getByLabel('Prep time (min)')).toHaveValue('10');
+    await expect(page.getByLabel('Cook time (min)')).toHaveValue('20');
+
+    // Clear prep time
+    await page.getByLabel('Prep time (min)').clear();
+
+    await page.getByRole('button', { name: 'Save Changes' }).click();
+
+    // After save, detail view should show only cook time (total = 20)
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    const timeSection = page.getByRole('region', { name: 'Recipe time' });
+    await expect(timeSection).toBeVisible();
+    await expect(timeSection.getByText(/total: 20 min/i)).toBeVisible();
+  });
+
+  test('time field validation error shown for negative number in RecipeEditor', async ({ page }) => {
+    await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
+
+    await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Test Recipe');
+    await page.getByRole('textbox', { name: 'Instructions' }).fill('Do stuff');
+    await page.getByLabel('Prep time (min)').fill('-5');
+    await page.getByLabel('Ingredient 1 name').fill('Flour');
+    await page.getByLabel('Ingredient 1 quantity').fill('100');
+    await page.getByLabel('Ingredient 1 unit').selectOption('Gram');
+
+    await page.getByRole('button', { name: 'Create Recipe' }).click();
+
+    // Validation error should appear and form should not submit
+    await expect(page.getByText(/prep time must be a non-negative whole number/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible();
   });
 
   test('ingredient name autocomplete shows inventory suggestions and autofills unit on select', async ({ page }) => {

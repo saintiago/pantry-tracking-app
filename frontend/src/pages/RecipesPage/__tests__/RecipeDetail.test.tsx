@@ -12,6 +12,11 @@ jest.mock('../IngredientAvailability', () => ({
   default: () => <div data-testid="ingredient-availability" />,
 }));
 
+// Restore the real computeTotalTime since it's a pure function
+const { computeTotalTime: realComputeTotalTime } = jest.requireActual('../../../api/recipes/recipes');
+const recipesApiModule = jest.requireMock('../../../api/recipes/recipes');
+recipesApiModule.computeTotalTime = realComputeTotalTime;
+
 const mockFetchRecipeWithAvailability = recipesApi.fetchRecipeWithAvailability as jest.MockedFunction<
   typeof recipesApi.fetchRecipeWithAvailability
 >;
@@ -157,5 +162,51 @@ describe('RecipeDetail', () => {
     render(<RecipeDetail {...defaultProps} />);
     await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
     expect(screen.getByRole('alert')).toHaveTextContent('Network error');
+  });
+
+  // ─── Time display ─────────────────────────────────────────────────────────────
+
+  describe('time display', () => {
+    it('renders total time when only prepTime is set', async () => {
+      const data: RecipeWithAvailability = {
+        ...sampleData,
+        recipe: { ...sampleData.recipe, prepTime: 15 },
+      };
+      mockFetchRecipeWithAvailability.mockResolvedValue(data);
+      render(<RecipeDetail {...defaultProps} />);
+      await waitFor(() => screen.getByRole('region', { name: /recipe time/i }));
+      expect(screen.getByText(/total: 15 min/i)).toBeInTheDocument();
+    });
+
+    it('renders total time when only cookTime is set', async () => {
+      const data: RecipeWithAvailability = {
+        ...sampleData,
+        recipe: { ...sampleData.recipe, cookTime: 30 },
+      };
+      mockFetchRecipeWithAvailability.mockResolvedValue(data);
+      render(<RecipeDetail {...defaultProps} />);
+      await waitFor(() => screen.getByRole('region', { name: /recipe time/i }));
+      expect(screen.getByText(/total: 30 min/i)).toBeInTheDocument();
+    });
+
+    it('renders prepTime, cookTime, and total when both are set', async () => {
+      const data: RecipeWithAvailability = {
+        ...sampleData,
+        recipe: { ...sampleData.recipe, prepTime: 10, cookTime: 20 },
+      };
+      mockFetchRecipeWithAvailability.mockResolvedValue(data);
+      render(<RecipeDetail {...defaultProps} />);
+      await waitFor(() => screen.getByRole('region', { name: /recipe time/i }));
+      expect(screen.getByText(/prep: 10 min/i)).toBeInTheDocument();
+      expect(screen.getByText(/cook: 20 min/i)).toBeInTheDocument();
+      expect(screen.getByText(/total: 30 min/i)).toBeInTheDocument();
+    });
+
+    it('renders no time section when neither field is set', async () => {
+      mockFetchRecipeWithAvailability.mockResolvedValue(sampleData);
+      render(<RecipeDetail {...defaultProps} />);
+      await waitFor(() => screen.getByText('Pasta Carbonara'));
+      expect(screen.queryByRole('region', { name: /recipe time/i })).not.toBeInTheDocument();
+    });
   });
 });

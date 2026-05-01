@@ -89,10 +89,17 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
     if (prefillData?.barcode) initial.add('barcode');
     return initial;
   });
+  const prefilledFieldsRef = useRef<Set<string>>(new Set());
   const [userEditedFields, setUserEditedFields] = useState<Set<string>>(new Set());
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [lastLookupBarcode, setLastLookupBarcode] = useState<string | null>(null);
+
+  // Keep ref in sync so handleChange always reads the latest prefilledFields
+  // without needing it in its dependency array (avoids stale closure on autofill)
+  useEffect(() => {
+    prefilledFieldsRef.current = prefilledFields;
+  }, [prefilledFields]);
 
   const [autocompleteDropdowns, setAutocompleteDropdowns] = useState<Record<string, DropdownState>>({
     barcode: { visible: false, items: [], focusedIndex: -1 },
@@ -233,7 +240,8 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
       setErrors((prev) => ({ ...prev, [field]: undefined }));
       setSubmitError(null);
 
-      if (prefilledFields.has(field)) {
+      // Use ref to always read the latest prefilledFields, avoiding stale closure
+      if (prefilledFieldsRef.current.has(field)) {
         if (value === '') {
           setPrefilledFields((prev) => { const next = new Set(prev); next.delete(field); return next; });
           setUserEditedFields((prev) => { const next = new Set(prev); next.delete(field); return next; });
@@ -270,7 +278,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
         }
       }, 300);
     },
-    [prefilledFields, triggerSearch, triggerExternalLookup, autocompleteDropdowns],
+    [triggerSearch, triggerExternalLookup, autocompleteDropdowns],
   );
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {

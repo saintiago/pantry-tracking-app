@@ -15,6 +15,8 @@ export interface Recipe {
   ingredients: RecipeIngredient[];
   instructions: string;
   sourceUrl?: string;
+  prepTime?: number;
+  cookTime?: number;
   createdAt: string;
   updatedAt: string;
   syncVersion: number;
@@ -85,7 +87,10 @@ export async function fetchRecipeWithAvailability(recipeId: string): Promise<Rec
 
 export async function updateRecipe(
   recipeId: string,
-  data: Partial<Pick<Recipe, 'name' | 'ingredients' | 'instructions' | 'sourceUrl'>>,
+  data: Partial<Pick<Recipe, 'name' | 'ingredients' | 'instructions' | 'sourceUrl'>> & {
+    prepTime?: number | null;
+    cookTime?: number | null;
+  },
 ): Promise<Recipe> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${API_URL}/recipes/${recipeId}`, {
@@ -111,4 +116,13 @@ export async function deleteRecipe(recipeId: string): Promise<void> {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.message ?? 'Failed to delete recipe');
   }
+}
+
+/**
+ * Computes total time from optional prepTime and cookTime.
+ * Returns undefined when both are absent; otherwise returns (prepTime ?? 0) + (cookTime ?? 0).
+ */
+export function computeTotalTime(prepTime?: number, cookTime?: number): number | undefined {
+  if (prepTime === undefined && cookTime === undefined) return undefined;
+  return (prepTime ?? 0) + (cookTime ?? 0);
 }

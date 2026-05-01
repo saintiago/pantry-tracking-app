@@ -10,6 +10,11 @@ jest.mock('../../../api/recipes/recipes');
 
 const mockFetchRecipes = recipesApi.fetchRecipes as jest.MockedFunction<typeof recipesApi.fetchRecipes>;
 
+// Restore the real computeTotalTime since it's a pure function
+const { computeTotalTime: realComputeTotalTime } = jest.requireActual('../../../api/recipes/recipes');
+const recipesApiModule = jest.requireMock('../../../api/recipes/recipes');
+recipesApiModule.computeTotalTime = realComputeTotalTime;
+
 function makeRecipe(overrides: Partial<Recipe> & { recipeId: string; name: string }): Recipe {
   return {
     userId: 'user-1',
@@ -122,5 +127,27 @@ describe('RecipeList', () => {
     await waitFor(() => screen.getByText('Pasta Carbonara'));
 
     expect(screen.queryByLabelText(/ingredient\(s\) missing/i)).not.toBeInTheDocument();
+  });
+
+  // ─── Time badge ───────────────────────────────────────────────────────────────
+
+  it('renders time badge for recipes with time fields', async () => {
+    const recipeWithTime = makeRecipe({ recipeId: 'r1', name: 'Pasta Carbonara', prepTime: 10, cookTime: 20 });
+    mockFetchRecipes.mockResolvedValue([recipeWithTime]);
+    render(<RecipeList onSelect={onSelect} onNew={onNew} />);
+    await waitFor(() => screen.getByText('Pasta Carbonara'));
+
+    // The badge text should be "30 min"
+    const badge = screen.getByText('30 min');
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveAttribute('aria-label', '30 minutes total');
+  });
+
+  it('renders no time badge for recipes without time fields', async () => {
+    mockFetchRecipes.mockResolvedValue([sampleRecipes[0]]);
+    render(<RecipeList onSelect={onSelect} onNew={onNew} />);
+    await waitFor(() => screen.getByText('Pasta Carbonara'));
+
+    expect(screen.queryByText(/\d+ min$/)).not.toBeInTheDocument();
   });
 });

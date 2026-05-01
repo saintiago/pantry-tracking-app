@@ -58,6 +58,32 @@ export interface IngredientStatus {
 
 // ─── Validation ──────────────────────────────────────────────────────────────
 
+/**
+ * Validates optional prepTime and cookTime fields in a parsed request body.
+ * Returns the name of the first failing field, or null if both are absent or valid.
+ * Note: null values are treated as explicit removal signals and are not validated here.
+ */
+export function validateTimeFields(parsed: Record<string, unknown>): string | null {
+  for (const field of ['prepTime', 'cookTime'] as const) {
+    if (parsed[field] !== undefined && parsed[field] !== null) {
+      const v = parsed[field];
+      if (typeof v !== 'number' || !Number.isInteger(v) || v < 0) {
+        return field;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Computes total time from optional prepTime and cookTime.
+ * Returns undefined when both are absent; otherwise returns (prepTime ?? 0) + (cookTime ?? 0).
+ */
+export function computeTotalTime(prepTime?: number, cookTime?: number): number | undefined {
+  if (prepTime === undefined && cookTime === undefined) return undefined;
+  return (prepTime ?? 0) + (cookTime ?? 0);
+}
+
 function validateIngredients(ingredients: unknown): string | null {
   if (!Array.isArray(ingredients) || ingredients.length === 0) {
     return 'At least one ingredient is required';
@@ -212,6 +238,15 @@ async function createRecipe(
     });
   }
 
+  const invalidTimeField = validateTimeFields(parsed);
+  if (invalidTimeField) {
+    return response(400, {
+      error: 'VALIDATION_ERROR',
+      message: `${invalidTimeField} must be a non-negative integer`,
+      details: [{ field: invalidTimeField, message: `${invalidTimeField} must be a non-negative integer` }],
+    });
+  }
+
   const now = new Date().toISOString();
   const recipeId = randomUUID();
 
@@ -232,6 +267,9 @@ async function createRecipe(
   if (parsed.sourceUrl !== undefined && parsed.sourceUrl !== null) {
     recipe.sourceUrl = parsed.sourceUrl;
   }
+
+  if (parsed.prepTime !== undefined) recipe.prepTime = parsed.prepTime as number;
+  if (parsed.cookTime !== undefined) recipe.cookTime = parsed.cookTime as number;
 
   await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: recipe }));
 
@@ -305,6 +343,15 @@ async function updateRecipe(
     }
   }
 
+  const invalidTimeField = validateTimeFields(parsed);
+  if (invalidTimeField) {
+    return response(400, {
+      error: 'VALIDATION_ERROR',
+      message: `${invalidTimeField} must be a non-negative integer`,
+      details: [{ field: invalidTimeField, message: `${invalidTimeField} must be a non-negative integer` }],
+    });
+  }
+
   const now = new Date().toISOString();
   const expressionAttrNames: Record<string, string> = { '#updatedAt': 'updatedAt' };
   const expressionAttrValues: Record<string, unknown> = { ':now': now, ':inc': 1 };
@@ -315,10 +362,12 @@ async function updateRecipe(
     ingredients: 'ingredients',
     instructions: 'instructions',
     sourceUrl: 'sourceUrl',
+    prepTime: 'prepTime',
+    cookTime: 'cookTime',
   };
 
   for (const [field, dbField] of Object.entries(updatableFields)) {
-    if (parsed[field] !== undefined) {
+    if (parsed[field] !== undefined && parsed[field] !== null) {
       const alias = `#f_${field}`;
       const valAlias = `:v_${field}`;
       expressionAttrNames[alias] = dbField;
@@ -327,12 +376,27 @@ async function updateRecipe(
     }
   }
 
+  // Handle explicit null values for prepTime/cookTime — use REMOVE to delete the attribute
+  const removeParts: string[] = [];
+  for (const field of ['prepTime', 'cookTime'] as const) {
+    if (parsed[field] === null) {
+      const alias = `#f_${field}`;
+      expressionAttrNames[alias] = field;
+      removeParts.push(alias);
+    }
+  }
+
+  const updateExpressionParts: string[] = [];
+  if (updateParts.length > 0) updateExpressionParts.push(`SET ${updateParts.join(', ')}`);
+  if (removeParts.length > 0) updateExpressionParts.push(`REMOVE ${removeParts.join(', ')}`);
+  const updateExpression = updateExpressionParts.join(' ');
+
   try {
     const result = await docClient.send(
       new UpdateCommand({
         TableName: TABLE_NAME,
         Key: { PK: `USER#${userId}`, SK: `RECIPE#${recipeId}` },
-        UpdateExpression: `SET ${updateParts.join(', ')}`,
+        UpdateExpression: updateExpression,
         ConditionExpression: 'attribute_exists(PK)',
         ExpressionAttributeNames: expressionAttrNames,
         ExpressionAttributeValues: expressionAttrValues,

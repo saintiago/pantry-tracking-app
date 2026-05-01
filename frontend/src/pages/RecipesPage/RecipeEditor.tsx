@@ -25,6 +25,8 @@ interface FormErrors {
   instructions?: string;
   ingredients?: string;
   ingredientRows?: Record<number, { name?: string; quantity?: string; unit?: string }>;
+  prepTime?: string;
+  cookTime?: string;
 }
 
 interface DropdownState {
@@ -35,6 +37,19 @@ interface DropdownState {
 
 let nextId = 0;
 const makeRow = (): IngredientRow => ({ _id: ++nextId, name: '', quantity: 0, unit: '' });
+
+/**
+ * Validates a time field string value.
+ * Returns an error message if the value is non-empty and not a non-negative integer.
+ */
+function validateTimeField(value: string, fieldName: string): string | undefined {
+  if (value === '') return undefined;
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 0) {
+    return `${fieldName} must be a non-negative whole number.`;
+  }
+  return undefined;
+}
 
 const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel }) => {
   const isEdit = recipeId !== undefined;
@@ -48,6 +63,13 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
   const [loading, setLoading] = useState(isEdit);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Time fields (stored as strings for controlled number inputs)
+  const [prepTime, setPrepTime] = useState('');
+  const [cookTime, setCookTime] = useState('');
+  // Original values to distinguish "never set" from "cleared" in edit mode
+  const [originalPrepTime, setOriginalPrepTime] = useState<number | undefined>(undefined);
+  const [originalCookTime, setOriginalCookTime] = useState<number | undefined>(undefined);
 
   // Per-row ingredient name autocomplete dropdowns
   const [dropdowns, setDropdowns] = useState<Record<number, DropdownState>>({});
@@ -79,6 +101,11 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
             ? recipe.ingredients.map((ing) => ({ ...ing, _id: ++nextId }))
             : [makeRow()],
         );
+        // Pre-populate time fields
+        setPrepTime(recipe.prepTime !== undefined ? String(recipe.prepTime) : '');
+        setCookTime(recipe.cookTime !== undefined ? String(recipe.cookTime) : '');
+        setOriginalPrepTime(recipe.prepTime);
+        setOriginalCookTime(recipe.cookTime);
       })
       .catch((err) => {
         if (!cancelled)
@@ -211,8 +238,13 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
     });
     if (Object.keys(rowErrors).length > 0) errs.ingredientRows = rowErrors;
 
+    const prepTimeErr = validateTimeField(prepTime, 'Prep time');
+    if (prepTimeErr) errs.prepTime = prepTimeErr;
+    const cookTimeErr = validateTimeField(cookTime, 'Cook time');
+    if (cookTimeErr) errs.cookTime = cookTimeErr;
+
     return errs;
-  }, [name, instructions, ingredients]);
+  }, [name, instructions, ingredients, prepTime, cookTime]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -226,19 +258,44 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
       setSubmitError(null);
       setSubmitting(true);
 
-      const data = {
+      const baseData = {
         name: name.trim(),
         instructions: instructions.trim(),
         sourceUrl: sourceUrl.trim() || undefined,
         ingredients: ingredients.map(({ name: n, quantity, unit }) => ({ name: n, quantity, unit })),
       };
 
+      // Build time field payload
+      const timeFields: { prepTime?: number | null; cookTime?: number | null } = {};
+      if (isEdit) {
+        // Edit mode: empty string on a previously-set field = explicit null (removal)
+        // Empty string on a field that was never set = omit entirely
+        if (prepTime !== '') {
+          timeFields.prepTime = Number(prepTime);
+        } else if (originalPrepTime !== undefined) {
+          timeFields.prepTime = null;
+        }
+        if (cookTime !== '') {
+          timeFields.cookTime = Number(cookTime);
+        } else if (originalCookTime !== undefined) {
+          timeFields.cookTime = null;
+        }
+      } else {
+        // Create mode: empty = omit (never null in create mode)
+        if (prepTime !== '') timeFields.prepTime = Number(prepTime);
+        if (cookTime !== '') timeFields.cookTime = Number(cookTime);
+      }
+
       try {
         if (isEdit && recipeId) {
-          await updateRecipe(recipeId, data);
+          await updateRecipe(recipeId, { ...baseData, ...timeFields });
           onSaved(recipeId);
         } else {
-          const recipe = await createRecipe(data);
+          // In create mode, timeFields only contains number | undefined (never null)
+          const createTimeFields: { prepTime?: number; cookTime?: number } = {};
+          if (timeFields.prepTime != null) createTimeFields.prepTime = timeFields.prepTime as number;
+          if (timeFields.cookTime != null) createTimeFields.cookTime = timeFields.cookTime as number;
+          const recipe = await createRecipe({ ...baseData, ...createTimeFields });
           onSaved(recipe.recipeId);
         }
       } catch (err) {
@@ -247,7 +304,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
         setSubmitting(false);
       }
     },
-    [validate, name, instructions, sourceUrl, ingredients, isEdit, recipeId, onSaved],
+    [validate, name, instructions, sourceUrl, ingredients, isEdit, recipeId, onSaved, prepTime, cookTime, originalPrepTime, originalCookTime],
   );
 
   if (loading) {
@@ -346,6 +403,61 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
             style={styles.input}
             placeholder="https://…"
           />
+        </div>
+
+        {/* Time fields */}
+        <div style={styles.timeFieldsRow}>
+          <div style={styles.fieldGroup}>
+            <label htmlFor="recipe-prep-time" style={styles.label}>
+              Prep time (min)
+            </label>
+            <input
+              id="recipe-prep-time"
+              type="number"
+              min="0"
+              step="1"
+              value={prepTime}
+              onChange={(e) => {
+                setPrepTime(e.target.value);
+                setErrors((prev) => ({ ...prev, prepTime: undefined }));
+              }}
+              style={styles.input}
+              aria-label="Prep time (min)"
+              aria-invalid={!!errors.prepTime}
+              placeholder="e.g. 15"
+            />
+            {errors.prepTime && (
+              <span style={styles.fieldError} role="alert">
+                {errors.prepTime}
+              </span>
+            )}
+          </div>
+
+          <div style={styles.fieldGroup}>
+            <label htmlFor="recipe-cook-time" style={styles.label}>
+              Cook time (min)
+            </label>
+            <input
+              id="recipe-cook-time"
+              type="number"
+              min="0"
+              step="1"
+              value={cookTime}
+              onChange={(e) => {
+                setCookTime(e.target.value);
+                setErrors((prev) => ({ ...prev, cookTime: undefined }));
+              }}
+              style={styles.input}
+              aria-label="Cook time (min)"
+              aria-invalid={!!errors.cookTime}
+              placeholder="e.g. 30"
+            />
+            {errors.cookTime && (
+              <span style={styles.fieldError} role="alert">
+                {errors.cookTime}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Ingredients */}
@@ -744,6 +856,10 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     padding: '2rem',
     gap: '1rem',
+  },
+  timeFieldsRow: {
+    display: 'flex',
+    gap: '0.75rem',
   },
   statusText: {
     color: '#6b7280',

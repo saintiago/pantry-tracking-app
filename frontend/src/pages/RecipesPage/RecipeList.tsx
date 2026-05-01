@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { fetchRecipes } from '../../api/recipes/recipes';
+import { fetchRecipes, computeTotalTime } from '../../api/recipes/recipes';
 import type { Recipe } from '../../api/recipes/recipes';
 
 interface RecipeListProps {
@@ -80,6 +80,7 @@ const RecipeList: React.FC<RecipeListProps> = ({ onSelect, onNew }) => {
         <ul style={styles.list} role="list">
           {filtered.map((recipe) => {
             const missingCount = (recipe as Recipe & { missingCount?: number }).missingCount;
+            const totalTime = computeTotalTime(recipe.prepTime, recipe.cookTime);
             return (
               <li key={recipe.recipeId} style={styles.listItem}>
                 <button
@@ -89,11 +90,18 @@ const RecipeList: React.FC<RecipeListProps> = ({ onSelect, onNew }) => {
                   aria-label={`View ${recipe.name}`}
                 >
                   <span style={styles.recipeName}>{recipe.name}</span>
-                  {missingCount != null && missingCount > 0 && (
-                    <span style={styles.missingBadge} aria-label={`${missingCount} ingredient(s) missing`}>
-                      {missingCount} missing
-                    </span>
-                  )}
+                  <span style={styles.badgeGroup}>
+                    {totalTime !== undefined && (
+                      <span style={styles.timeBadge} aria-label={`${totalTime} minutes total`}>
+                        {totalTime} min
+                      </span>
+                    )}
+                    {missingCount != null && missingCount > 0 && (
+                      <span style={styles.missingBadge} aria-label={`${missingCount} ingredient(s) missing`}>
+                        {missingCount} missing
+                      </span>
+                    )}
+                  </span>
                 </button>
               </li>
             );
@@ -184,6 +192,21 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     color: '#ffffff',
     backgroundColor: '#dc2626',
+    borderRadius: 12,
+  },
+  badgeGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.4rem',
+    flexShrink: 0,
+  },
+  timeBadge: {
+    flexShrink: 0,
+    padding: '0.2rem 0.6rem',
+    fontSize: '0.75rem',
+    fontWeight: 600,
+    color: '#374151',
+    backgroundColor: '#e5e7eb',
     borderRadius: 12,
   },
   centered: {

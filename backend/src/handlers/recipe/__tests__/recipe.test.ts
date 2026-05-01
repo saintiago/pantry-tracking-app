@@ -678,4 +678,99 @@ describe('Recipe Lambda handler', () => {
       expect(JSON.parse(result.body).error).toBe('INTERNAL_ERROR');
     });
   });
+
+  // ─── Time field validation ────────────────────────────────────────────────────
+
+  describe('POST /recipes — time fields', () => {
+    it('creates recipe with valid prepTime and cookTime and returns them in response', async () => {
+      mockSend.mockResolvedValueOnce({}); // PutCommand: save recipe
+      mockSend.mockResolvedValueOnce({ Items: [] }); // QueryCommand: existing inventory
+      mockSend.mockResolvedValue({}); // PutCommand: placeholder items
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'POST',
+          body: JSON.stringify({ ...validRecipe, prepTime: 10, cookTime: 20 }),
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(201);
+      expect(body.recipe.prepTime).toBe(10);
+      expect(body.recipe.cookTime).toBe(20);
+    });
+
+    it('creates recipe without time fields when not provided', async () => {
+      mockSend.mockResolvedValueOnce({});
+      mockSend.mockResolvedValueOnce({ Items: [] });
+      mockSend.mockResolvedValue({});
+
+      const result = await handler(
+        makeEvent({ httpMethod: 'POST', body: JSON.stringify(validRecipe) }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(201);
+      expect(body.recipe.prepTime).toBeUndefined();
+      expect(body.recipe.cookTime).toBeUndefined();
+    });
+
+    it('returns 400 with prepTime field identified when prepTime is -1', async () => {
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'POST',
+          body: JSON.stringify({ ...validRecipe, prepTime: -1 }),
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(400);
+      expect(body.error).toBe('VALIDATION_ERROR');
+      expect(body.details).toEqual(
+        expect.arrayContaining([expect.objectContaining({ field: 'prepTime' })]),
+      );
+    });
+
+    it('returns 400 with cookTime field identified when cookTime is 1.5', async () => {
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'POST',
+          body: JSON.stringify({ ...validRecipe, cookTime: 1.5 }),
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(400);
+      expect(body.error).toBe('VALIDATION_ERROR');
+      expect(body.details).toEqual(
+        expect.arrayContaining([expect.objectContaining({ field: 'cookTime' })]),
+      );
+    });
+  });
+
+  describe('PUT /recipes/{recipeId} — time fields', () => {
+    it('uses REMOVE expression when prepTime is null', async () => {
+      const { UpdateCommand: MockUpdateCommand } = jest.requireMock('@aws-sdk/lib-dynamodb');
+      MockUpdateCommand.mockClear();
+
+      mockSend.mockResolvedValueOnce({
+        Attributes: { recipeId: 'recipe-1', name: 'Pasta', syncVersion: 2 },
+      });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'PUT',
+          pathParameters: { recipeId: 'recipe-1' },
+          body: JSON.stringify({ prepTime: null }),
+        }),
+      );
+
+      expect(result.statusCode).toBe(200);
+      const updateCall = MockUpdateCommand.mock.calls[0][0];
+      expect(updateCall.UpdateExpression).toContain('REMOVE');
+      // prepTime should be in REMOVE clause, not SET clause
+      const setClause = updateCall.UpdateExpression.split('REMOVE')[0];
+      expect(setClause).not.toContain('#f_prepTime');
+    });
+  });
 });
