@@ -4,6 +4,7 @@ import { LowStockBadge } from '../../components/InventoryList/InventoryList';
 import type { StorageLocation } from '../../api/locations/locations';
 import { updateInventoryItem } from '../../api/inventory/inventory';
 import { VALID_UNITS, getUnitLabel, resolveUnit } from '../../types/units';
+import { parseFractionalQuantity, formatQuantity } from '../../utils/quantity';
 
 export interface ItemDetailPageProps {
   item: InventoryItem;
@@ -45,8 +46,8 @@ function validateForm(form: EditFormState): EditFormErrors {
   if (!form.category.trim()) errors.category = 'Category is required.';
   if (!form.expirationDate) errors.expirationDate = 'Expiration date is required.';
   if (!form.locationId) errors.locationId = 'Storage location is required.';
-  const qty = Number(form.quantity);
-  if (form.quantity === '' || isNaN(qty)) {
+  const qty = parseFractionalQuantity(form.quantity);
+  if (form.quantity.trim() === '' || qty === null) {
     errors.quantity = 'Quantity is required.';
   } else if (qty < 0) {
     errors.quantity = 'Quantity must be non-negative.';
@@ -60,7 +61,7 @@ function initForm(item: InventoryItem): EditFormState {
     name: item.name,
     category: item.category,
     locationId: item.location,
-    quantity: String(item.quantity),
+    quantity: formatQuantity(item.quantity),
     unit: resolveUnit(item.unit),
     expirationDate: item.expirationDate,
     brand: item.brand ?? '',
@@ -101,7 +102,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({ item, locations, onBack
         name: editForm.name.trim(),
         category: editForm.category.trim(),
         locationId: editForm.locationId,
-        quantity: Number(editForm.quantity),
+        quantity: parseFractionalQuantity(editForm.quantity) ?? 0,
         unit: editForm.unit.trim(),
         expirationDate: editForm.expirationDate,
       };
@@ -218,13 +219,13 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({ item, locations, onBack
           </label>
           <input
             id="edit-quantity"
-            type="number"
-            min="0"
+            type="text"
             value={editForm.quantity}
             onChange={handleChange('quantity')}
             style={styles.input}
             aria-required="true"
             aria-invalid={!!errors.quantity}
+            placeholder="e.g. 2, 1/2, 1 1/4"
           />
           {errors.quantity && <span style={styles.fieldError} role="alert">{errors.quantity}</span>}
         </div>

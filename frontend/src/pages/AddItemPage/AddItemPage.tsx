@@ -5,6 +5,7 @@ import type { UnitType } from '../../types/units';
 import { searchInventory, lookupBarcode } from '../../api/inventory/inventory';
 import type { InventoryItem } from '../../api/inventory/inventory';
 import AutocompleteDropdown from '../../components/AutocompleteDropdown/AutocompleteDropdown';
+import { parseFractionalQuantity } from '../../utils/quantity';
 
 export interface AddItemData {
   name: string;
@@ -332,8 +333,8 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
     if (!form.category.trim()) errs.category = 'Category is required.';
     if (!form.expirationDate) errs.expirationDate = 'Expiration date is required.';
     if (!form.locationId) errs.locationId = 'Storage location is required.';
-    const qty = Number(form.quantity);
-    if (form.quantity === '' || isNaN(qty)) {
+    const qty = parseFractionalQuantity(form.quantity);
+    if (form.quantity.trim() === '' || qty === null) {
       errs.quantity = 'Quantity is required.';
     } else if (qty < 0) {
       errs.quantity = 'Quantity must be non-negative.';
@@ -359,7 +360,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
         category: form.category.trim(),
         expirationDate: form.expirationDate,
         locationId: form.locationId,
-        quantity: Number(form.quantity),
+        quantity: parseFractionalQuantity(form.quantity) ?? 0,
         unit: form.unit.trim(),
       };
       if (form.barcode.trim()) data.barcode = form.barcode.trim();
@@ -529,13 +530,13 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
           </label>
           <input
             id="add-item-quantity"
-            type="number"
-            min="0"
+            type="text"
             value={form.quantity}
             onChange={handleChange('quantity')}
             style={styles.input}
             aria-required="true"
             aria-invalid={!!errors.quantity}
+            placeholder="e.g. 2, 1/2, 1 1/4"
           />
           {errors.quantity && <span style={styles.fieldError} role="alert">{errors.quantity}</span>}
         </div>
