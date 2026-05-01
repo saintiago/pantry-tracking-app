@@ -84,6 +84,39 @@ export function computeTotalTime(prepTime?: number, cookTime?: number): number |
   return (prepTime ?? 0) + (cookTime ?? 0);
 }
 
+/**
+ * Validates the portions field in a parsed request body.
+ * Returns an error message string if invalid, or null if valid or absent.
+ * Absence is not an error here — the caller checks for required presence separately.
+ */
+export function validatePortions(parsed: Record<string, unknown>): string | null {
+  if (parsed.portions === undefined) return null;
+  const v = parsed.portions;
+  if (typeof v !== 'number' || !Number.isInteger(v) || v < 1) {
+    return 'portions must be a positive integer';
+  }
+  return null;
+}
+
+/**
+ * Scales a list of ingredient quantities from one portions base to another.
+ * Returns a new array of scaled quantities (rounded to at most 2 decimal places).
+ * Does NOT mutate the input ingredients.
+ *
+ * @param ingredients - The source ingredient list
+ * @param fromPortions - The base portions value (positive integer)
+ * @param toPortions - The target portions value (positive integer)
+ * @returns Array of scaled quantities in the same order as the input
+ */
+export function scaleIngredients(
+  ingredients: RecipeIngredient[],
+  fromPortions: number,
+  toPortions: number,
+): number[] {
+  const factor = toPortions / fromPortions;
+  return ingredients.map((ing) => Math.round(ing.quantity * factor * 100) / 100);
+}
+
 function validateIngredients(ingredients: unknown): string | null {
   if (!Array.isArray(ingredients) || ingredients.length === 0) {
     return 'At least one ingredient is required';
@@ -247,6 +280,22 @@ async function createRecipe(
     });
   }
 
+  const portionsError = validatePortions(parsed);
+  if (portionsError) {
+    return response(400, {
+      error: 'VALIDATION_ERROR',
+      message: portionsError,
+      details: [{ field: 'portions', message: portionsError }],
+    });
+  }
+  if (parsed.portions === undefined) {
+    return response(400, {
+      error: 'VALIDATION_ERROR',
+      message: 'portions is required',
+      details: [{ field: 'portions', message: 'portions is required' }],
+    });
+  }
+
   const now = new Date().toISOString();
   const recipeId = randomUUID();
 
@@ -262,6 +311,7 @@ async function createRecipe(
     createdAt: now,
     updatedAt: now,
     syncVersion: 1,
+    portions: parsed.portions as number,
   };
 
   if (parsed.sourceUrl !== undefined && parsed.sourceUrl !== null) {
@@ -352,6 +402,15 @@ async function updateRecipe(
     });
   }
 
+  const portionsError = validatePortions(parsed);
+  if (portionsError) {
+    return response(400, {
+      error: 'VALIDATION_ERROR',
+      message: portionsError,
+      details: [{ field: 'portions', message: portionsError }],
+    });
+  }
+
   const now = new Date().toISOString();
   const expressionAttrNames: Record<string, string> = { '#updatedAt': 'updatedAt' };
   const expressionAttrValues: Record<string, unknown> = { ':now': now, ':inc': 1 };
@@ -364,6 +423,7 @@ async function updateRecipe(
     sourceUrl: 'sourceUrl',
     prepTime: 'prepTime',
     cookTime: 'cookTime',
+    portions: 'portions',
   };
 
   for (const [field, dbField] of Object.entries(updatableFields)) {

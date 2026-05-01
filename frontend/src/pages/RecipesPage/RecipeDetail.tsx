@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { deleteRecipe, fetchRecipeWithAvailability, computeTotalTime } from '../../api/recipes/recipes';
+import { deleteRecipe, fetchRecipeWithAvailability, computeTotalTime, scaleIngredients } from '../../api/recipes/recipes';
 import type { RecipeWithAvailability } from '../../api/recipes/recipes';
 import IngredientAvailability from './IngredientAvailability';
 
@@ -15,6 +15,7 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipeId, onEdit, onBack, o
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [selectedPortions, setSelectedPortions] = useState<number>(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,6 +38,18 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipeId, onEdit, onBack, o
       cancelled = true;
     };
   }, [recipeId]);
+
+  useEffect(() => {
+    if (data) setSelectedPortions(data.recipe.portions ?? 1);
+  }, [data?.recipe.recipeId]);
+
+  const handleIncrement = useCallback(() => {
+    setSelectedPortions((p) => p + 1);
+  }, []);
+
+  const handleDecrement = useCallback(() => {
+    setSelectedPortions((p) => (p > 1 ? p - 1 : p));
+  }, []);
 
   const handleDelete = useCallback(async () => {
     const confirmed = window.confirm(
@@ -90,6 +103,11 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipeId, onEdit, onBack, o
 
   const totalTime = computeTotalTime(recipe.prepTime, recipe.cookTime);
 
+  const displayedIngredients = recipe.ingredients.map((ing, i) => ({
+    ...ing,
+    quantity: scaleIngredients(recipe.ingredients, recipe.portions ?? 1, selectedPortions)[i],
+  }));
+
   return (
     <div style={styles.page}>
       {/* Header */}
@@ -121,6 +139,50 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipeId, onEdit, onBack, o
             ) : (
               <span style={{ ...styles.timeItem, ...styles.totalTime }}>Total: {totalTime} min</span>
             )}
+          </section>
+        )}
+
+        {/* Portions scaler */}
+        <section style={styles.portionsSection} aria-label="Portions">
+          <span style={styles.portionsLabel}>Portions</span>
+          <div style={styles.portionsControls}>
+            <button
+              type="button"
+              onClick={handleDecrement}
+              disabled={selectedPortions === 1}
+              aria-label="Decrease portions"
+              style={styles.portionsButton}
+            >
+              –
+            </button>
+            <span style={styles.portionsValue} aria-live="polite">
+              {selectedPortions}
+            </span>
+            <button
+              type="button"
+              onClick={handleIncrement}
+              aria-label="Increase portions"
+              style={styles.portionsButton}
+            >
+              +
+            </button>
+          </div>
+        </section>
+
+        {/* Ingredients display */}
+        {displayedIngredients.length > 0 && (
+          <section style={styles.section} aria-label="Ingredients">
+            <h3 style={styles.sectionTitle}>Ingredients</h3>
+            <ul style={styles.ingredientList}>
+              {displayedIngredients.map((ing, i) => (
+                <li key={i} style={styles.ingredientItem}>
+                  <span>
+                    {ing.quantity} {ing.unit}
+                  </span>
+                  <span>{ing.name}</span>
+                </li>
+              ))}
+            </ul>
           </section>
         )}
 
@@ -320,5 +382,61 @@ const styles: Record<string, React.CSSProperties> = {
   totalTime: {
     fontWeight: 700,
     color: '#111827',
+  },
+  portionsSection: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '0.75rem 1rem',
+    backgroundColor: '#f3f4f6',
+    borderRadius: 8,
+  },
+  portionsLabel: {
+    fontSize: '0.9375rem',
+    fontWeight: 600,
+    color: '#374151',
+  },
+  portionsControls: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+  },
+  portionsButton: {
+    minWidth: 44,
+    minHeight: 44,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '0.5rem',
+    background: '#ffffff',
+    border: '1px solid #d1d5db',
+    borderRadius: 8,
+    cursor: 'pointer',
+    fontSize: '1.25rem',
+    fontWeight: 700,
+    color: '#374151',
+  },
+  portionsValue: {
+    fontSize: '1rem',
+    fontWeight: 700,
+    color: '#111827',
+    minWidth: 32,
+    textAlign: 'center' as const,
+  },
+  ingredientList: {
+    listStyle: 'none',
+    margin: 0,
+    padding: 0,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '0.5rem',
+  },
+  ingredientItem: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '0.9375rem',
+    color: '#374151',
+    padding: '0.25rem 0',
+    borderBottom: '1px solid #f3f4f6',
   },
 };

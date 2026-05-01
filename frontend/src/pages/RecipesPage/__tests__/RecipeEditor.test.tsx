@@ -7,7 +7,12 @@ import * as recipesApi from '../../../api/recipes/recipes';
 import type { Recipe, RecipeWithAvailability } from '../../../api/recipes/recipes';
 import * as inventoryApi from '../../../api/inventory/inventory';
 
-jest.mock('../../../api/recipes/recipes');
+jest.mock('../../../api/recipes/recipes', () => ({
+  ...jest.requireActual('../../../api/recipes/recipes'),
+  createRecipe: jest.fn(),
+  updateRecipe: jest.fn(),
+  fetchRecipeWithAvailability: jest.fn(),
+}));
 jest.mock('../../../api/inventory/inventory');
 
 const mockCreate = recipesApi.createRecipe as jest.MockedFunction<typeof recipesApi.createRecipe>;
@@ -124,6 +129,7 @@ describe('RecipeEditor — create mode', () => {
     await user.clear(screen.getByLabelText(/ingredient 1 quantity/i));
     await user.type(screen.getByLabelText(/ingredient 1 quantity/i), '200');
     await user.selectOptions(screen.getByLabelText(/ingredient 1 unit/i), 'Gram');
+    await user.type(screen.getByLabelText(/portions/i), '2');
 
     await user.click(screen.getByRole('button', { name: /create recipe/i }));
 
@@ -150,6 +156,7 @@ describe('RecipeEditor — create mode', () => {
     await user.clear(screen.getByLabelText(/ingredient 1 quantity/i));
     await user.type(screen.getByLabelText(/ingredient 1 quantity/i), '200');
     await user.selectOptions(screen.getByLabelText(/ingredient 1 unit/i), 'Gram');
+    await user.type(screen.getByLabelText(/portions/i), '2');
 
     await user.click(screen.getByRole('button', { name: /create recipe/i }));
 
@@ -169,6 +176,7 @@ describe('RecipeEditor — create mode', () => {
     await user.clear(screen.getByLabelText(/ingredient 1 quantity/i));
     await user.type(screen.getByLabelText(/ingredient 1 quantity/i), '200');
     await user.selectOptions(screen.getByLabelText(/ingredient 1 unit/i), 'Gram');
+    await user.type(screen.getByLabelText(/portions/i), '2');
 
     await user.click(screen.getByRole('button', { name: /create recipe/i }));
 
@@ -303,6 +311,85 @@ describe('RecipeEditor — create mode', () => {
 
     jest.useRealTimers();
   });
+
+  it('renders a labeled "Portions" input in create mode', () => {
+    render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} />);
+    expect(screen.getByLabelText(/portions/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/portions/i)).toHaveAttribute('type', 'number');
+  });
+
+  it('shows validation error when portions is empty on submit', async () => {
+    const user = userEvent.setup();
+    render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} />);
+
+    await user.type(screen.getByRole('textbox', { name: /^name$/i }), 'Pasta');
+    await user.type(screen.getByRole('textbox', { name: /instructions/i }), 'Cook it');
+    await user.type(screen.getByLabelText(/ingredient 1 name/i), 'Pasta');
+    await user.clear(screen.getByLabelText(/ingredient 1 quantity/i));
+    await user.type(screen.getByLabelText(/ingredient 1 quantity/i), '200');
+    await user.selectOptions(screen.getByLabelText(/ingredient 1 unit/i), 'Gram');
+    // Leave portions empty
+
+    await user.click(screen.getByRole('button', { name: /create recipe/i }));
+
+    expect(await screen.findByText(/portions is required/i)).toBeInTheDocument();
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('shows validation error when portions is 0 on submit', async () => {
+    const user = userEvent.setup();
+    render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} />);
+
+    await user.type(screen.getByRole('textbox', { name: /^name$/i }), 'Pasta');
+    await user.type(screen.getByRole('textbox', { name: /instructions/i }), 'Cook it');
+    await user.type(screen.getByLabelText(/ingredient 1 name/i), 'Pasta');
+    await user.clear(screen.getByLabelText(/ingredient 1 quantity/i));
+    await user.type(screen.getByLabelText(/ingredient 1 quantity/i), '200');
+    await user.selectOptions(screen.getByLabelText(/ingredient 1 unit/i), 'Gram');
+    await user.type(screen.getByLabelText(/portions/i), '0');
+
+    await user.click(screen.getByRole('button', { name: /create recipe/i }));
+
+    expect(await screen.findByText(/portions must be a positive whole number/i)).toBeInTheDocument();
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('does not recalculate ingredient quantities when portions changes in create mode', async () => {
+    const user = userEvent.setup();
+    render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} />);
+
+    // Set an ingredient quantity
+    await user.clear(screen.getByLabelText(/ingredient 1 quantity/i));
+    await user.type(screen.getByLabelText(/ingredient 1 quantity/i), '200');
+
+    // Change portions
+    await user.type(screen.getByLabelText(/portions/i), '4');
+
+    // Quantity should remain unchanged
+    expect(screen.getByLabelText(/ingredient 1 quantity/i)).toHaveValue(200);
+  });
+
+  it('includes portions in the create API call payload', async () => {
+    const user = userEvent.setup();
+    mockCreate.mockResolvedValue(makeRecipe({ recipeId: 'new-id' }));
+
+    render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} />);
+
+    await user.type(screen.getByRole('textbox', { name: /^name$/i }), 'Pasta');
+    await user.type(screen.getByRole('textbox', { name: /instructions/i }), 'Cook it');
+    await user.type(screen.getByLabelText(/ingredient 1 name/i), 'Pasta');
+    await user.clear(screen.getByLabelText(/ingredient 1 quantity/i));
+    await user.type(screen.getByLabelText(/ingredient 1 quantity/i), '200');
+    await user.selectOptions(screen.getByLabelText(/ingredient 1 unit/i), 'Gram');
+    await user.type(screen.getByLabelText(/portions/i), '4');
+
+    await user.click(screen.getByRole('button', { name: /create recipe/i }));
+
+    await waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1));
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ portions: 4 }),
+    );
+  });
 });
 
 describe('RecipeEditor — edit mode', () => {
@@ -391,5 +478,100 @@ describe('RecipeEditor — edit mode', () => {
 
     expect(await screen.findByText('Update failed')).toBeInTheDocument();
     expect(onSaved).not.toHaveBeenCalled();
+  });
+});
+
+describe('RecipeEditor — edit mode portions scaler', () => {
+  const onSaved = jest.fn();
+  const onCancel = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSearch.mockResolvedValue({ field: 'name', query: '', resultType: 'items', items: [], count: 0 });
+  });
+
+  it('renders +/– controls in edit mode instead of a plain input', async () => {
+    mockFetch.mockResolvedValue(makeAvailability(makeRecipe({ portions: 2 })));
+    render(<RecipeEditor recipeId="r1" onSaved={onSaved} onCancel={onCancel} />);
+
+    await waitFor(() => expect(screen.getByRole('heading', { name: /edit recipe/i })).toBeInTheDocument());
+
+    expect(screen.getByRole('button', { name: /increase portions/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /decrease portions/i })).toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton', { name: /portions/i })).not.toBeInTheDocument();
+  });
+
+  it('pre-populates selectedPortions from recipe.portions', async () => {
+    mockFetch.mockResolvedValue(makeAvailability(makeRecipe({ portions: 4 })));
+    render(<RecipeEditor recipeId="r1" onSaved={onSaved} onCancel={onCancel} />);
+
+    await waitFor(() => expect(screen.getByRole('heading', { name: /edit recipe/i })).toBeInTheDocument());
+
+    expect(screen.getByText(/4 portions/i)).toBeInTheDocument();
+  });
+
+  it('disables – button when selectedPortions is 1', async () => {
+    mockFetch.mockResolvedValue(makeAvailability(makeRecipe({ portions: 1 })));
+    render(<RecipeEditor recipeId="r1" onSaved={onSaved} onCancel={onCancel} />);
+
+    await waitFor(() => expect(screen.getByRole('heading', { name: /edit recipe/i })).toBeInTheDocument());
+
+    expect(screen.getByRole('button', { name: /decrease portions/i })).toBeDisabled();
+  });
+
+  it('recalculates ingredient quantity fields when + is tapped', async () => {
+    const user = userEvent.setup();
+    const recipe = makeRecipe({
+      portions: 2,
+      ingredients: [{ name: 'Flour', quantity: 100, unit: 'Gram' }],
+    });
+    mockFetch.mockResolvedValue(makeAvailability(recipe));
+    render(<RecipeEditor recipeId="r1" onSaved={onSaved} onCancel={onCancel} />);
+
+    await waitFor(() => expect(screen.getByLabelText(/ingredient 1 quantity/i)).toHaveValue(100));
+
+    await user.click(screen.getByRole('button', { name: /increase portions/i }));
+
+    // 100 * (3/2) = 150
+    expect(screen.getByLabelText(/ingredient 1 quantity/i)).toHaveValue(150);
+  });
+
+  it('recalculates ingredient quantity fields when – is tapped', async () => {
+    const user = userEvent.setup();
+    const recipe = makeRecipe({
+      portions: 4,
+      ingredients: [{ name: 'Flour', quantity: 200, unit: 'Gram' }],
+    });
+    mockFetch.mockResolvedValue(makeAvailability(recipe));
+    render(<RecipeEditor recipeId="r1" onSaved={onSaved} onCancel={onCancel} />);
+
+    await waitFor(() => expect(screen.getByLabelText(/ingredient 1 quantity/i)).toHaveValue(200));
+
+    // Tap + to go from 4 → 5 portions: 200 * (5/4) = 250
+    await user.click(screen.getByRole('button', { name: /increase portions/i }));
+    expect(screen.getByLabelText(/ingredient 1 quantity/i)).toHaveValue(250);
+
+    // Tap – to go from 5 → 4 portions: 250 * (4/5) = 200
+    await user.click(screen.getByRole('button', { name: /decrease portions/i }));
+    expect(screen.getByLabelText(/ingredient 1 quantity/i)).toHaveValue(200);
+  });
+
+  it('includes selectedPortions as portions in the update API call payload', async () => {
+    const user = userEvent.setup();
+    const recipe = makeRecipe({ portions: 2 });
+    mockFetch.mockResolvedValue(makeAvailability(recipe));
+    mockUpdate.mockResolvedValue({ ...recipe, portions: 3 });
+
+    render(<RecipeEditor recipeId="r1" onSaved={onSaved} onCancel={onCancel} />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: /^name$/i })).toHaveValue('Pasta Carbonara'),
+    );
+
+    await user.click(screen.getByRole('button', { name: /increase portions/i }));
+    await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+    await waitFor(() => expect(mockUpdate).toHaveBeenCalledTimes(1));
+    expect(mockUpdate).toHaveBeenCalledWith('r1', expect.objectContaining({ portions: 3 }));
   });
 });

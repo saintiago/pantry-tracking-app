@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   createRecipe,
   fetchRecipeWithAvailability,
+  scaleIngredients,
   updateRecipe,
 } from '../../api/recipes/recipes';
 import type { RecipeIngredient } from '../../api/recipes/recipes';
@@ -27,6 +28,7 @@ interface FormErrors {
   ingredientRows?: Record<number, { name?: string; quantity?: string; unit?: string }>;
   prepTime?: string;
   cookTime?: string;
+  portions?: string;
 }
 
 interface DropdownState {
@@ -51,6 +53,19 @@ function validateTimeField(value: string, fieldName: string): string | undefined
   return undefined;
 }
 
+/**
+ * Validates the portions field string value.
+ * Returns an error message if empty or not a positive integer.
+ */
+function validatePortionsField(value: string): string | undefined {
+  if (value === '') return 'Portions is required.';
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 1) {
+    return 'Portions must be a positive whole number (at least 1).';
+  }
+  return undefined;
+}
+
 const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel }) => {
   const isEdit = recipeId !== undefined;
 
@@ -70,6 +85,12 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
   // Original values to distinguish "never set" from "cleared" in edit mode
   const [originalPrepTime, setOriginalPrepTime] = useState<number | undefined>(undefined);
   const [originalCookTime, setOriginalCookTime] = useState<number | undefined>(undefined);
+
+  // Portions field (create mode only)
+  const [portions, setPortions] = useState<string>('');
+
+  // Portions scaler (edit mode only)
+  const [selectedPortions, setSelectedPortions] = useState<number>(1);
 
   // Per-row ingredient name autocomplete dropdowns
   const [dropdowns, setDropdowns] = useState<Record<number, DropdownState>>({});
@@ -106,6 +127,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
         setCookTime(recipe.cookTime !== undefined ? String(recipe.cookTime) : '');
         setOriginalPrepTime(recipe.prepTime);
         setOriginalCookTime(recipe.cookTime);
+        setSelectedPortions(recipe.portions ?? 1);
       })
       .catch((err) => {
         if (!cancelled)
@@ -146,8 +168,24 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
     [],
   );
 
-  const closeDropdown = useCallback((rowId: number) => {
-    setDropdowns((prev) => ({ ...prev, [rowId]: { visible: false, items: [], focusedIndex: -1 } }));
+  const handlePortionsIncrement = useCallback(() => {
+    setIngredients((prev) => {
+      const scaled = scaleIngredients(prev, selectedPortions, selectedPortions + 1);
+      return prev.map((row, i) => ({ ...row, quantity: scaled[i] }));
+    });
+    setSelectedPortions((p) => p + 1);
+  }, [selectedPortions]);
+
+  const handlePortionsDecrement = useCallback(() => {
+    if (selectedPortions <= 1) return;
+    setIngredients((prev) => {
+      const scaled = scaleIngredients(prev, selectedPortions, selectedPortions - 1);
+      return prev.map((row, i) => ({ ...row, quantity: scaled[i] }));
+    });
+    setSelectedPortions((p) => p - 1);
+  }, [selectedPortions]);
+
+  const closeDropdown = useCallback((rowId: number) => {    setDropdowns((prev) => ({ ...prev, [rowId]: { visible: false, items: [], focusedIndex: -1 } }));
   }, []);
 
   const handleIngredientNameChange = useCallback(
@@ -243,8 +281,13 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
     const cookTimeErr = validateTimeField(cookTime, 'Cook time');
     if (cookTimeErr) errs.cookTime = cookTimeErr;
 
+    if (!isEdit) {
+      const portionsErr = validatePortionsField(portions);
+      if (portionsErr) errs.portions = portionsErr;
+    }
+
     return errs;
-  }, [name, instructions, ingredients, prepTime, cookTime]);
+  }, [name, instructions, ingredients, prepTime, cookTime, portions, isEdit]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -288,14 +331,14 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
 
       try {
         if (isEdit && recipeId) {
-          await updateRecipe(recipeId, { ...baseData, ...timeFields });
+          await updateRecipe(recipeId, { ...baseData, ...timeFields, portions: selectedPortions });
           onSaved(recipeId);
         } else {
           // In create mode, timeFields only contains number | undefined (never null)
           const createTimeFields: { prepTime?: number; cookTime?: number } = {};
           if (timeFields.prepTime != null) createTimeFields.prepTime = timeFields.prepTime as number;
           if (timeFields.cookTime != null) createTimeFields.cookTime = timeFields.cookTime as number;
-          const recipe = await createRecipe({ ...baseData, ...createTimeFields });
+          const recipe = await createRecipe({ ...baseData, ...createTimeFields, portions: Number(portions) });
           onSaved(recipe.recipeId);
         }
       } catch (err) {
@@ -304,7 +347,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
         setSubmitting(false);
       }
     },
-    [validate, name, instructions, sourceUrl, ingredients, isEdit, recipeId, onSaved, prepTime, cookTime, originalPrepTime, originalCookTime],
+    [validate, name, instructions, sourceUrl, ingredients, isEdit, recipeId, onSaved, prepTime, cookTime, originalPrepTime, originalCookTime, portions, selectedPortions],
   );
 
   if (loading) {
@@ -459,6 +502,62 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
             )}
           </div>
         </div>
+
+        {/* Portions (create mode only) */}
+        {!isEdit && (
+          <div style={styles.fieldGroup}>
+            <label htmlFor="recipe-portions" style={styles.label}>
+              Portions <span aria-hidden="true">*</span>
+            </label>
+            <input
+              id="recipe-portions"
+              type="number"
+              min="1"
+              step="1"
+              value={portions}
+              onChange={(e) => {
+                setPortions(e.target.value);
+                setErrors((prev) => ({ ...prev, portions: undefined }));
+              }}
+              style={styles.input}
+              aria-required="true"
+              aria-invalid={!!errors.portions}
+              placeholder="e.g. 4"
+            />
+            {errors.portions && (
+              <span style={styles.fieldError} role="alert">
+                {errors.portions}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Portions scaler (edit mode only) */}
+        {isEdit && (
+          <div style={styles.fieldGroup}>
+            <span style={styles.label}>Portions</span>
+            <div style={styles.portionsScalerRow}>
+              <button
+                type="button"
+                onClick={handlePortionsDecrement}
+                disabled={selectedPortions === 1}
+                aria-label="Decrease portions"
+                style={styles.portionsScalerButton}
+              >
+                –
+              </button>
+              <span style={styles.portionsScalerValue}>{selectedPortions} portions</span>
+              <button
+                type="button"
+                onClick={handlePortionsIncrement}
+                aria-label="Increase portions"
+                style={styles.portionsScalerButton}
+              >
+                +
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Ingredients */}
         <div style={styles.fieldGroup}>
@@ -860,6 +959,30 @@ const styles: Record<string, React.CSSProperties> = {
   timeFieldsRow: {
     display: 'flex',
     gap: '0.75rem',
+  },
+  portionsScalerRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+  },
+  portionsScalerButton: {
+    minWidth: 44,
+    minHeight: 44,
+    padding: '0.5rem',
+    fontSize: '1.25rem',
+    fontWeight: 700,
+    color: '#374151',
+    backgroundColor: '#f3f4f6',
+    border: '1px solid #d1d5db',
+    borderRadius: 8,
+    cursor: 'pointer',
+  },
+  portionsScalerValue: {
+    fontSize: '1rem',
+    fontWeight: 600,
+    color: '#374151',
+    minWidth: 80,
+    textAlign: 'center' as const,
   },
   statusText: {
     color: '#6b7280',

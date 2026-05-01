@@ -311,3 +311,50 @@ describe('updateRecipe — time fields', () => {
     expect(callBody).not.toHaveProperty('cookTime');
   });
 });
+
+describe('createRecipe — portions field', () => {
+  it('sends portions in request body when provided', async () => {
+    mockFetch().mockResolvedValue({
+      ok: true,
+      json: async () => ({ recipe: { ...mockRecipe, portions: 4 } }),
+    } as Response);
+
+    const data = {
+      name: 'Pasta',
+      ingredients: [{ name: 'Pasta', quantity: 200, unit: 'Gram' }],
+      instructions: 'Boil pasta.',
+      portions: 4,
+    };
+
+    await createRecipe(data);
+
+    const callBody = JSON.parse((mockFetch().mock.calls[0][1] as RequestInit).body as string);
+    expect(callBody.portions).toBe(4);
+  });
+});
+
+describe('updateRecipe — portions field', () => {
+  it('sends portions in request body when provided', async () => {
+    mockFetch().mockResolvedValue({
+      ok: true,
+      json: async () => ({ recipe: { ...mockRecipe, portions: 6 } }),
+    } as Response);
+
+    await updateRecipe('recipe-1', { portions: 6 });
+
+    const callBody = JSON.parse((mockFetch().mock.calls[0][1] as RequestInit).body as string);
+    expect(callBody.portions).toBe(6);
+  });
+
+  it('does not include portions in body when not provided', async () => {
+    mockFetch().mockResolvedValue({
+      ok: true,
+      json: async () => ({ recipe: mockRecipe }),
+    } as Response);
+
+    await updateRecipe('recipe-1', { name: 'Updated' });
+
+    const callBody = JSON.parse((mockFetch().mock.calls[0][1] as RequestInit).body as string);
+    expect(callBody).not.toHaveProperty('portions');
+  });
+});

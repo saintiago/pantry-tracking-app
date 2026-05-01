@@ -96,6 +96,11 @@ const RecipeList: React.FC<RecipeListProps> = ({ onSelect, onNew }) => {
                         {totalTime} min
                       </span>
                     )}
+                    {recipe.portions !== undefined && (
+                      <span style={styles.portionsBadge} aria-label={`${recipe.portions} portions`}>
+                        {recipe.portions} portions
+                      </span>
+                    )}
                     {missingCount != null && missingCount > 0 && (
                       <span style={styles.missingBadge} aria-label={`${missingCount} ingredient(s) missing`}>
                         {missingCount} missing
@@ -207,6 +212,15 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     color: '#374151',
     backgroundColor: '#e5e7eb',
+    borderRadius: 12,
+  },
+  portionsBadge: {
+    flexShrink: 0,
+    padding: '0.2rem 0.6rem',
+    fontSize: '0.75rem',
+    fontWeight: 600,
+    color: '#065f46',
+    backgroundColor: '#d1fae5',
     borderRadius: 12,
   },
   centered: {

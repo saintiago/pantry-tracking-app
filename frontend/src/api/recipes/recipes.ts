@@ -17,6 +17,7 @@ export interface Recipe {
   sourceUrl?: string;
   prepTime?: number;
   cookTime?: number;
+  portions?: number;
   createdAt: string;
   updatedAt: string;
   syncVersion: number;
@@ -87,7 +88,7 @@ export async function fetchRecipeWithAvailability(recipeId: string): Promise<Rec
 
 export async function updateRecipe(
   recipeId: string,
-  data: Partial<Pick<Recipe, 'name' | 'ingredients' | 'instructions' | 'sourceUrl'>> & {
+  data: Partial<Pick<Recipe, 'name' | 'ingredients' | 'instructions' | 'sourceUrl' | 'portions'>> & {
     prepTime?: number | null;
     cookTime?: number | null;
   },
@@ -125,4 +126,23 @@ export async function deleteRecipe(recipeId: string): Promise<void> {
 export function computeTotalTime(prepTime?: number, cookTime?: number): number | undefined {
   if (prepTime === undefined && cookTime === undefined) return undefined;
   return (prepTime ?? 0) + (cookTime ?? 0);
+}
+
+/**
+ * Scales a list of ingredient quantities from one portions base to another.
+ * Returns a new array of scaled quantities (rounded to at most 2 decimal places).
+ * Does NOT mutate the input ingredients.
+ *
+ * @param ingredients - The source ingredient list
+ * @param fromPortions - The base portions value (positive integer)
+ * @param toPortions - The target portions value (positive integer)
+ * @returns Array of scaled quantities in the same order as the input
+ */
+export function scaleIngredients(
+  ingredients: RecipeIngredient[],
+  fromPortions: number,
+  toPortions: number,
+): number[] {
+  const factor = toPortions / fromPortions;
+  return ingredients.map((ing) => Math.round(ing.quantity * factor * 100) / 100);
 }

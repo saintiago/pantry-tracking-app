@@ -48,6 +48,7 @@ const validRecipe = {
   ],
   instructions: 'Boil pasta. Mix with eggs.',
   sourceUrl: 'https://example.com/carbonara',
+  portions: 4,
 };
 
 describe('Recipe Lambda handler', () => {
@@ -771,6 +772,139 @@ describe('Recipe Lambda handler', () => {
       // prepTime should be in REMOVE clause, not SET clause
       const setClause = updateCall.UpdateExpression.split('REMOVE')[0];
       expect(setClause).not.toContain('#f_prepTime');
+    });
+  });
+
+  // ─── Portions field validation ────────────────────────────────────────────────
+
+  describe('POST /recipes — portions field', () => {
+    it('creates recipe with valid portions: 4 and returns 201 with portions in response', async () => {
+      mockSend.mockResolvedValueOnce({}); // PutCommand: save recipe
+      mockSend.mockResolvedValueOnce({ Items: [] }); // QueryCommand: existing inventory
+      mockSend.mockResolvedValue({}); // PutCommand: placeholder items
+
+      const result = await handler(
+        makeEvent({ httpMethod: 'POST', body: JSON.stringify(validRecipe) }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(201);
+      expect(body.recipe.portions).toBe(4);
+    });
+
+    it('returns 400 when portions is missing', async () => {
+      const { portions: _, ...noPortions } = validRecipe;
+
+      const result = await handler(
+        makeEvent({ httpMethod: 'POST', body: JSON.stringify(noPortions) }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(400);
+      expect(body.error).toBe('VALIDATION_ERROR');
+      expect(body.details).toEqual(
+        expect.arrayContaining([expect.objectContaining({ field: 'portions' })]),
+      );
+    });
+
+    it('returns 400 when portions is 0', async () => {
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'POST',
+          body: JSON.stringify({ ...validRecipe, portions: 0 }),
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(400);
+      expect(body.error).toBe('VALIDATION_ERROR');
+      expect(body.details).toEqual(
+        expect.arrayContaining([expect.objectContaining({ field: 'portions' })]),
+      );
+    });
+
+    it('returns 400 when portions is -1', async () => {
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'POST',
+          body: JSON.stringify({ ...validRecipe, portions: -1 }),
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(400);
+      expect(body.error).toBe('VALIDATION_ERROR');
+      expect(body.details).toEqual(
+        expect.arrayContaining([expect.objectContaining({ field: 'portions' })]),
+      );
+    });
+
+    it('returns 400 when portions is 1.5 (non-integer)', async () => {
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'POST',
+          body: JSON.stringify({ ...validRecipe, portions: 1.5 }),
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(400);
+      expect(body.error).toBe('VALIDATION_ERROR');
+      expect(body.details).toEqual(
+        expect.arrayContaining([expect.objectContaining({ field: 'portions' })]),
+      );
+    });
+  });
+
+  describe('PUT /recipes/{recipeId} — portions field', () => {
+    it('updates portions to 6 and returns updated recipe with portions: 6', async () => {
+      mockSend.mockResolvedValueOnce({
+        Attributes: {
+          recipeId: 'recipe-1',
+          name: 'Pasta Carbonara',
+          ingredients: validRecipe.ingredients,
+          portions: 6,
+          syncVersion: 2,
+          updatedAt: '2025-01-01T00:00:00.000Z',
+        },
+      });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'PUT',
+          pathParameters: { recipeId: 'recipe-1' },
+          body: JSON.stringify({ portions: 6 }),
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.recipe.portions).toBe(6);
+    });
+
+    it('leaves portions unchanged when portions is omitted from update body', async () => {
+      mockSend.mockResolvedValueOnce({
+        Attributes: {
+          recipeId: 'recipe-1',
+          name: 'Pasta Carbonara',
+          ingredients: validRecipe.ingredients,
+          portions: 4,
+          syncVersion: 2,
+          updatedAt: '2025-01-01T00:00:00.000Z',
+        },
+      });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'PUT',
+          pathParameters: { recipeId: 'recipe-1' },
+          body: JSON.stringify({ name: 'Updated Pasta' }),
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.recipe.portions).toBe(4);
     });
   });
 });

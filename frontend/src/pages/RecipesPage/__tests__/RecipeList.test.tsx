@@ -151,3 +151,32 @@ describe('RecipeList', () => {
     expect(screen.queryByText(/\d+ min$/)).not.toBeInTheDocument();
   });
 });
+
+// ─── Portions badge ───────────────────────────────────────────────────────────
+
+describe('portions badge', () => {
+  const onSelect = jest.fn();
+  const onNew = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('renders portions badge for recipes with a portions value', async () => {
+    const recipeWithPortions = makeRecipe({ recipeId: 'r1', name: 'Pasta Carbonara', portions: 4 });
+    mockFetchRecipes.mockResolvedValue([recipeWithPortions]);
+    render(<RecipeList onSelect={onSelect} onNew={onNew} />);
+    await waitFor(() => screen.getByText('Pasta Carbonara'));
+
+    expect(screen.getByLabelText('4 portions')).toBeInTheDocument();
+  });
+
+  it('does not render portions badge for recipes without portions', async () => {
+    const recipeWithoutPortions = makeRecipe({ recipeId: 'r1', name: 'Pasta Carbonara' });
+    mockFetchRecipes.mockResolvedValue([recipeWithoutPortions]);
+    render(<RecipeList onSelect={onSelect} onNew={onNew} />);
+    await waitFor(() => screen.getByText('Pasta Carbonara'));
+
+    expect(screen.queryByLabelText(/portions/i)).not.toBeInTheDocument();
+  });
+});

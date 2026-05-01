@@ -12,10 +12,11 @@ jest.mock('../IngredientAvailability', () => ({
   default: () => <div data-testid="ingredient-availability" />,
 }));
 
-// Restore the real computeTotalTime since it's a pure function
-const { computeTotalTime: realComputeTotalTime } = jest.requireActual('../../../api/recipes/recipes');
+// Restore the real computeTotalTime and scaleIngredients since they are pure functions
+const { computeTotalTime: realComputeTotalTime, scaleIngredients: realScaleIngredients } = jest.requireActual('../../../api/recipes/recipes');
 const recipesApiModule = jest.requireMock('../../../api/recipes/recipes');
 recipesApiModule.computeTotalTime = realComputeTotalTime;
+recipesApiModule.scaleIngredients = realScaleIngredients;
 
 const mockFetchRecipeWithAvailability = recipesApi.fetchRecipeWithAvailability as jest.MockedFunction<
   typeof recipesApi.fetchRecipeWithAvailability
@@ -208,5 +209,77 @@ describe('RecipeDetail', () => {
       await waitFor(() => screen.getByText('Pasta Carbonara'));
       expect(screen.queryByRole('region', { name: /recipe time/i })).not.toBeInTheDocument();
     });
+  });
+});
+
+describe('RecipeDetail — portions scaler', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('renders +/– buttons and the selectedPortions value', async () => {
+    const data: RecipeWithAvailability = {
+      ...sampleData,
+      recipe: { ...sampleData.recipe, portions: 4 },
+    };
+    mockFetchRecipeWithAvailability.mockResolvedValue(data);
+    render(<RecipeDetail {...defaultProps} />);
+    await waitFor(() => screen.getByRole('region', { name: /portions/i }));
+    expect(screen.getByRole('button', { name: /increase portions/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /decrease portions/i })).toBeInTheDocument();
+    expect(screen.getByText('4')).toBeInTheDocument();
+  });
+
+  it('initialises selectedPortions to recipe.portions', async () => {
+    const data: RecipeWithAvailability = {
+      ...sampleData,
+      recipe: { ...sampleData.recipe, portions: 3 },
+    };
+    mockFetchRecipeWithAvailability.mockResolvedValue(data);
+    render(<RecipeDetail {...defaultProps} />);
+    await waitFor(() => screen.getByRole('region', { name: /portions/i }));
+    expect(screen.getByText('3')).toBeInTheDocument();
+  });
+
+  it('disables – button when selectedPortions is 1', async () => {
+    const data: RecipeWithAvailability = {
+      ...sampleData,
+      recipe: { ...sampleData.recipe, portions: 1 },
+    };
+    mockFetchRecipeWithAvailability.mockResolvedValue(data);
+    render(<RecipeDetail {...defaultProps} />);
+    await waitFor(() => screen.getByRole('region', { name: /portions/i }));
+    expect(screen.getByRole('button', { name: /decrease portions/i })).toBeDisabled();
+  });
+
+  it('does not call fetch when +/– is tapped', async () => {
+    const data: RecipeWithAvailability = {
+      ...sampleData,
+      recipe: { ...sampleData.recipe, portions: 2 },
+    };
+    mockFetchRecipeWithAvailability.mockResolvedValue(data);
+    const user = userEvent.setup();
+    render(<RecipeDetail {...defaultProps} />);
+    await waitFor(() => screen.getByRole('region', { name: /portions/i }));
+    await user.click(screen.getByRole('button', { name: /increase portions/i }));
+    expect(mockFetchRecipeWithAvailability).toHaveBeenCalledTimes(1);
+  });
+
+  it('displays scaled ingredient quantities when selectedPortions differs from recipe.portions', async () => {
+    const data: RecipeWithAvailability = {
+      ...sampleData,
+      recipe: {
+        ...sampleData.recipe,
+        portions: 2,
+        ingredients: [{ name: 'Flour', quantity: 100, unit: 'Gram' }],
+      },
+    };
+    mockFetchRecipeWithAvailability.mockResolvedValue(data);
+    const user = userEvent.setup();
+    render(<RecipeDetail {...defaultProps} />);
+    await waitFor(() => screen.getByRole('region', { name: /portions/i }));
+    await user.click(screen.getByRole('button', { name: /increase portions/i }));
+    // 100 * (3/2) = 150
+    expect(screen.getByText(/150/)).toBeInTheDocument();
   });
 });

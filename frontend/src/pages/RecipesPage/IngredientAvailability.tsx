@@ -32,7 +32,7 @@ const IngredientAvailability: React.FC<IngredientAvailabilityProps> = ({ availab
   };
 
   return (
-    <div>
+    <div aria-label="Ingredient availability">
       <p style={summaryStyle}>
         {missingCount > 0 ? `${missingCount} ingredient(s) missing or partial` : 'All ingredients available'}
       </p>
