@@ -103,9 +103,17 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipeId, onEdit, onBack, o
 
   const totalTime = computeTotalTime(recipe.prepTime, recipe.cookTime);
 
+  const scaledQuantities = scaleIngredients(recipe.ingredients, recipe.portions ?? 1, selectedPortions);
+
   const displayedIngredients = recipe.ingredients.map((ing, i) => ({
     ...ing,
-    quantity: scaleIngredients(recipe.ingredients, recipe.portions ?? 1, selectedPortions)[i],
+    quantity: scaledQuantities[i],
+  }));
+
+  // Scale the "required" quantity in availability rows to match the current selectedPortions
+  const scaledAvailability = ingredientAvailability.map((item, i) => ({
+    ...item,
+    required: scaledQuantities[i] ?? item.required,
   }));
 
   return (
@@ -187,7 +195,7 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipeId, onEdit, onBack, o
         )}
 
         {/* Ingredient availability */}
-        <IngredientAvailability availability={ingredientAvailability} missingCount={missingCount} />
+        <IngredientAvailability availability={scaledAvailability} missingCount={missingCount} />
 
         {/* Instructions */}
         <section style={styles.section}>
