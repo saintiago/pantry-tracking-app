@@ -1215,6 +1215,177 @@ test.describe('Recipe Management', () => {
     await expect(page.getByRole('button', { name: 'Remove tag quick' })).toBeVisible();
   });
 
+  // ─── Tag input keyboard navigation ────────────────────────────────────────────
+
+  test('Tab on focused empty tag input commits the first suggestion', async ({ page }) => {
+    await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
+
+    const tagInput = page.getByPlaceholder('Add a tag…');
+    await tagInput.click();
+    // Suggestions should be visible (italian, quick, soup, vegetarian)
+    await expect(page.getByRole('option', { name: 'italian' })).toBeVisible({ timeout: 3000 });
+
+    await tagInput.press('Tab');
+
+    // Tab with no arrow press → commits the first suggestion (italian)
+    await expect(page.getByRole('button', { name: 'Remove tag italian' })).toBeVisible();
+  });
+
+  test('ArrowDown then Enter commits the highlighted suggestion', async ({ page }) => {
+    await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
+
+    const tagInput = page.getByPlaceholder('Add a tag…');
+    await tagInput.click();
+    await expect(page.getByRole('option', { name: 'italian' })).toBeVisible({ timeout: 3000 });
+
+    // ArrowDown twice → highlight 'quick' (second suggestion)
+    await tagInput.press('ArrowDown');
+    await tagInput.press('ArrowDown');
+
+    // The second option should be aria-selected="true"
+    await expect(page.getByRole('option', { name: 'quick' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+
+    await tagInput.press('Enter');
+
+    await expect(page.getByRole('button', { name: 'Remove tag quick' })).toBeVisible();
+    // 'italian' should NOT have been committed
+    await expect(page.getByRole('button', { name: 'Remove tag italian' })).toHaveCount(0);
+  });
+
+  test('ArrowDown then Tab commits the highlighted suggestion', async ({ page }) => {
+    await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
+
+    const tagInput = page.getByPlaceholder('Add a tag…');
+    await tagInput.click();
+    await expect(page.getByRole('option', { name: 'italian' })).toBeVisible({ timeout: 3000 });
+
+    // ArrowDown three times → highlight 'soup' (third suggestion)
+    await tagInput.press('ArrowDown');
+    await tagInput.press('ArrowDown');
+    await tagInput.press('ArrowDown');
+    await expect(page.getByRole('option', { name: 'soup' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+
+    await tagInput.press('Tab');
+
+    await expect(page.getByRole('button', { name: 'Remove tag soup' })).toBeVisible();
+  });
+
+  test('ArrowUp from initial state wraps to the last suggestion', async ({ page }) => {
+    await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
+
+    const tagInput = page.getByPlaceholder('Add a tag…');
+    await tagInput.click();
+    await expect(page.getByRole('option', { name: 'italian' })).toBeVisible({ timeout: 3000 });
+
+    // First ArrowUp from -1 should wrap to the last suggestion (vegetarian)
+    await tagInput.press('ArrowUp');
+    await expect(page.getByRole('option', { name: 'vegetarian' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+
+    await tagInput.press('Enter');
+    await expect(page.getByRole('button', { name: 'Remove tag vegetarian' })).toBeVisible();
+  });
+
+  test('ArrowDown wraps from last suggestion back to first', async ({ page }) => {
+    await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
+
+    const tagInput = page.getByPlaceholder('Add a tag…');
+    await tagInput.click();
+    await expect(page.getByRole('option', { name: 'italian' })).toBeVisible({ timeout: 3000 });
+
+    // 4 suggestions: italian, quick, soup, vegetarian. Press ArrowDown 5 times → wraps to italian.
+    for (let i = 0; i < 5; i++) {
+      await tagInput.press('ArrowDown');
+    }
+    await expect(page.getByRole('option', { name: 'italian' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+  });
+
+  test('Enter commits the typed text (not a suggestion) when no arrow has been pressed', async ({
+    page,
+  }) => {
+    await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
+
+    const tagInput = page.getByPlaceholder('Add a tag…');
+    // Type a value that partially matches an existing tag — `ital` substring matches `italian`
+    // so the dropdown will open with `italian` as a suggestion. But the user did not press
+    // ArrowDown, so Enter must commit the typed text, not the suggestion.
+    await tagInput.fill('ital');
+    await expect(page.getByRole('option', { name: 'italian' })).toBeVisible({ timeout: 3000 });
+
+    await tagInput.press('Enter');
+
+    await expect(page.getByRole('button', { name: 'Remove tag ital' })).toBeVisible();
+    // The suggestion itself must NOT have been committed
+    await expect(page.getByRole('button', { name: 'Remove tag italian' })).toHaveCount(0);
+  });
+
+  test('typing after ArrowDown resets the highlight so Enter commits the typed text', async ({
+    page,
+  }) => {
+    await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
+
+    const tagInput = page.getByPlaceholder('Add a tag…');
+    await tagInput.click();
+    await expect(page.getByRole('option', { name: 'italian' })).toBeVisible({ timeout: 3000 });
+
+    // Highlight a suggestion with ArrowDown
+    await tagInput.press('ArrowDown');
+    await expect(page.getByRole('option', { name: 'italian' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+
+    // Now type — the highlight must reset
+    await tagInput.fill('mexican');
+    // No option should be aria-selected="true" anymore
+    const selectedOptions = page.locator('[role="option"][aria-selected="true"]');
+    await expect(selectedOptions).toHaveCount(0);
+
+    // Enter commits the typed text
+    await tagInput.press('Enter');
+    await expect(page.getByRole('button', { name: 'Remove tag mexican' })).toBeVisible();
+  });
+
+  test('aria-activedescendant points to the highlighted option after ArrowDown', async ({
+    page,
+  }) => {
+    await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
+
+    const tagInput = page.getByPlaceholder('Add a tag…');
+    await tagInput.click();
+    await expect(page.getByRole('option', { name: 'italian' })).toBeVisible({ timeout: 3000 });
+
+    // Initially no aria-activedescendant
+    await expect(tagInput).not.toHaveAttribute('aria-activedescendant', /.+/);
+
+    await tagInput.press('ArrowDown');
+
+    // After ArrowDown, aria-activedescendant should be set
+    const italianOption = page.getByRole('option', { name: 'italian' });
+    const optionId = await italianOption.getAttribute('id');
+    expect(optionId).toBeTruthy();
+    await expect(tagInput).toHaveAttribute('aria-activedescendant', optionId!);
+  });
+
   // ─── Tag refresh after edit ───────────────────────────────────────────────────
 
   test('new tag added when editing a recipe appears in tag cloud filter after save', async ({

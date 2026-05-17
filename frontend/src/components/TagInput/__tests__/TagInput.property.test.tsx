@@ -120,4 +120,142 @@ describe('TagInput — property tests', () => {
       { numRuns: 50 },
     );
   });
+
+  // Property 11: Keyboard highlight stays in bounds
+  // Validates: Requirements 4a.1, 4a.2
+  it('Property 11: ArrowDown/ArrowUp keep highlightedIndex within [0, n-1]', () => {
+    fc.assert(
+      fc.property(
+        fc.array(
+          fc
+            .string({ minLength: 1, maxLength: 10 })
+            .map((s) => s.trim().toLowerCase())
+            .filter((s) => s.length > 0),
+          { minLength: 1, maxLength: 10 },
+        ),
+        fc.array(fc.constantFrom<'ArrowDown' | 'ArrowUp'>('ArrowDown', 'ArrowUp'), {
+          minLength: 1,
+          maxLength: 30,
+        }),
+        (allTagsRaw, keys) => {
+          const allTags = [...new Set(allTagsRaw)];
+          if (allTags.length === 0) return;
+
+          const { unmount } = render(
+            <TagInput tags={[]} onChange={jest.fn()} allTags={allTags} tagsLoading={false} />,
+          );
+          const inputEl = screen.getByRole('combobox');
+          fireEvent.focus(inputEl);
+
+          for (const key of keys) {
+            fireEvent.keyDown(inputEl, { key });
+          }
+
+          // After at least one Arrow key on a non-empty list, exactly one option is selected
+          const selected = screen
+            .queryAllByRole('option')
+            .filter((opt) => opt.getAttribute('aria-selected') === 'true');
+          expect(selected.length).toBe(1);
+          unmount();
+        },
+      ),
+      { numRuns: 50 },
+    );
+  });
+
+  // Property 12 (Tab branch): Tab commits suggestion[highlighted ?? 0] when dropdown is open with suggestions
+  // Validates: Requirements 4a.4
+  it('Property 12 (Tab): Tab commits highlighted suggestion (or first if none) when suggestions exist', () => {
+    fc.assert(
+      fc.property(
+        fc.array(
+          fc
+            .string({ minLength: 1, maxLength: 10 })
+            .map((s) => s.trim().toLowerCase())
+            .filter((s) => s.length > 0),
+          { minLength: 1, maxLength: 5 },
+        ),
+        fc.integer({ min: -1, max: 4 }),
+        (allTagsRaw, arrowDownCount) => {
+          const allTags = [...new Set(allTagsRaw)];
+          if (allTags.length === 0) return;
+          const onChange = jest.fn();
+
+          const { unmount } = render(
+            <TagInput tags={[]} onChange={onChange} allTags={allTags} tagsLoading={false} />,
+          );
+          const inputEl = screen.getByRole('combobox');
+          fireEvent.focus(inputEl);
+
+          // Press ArrowDown N times (N from -1 to 4); -1 means "do not press"
+          for (let i = 0; i < arrowDownCount; i++) {
+            fireEvent.keyDown(inputEl, { key: 'ArrowDown' });
+          }
+
+          fireEvent.keyDown(inputEl, { key: 'Tab' });
+
+          // Tab should commit a suggestion: either suggestions[highlightedIndex] or suggestions[0]
+          if (arrowDownCount <= 0) {
+            // No arrow press → highlightedIndex = -1 → commit first
+            expect(onChange).toHaveBeenCalledWith([allTags[0]]);
+          } else {
+            const expectedIndex = ((arrowDownCount - 1) % allTags.length + allTags.length) %
+              allTags.length;
+            expect(onChange).toHaveBeenCalledWith([allTags[expectedIndex]]);
+          }
+          unmount();
+        },
+      ),
+      { numRuns: 50 },
+    );
+  });
+
+  // Property 12 (Enter branch): Enter commits typed inputValue when nothing highlighted, suggestion when highlighted
+  // Validates: Requirements 4a.6, 4a.7
+  it('Property 12 (Enter): Enter commits typed text when nothing highlighted, highlighted suggestion otherwise', () => {
+    fc.assert(
+      fc.property(
+        fc.array(
+          fc
+            .string({ minLength: 1, maxLength: 10 })
+            .map((s) => s.trim().toLowerCase())
+            .filter((s) => s.length > 0),
+          { minLength: 2, maxLength: 5 },
+        ),
+        fc.boolean(),
+        (allTagsRaw, useArrow) => {
+          const allTags = [...new Set(allTagsRaw)];
+          if (allTags.length < 2) return;
+
+          // Pick a typed value that is NOT in allTags so we can distinguish "typed" vs "suggestion"
+          const typed = 'zzz_unique_typed_value';
+          const onChange = jest.fn();
+
+          const { unmount } = render(
+            <TagInput tags={[]} onChange={onChange} allTags={allTags} tagsLoading={false} />,
+          );
+          const inputEl = screen.getByRole('combobox');
+          fireEvent.focus(inputEl);
+          fireEvent.change(inputEl, { target: { value: typed } });
+
+          if (useArrow) {
+            // Highlight the first available suggestion (filtered by `typed`, which is not a substring
+            // of any allTag → suggestions list is empty → ArrowDown is a no-op).
+            // To ensure suggestions exist, clear the typed value first.
+            fireEvent.change(inputEl, { target: { value: '' } });
+            fireEvent.keyDown(inputEl, { key: 'ArrowDown' });
+            fireEvent.keyDown(inputEl, { key: 'Enter' });
+            // Expect the highlighted suggestion (first) to be committed
+            expect(onChange).toHaveBeenCalledWith([allTags[0]]);
+          } else {
+            fireEvent.keyDown(inputEl, { key: 'Enter' });
+            // Expect the typed value to be committed (no highlight)
+            expect(onChange).toHaveBeenCalledWith([typed]);
+          }
+          unmount();
+        },
+      ),
+      { numRuns: 50 },
+    );
+  });
 });

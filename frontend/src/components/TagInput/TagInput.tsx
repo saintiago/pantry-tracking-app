@@ -11,9 +11,11 @@ interface TagInputProps {
 const TagInput: React.FC<TagInputProps> = ({ tags, onChange, allTags, tagsLoading, error }) => {
   const [inputValue, setInputValue] = useState('');
   const [autocompleteOpen, setAutocompleteOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownId = 'tag-input-dropdown';
+  const optionId = (index: number) => `tag-input-option-${index}`;
 
   const getSuggestions = (value: string): string[] => {
     if (tagsLoading) return [];
@@ -29,10 +31,17 @@ const TagInput: React.FC<TagInputProps> = ({ tags, onChange, allTags, tagsLoadin
   const commitTag = (raw: string) => {
     const normalized = raw.trim().toLowerCase();
     if (!normalized) return;
-    if (tags.includes(normalized)) return; // silent dedup
+    if (tags.includes(normalized)) {
+      // silent dedup — still clear the input so the user can keep typing
+      setInputValue('');
+      setAutocompleteOpen(false);
+      setHighlightedIndex(-1);
+      return;
+    }
     onChange([...tags, normalized]);
     setInputValue('');
     setAutocompleteOpen(false);
+    setHighlightedIndex(-1);
   };
 
   const removeTag = (tag: string) => {
@@ -40,17 +49,75 @@ const TagInput: React.FC<TagInputProps> = ({ tags, onChange, allTags, tagsLoadin
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === ',' || e.key === ';' || e.key === '.') {
+    // ArrowDown — open dropdown if closed; move highlight forward (wraps)
+    if (e.key === 'ArrowDown') {
+      if (tagsLoading || suggestions.length === 0) return;
+      e.preventDefault();
+      if (!autocompleteOpen) {
+        setAutocompleteOpen(true);
+        setHighlightedIndex(0);
+        return;
+      }
+      setHighlightedIndex((prev) => (prev + 1) % suggestions.length);
+      return;
+    }
+
+    // ArrowUp — move highlight backward (wraps; -1 wraps to last)
+    if (e.key === 'ArrowUp') {
+      if (tagsLoading || suggestions.length === 0) return;
+      e.preventDefault();
+      if (!autocompleteOpen) {
+        setAutocompleteOpen(true);
+        setHighlightedIndex(suggestions.length - 1);
+        return;
+      }
+      setHighlightedIndex((prev) => (prev <= 0 ? suggestions.length - 1 : prev - 1));
+      return;
+    }
+
+    // Tab — autocomplete shortcut: commit highlighted or first suggestion when dropdown is open
+    if (e.key === 'Tab') {
+      if (autocompleteOpen && !tagsLoading && suggestions.length > 0) {
+        e.preventDefault();
+        const indexToCommit = highlightedIndex >= 0 ? highlightedIndex : 0;
+        commitTag(suggestions[indexToCommit]);
+      }
+      // else: allow default Tab focus shift, do not commit inputValue
+      return;
+    }
+
+    // Enter — commits highlighted suggestion only if user actively highlighted one;
+    // otherwise commits the raw inputValue (just like the other delimiter keys).
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (highlightedIndex >= 0 && suggestions.length > 0) {
+        commitTag(suggestions[highlightedIndex]);
+      } else {
+        commitTag(inputValue);
+      }
+      return;
+    }
+
+    // Other delimiter keys — always commit the raw inputValue
+    if (e.key === ',' || e.key === ';' || e.key === '.') {
       e.preventDefault();
       commitTag(inputValue);
-    } else if (e.key === 'Escape') {
+      return;
+    }
+
+    if (e.key === 'Escape') {
       setAutocompleteOpen(false);
+      setHighlightedIndex(-1);
+      return;
     }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setInputValue(val);
+    // Reset highlight on input change so a subsequent Enter commits the user's typed text
+    // rather than a stale highlighted suggestion.
+    setHighlightedIndex(-1);
     if (!tagsLoading) {
       setAutocompleteOpen(true);
     }
@@ -73,6 +140,7 @@ const TagInput: React.FC<TagInputProps> = ({ tags, onChange, allTags, tagsLoadin
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setAutocompleteOpen(false);
+        setHighlightedIndex(-1);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -80,6 +148,8 @@ const TagInput: React.FC<TagInputProps> = ({ tags, onChange, allTags, tagsLoadin
   }, [autocompleteOpen]);
 
   const showDropdown = autocompleteOpen && !tagsLoading && suggestions.length > 0;
+  const activeDescendant =
+    showDropdown && highlightedIndex >= 0 ? optionId(highlightedIndex) : undefined;
 
   return (
     <div ref={containerRef} style={styles.container}>
@@ -116,6 +186,7 @@ const TagInput: React.FC<TagInputProps> = ({ tags, onChange, allTags, tagsLoadin
           aria-expanded={showDropdown}
           aria-autocomplete="list"
           aria-controls={showDropdown ? dropdownId : undefined}
+          aria-activedescendant={activeDescendant}
           aria-haspopup="listbox"
           style={styles.input}
         />
@@ -123,20 +194,24 @@ const TagInput: React.FC<TagInputProps> = ({ tags, onChange, allTags, tagsLoadin
         {/* Autocomplete dropdown */}
         {showDropdown && (
           <ul id={dropdownId} role="listbox" style={styles.dropdown}>
-            {suggestions.map((tag) => (
-              <li
-                key={tag}
-                role="option"
-                aria-selected={false}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleSuggestionMouseDown(tag);
-                }}
-                style={styles.dropdownItem}
-              >
-                {tag}
-              </li>
-            ))}
+            {suggestions.map((tag, index) => {
+              const isHighlighted = index === highlightedIndex;
+              return (
+                <li
+                  key={tag}
+                  id={optionId(index)}
+                  role="option"
+                  aria-selected={isHighlighted}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleSuggestionMouseDown(tag);
+                  }}
+                  style={isHighlighted ? styles.dropdownItemHighlighted : styles.dropdownItem}
+                >
+                  {tag}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
@@ -152,6 +227,16 @@ const TagInput: React.FC<TagInputProps> = ({ tags, onChange, allTags, tagsLoadin
 };
 
 export default TagInput;
+
+const dropdownItemBase: React.CSSProperties = {
+  padding: '0.5rem 0.75rem',
+  cursor: 'pointer',
+  minHeight: 44,
+  display: 'flex',
+  alignItems: 'center',
+  fontSize: '0.9375rem',
+  color: '#374151',
+};
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
@@ -210,17 +295,12 @@ const styles: Record<string, React.CSSProperties> = {
     zIndex: 1000,
     marginTop: 4,
     listStyle: 'none',
-    margin: 0,
     padding: 0,
   },
-  dropdownItem: {
-    padding: '0.5rem 0.75rem',
-    cursor: 'pointer',
-    minHeight: 44,
-    display: 'flex',
-    alignItems: 'center',
-    fontSize: '0.9375rem',
-    color: '#374151',
+  dropdownItem: dropdownItemBase,
+  dropdownItemHighlighted: {
+    ...dropdownItemBase,
+    backgroundColor: '#e0e7ff',
   },
   errorText: {
     color: '#dc2626',

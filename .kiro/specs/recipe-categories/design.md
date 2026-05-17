@@ -107,7 +107,10 @@ interface TagInputProps {
 ```typescript
 const [inputValue, setInputValue] = useState('');
 const [autocompleteOpen, setAutocompleteOpen] = useState(false);
+const [highlightedIndex, setHighlightedIndex] = useState(-1); // -1 means no highlight
 ```
+
+The `highlightedIndex` tracks which suggestion is keyboard-highlighted. `-1` means no highlight (initial state, and after the user types). It is reset to `-1` whenever `inputValue` changes or the dropdown closes/reopens. ArrowDown/ArrowUp move it within `[0, suggestions.length - 1]` with wrap-around. Mouse hover does not change `highlightedIndex` — keyboard and mouse selection are independent paths.
 
 **Layout:**
 
@@ -140,16 +143,39 @@ const chipStyle: React.CSSProperties = {
 };
 ```
 
-**Delimiter keys:** `Enter`, `,`, `;`, `.` — on keydown, if the current `inputValue` (trimmed + lowercased) is non-empty and not already in `tags`, commit it as a new tag and clear the input. If it is a duplicate, silently discard and clear.
+**Delimiter keys:** `Enter`, `,`, `;`, `.` — on keydown, if the current `inputValue` (trimmed + lowercased) is non-empty and not already in `tags`, commit it as a new tag and clear the input. If it is a duplicate, silently discard and clear. **Exception:** when `highlightedIndex >= 0` (the user has navigated suggestions with ArrowUp/ArrowDown), Enter commits the highlighted suggestion instead of `inputValue`.
+
+**Keyboard navigation:**
+
+| Key | Dropdown state | Behaviour |
+|-----|---------------|-----------|
+| `ArrowDown` | closed | Open dropdown, set `highlightedIndex = 0` (if suggestions exist) |
+| `ArrowDown` | open, suggestions exist | `highlightedIndex = (highlightedIndex + 1) % suggestions.length` (wraps) |
+| `ArrowUp` | open, suggestions exist | `highlightedIndex = highlightedIndex <= 0 ? suggestions.length - 1 : highlightedIndex - 1` (wraps; `-1` wraps to last) |
+| `Enter` | `highlightedIndex >= 0` | Commit `suggestions[highlightedIndex]`; prevent default; keep focus on input |
+| `Enter` | `highlightedIndex === -1` (any dropdown state) | Commit trimmed+lowercased `inputValue` (existing delimiter behaviour); prevent default |
+| `Tab` | open, suggestions exist | Commit `suggestions[highlightedIndex >= 0 ? highlightedIndex : 0]`; prevent default; keep focus on input |
+| `Tab` | closed or no suggestions | Allow default Tab focus shift; do NOT commit `inputValue` |
+| `Escape` | open | Close dropdown without committing; reset `highlightedIndex = -1` |
+
+`highlightedIndex` is reset to `-1` whenever `inputValue` changes (so a subsequent Enter commits the user's freshly typed text, not a stale highlighted suggestion) and whenever the dropdown closes.
+
+**Key behaviour summary:**
+
+- **`,`, `;`, `.`** — always commit the raw trimmed+lowercased `inputValue` regardless of dropdown state or highlight.
+- **`Enter`** — commits the highlighted suggestion *only when the user has actively highlighted one via ArrowUp/ArrowDown*; otherwise commits the typed `inputValue` exactly as the user wrote it (just like the other delimiter keys). This means a user who types something and hits Enter always gets their text, never an auto-suggestion they didn't ask for.
+- **`Tab`** — autocomplete shortcut: commits the highlighted (or first) suggestion when the dropdown is open with suggestions; allows default focus shift otherwise.
 
 **Autocomplete behaviour:**
 
-- On `focus`: open dropdown showing `allTags.filter(t => !tags.includes(t))`, up to 10 items
-- On `input change`: filter `allTags` by case-insensitive substring match against `inputValue`, exclude already-selected tags, show up to 10
-- On `Escape`: close dropdown without committing
+- On `focus`: open dropdown showing `allTags.filter(t => !tags.includes(t))`, up to 10 items; `highlightedIndex` stays at `-1`
+- On `input change`: filter `allTags` by case-insensitive substring match against `inputValue`, exclude already-selected tags, show up to 10; reset `highlightedIndex = -1`
+- On `Escape`: close dropdown without committing; reset `highlightedIndex = -1`
+- On `ArrowDown` / `ArrowUp`: move `highlightedIndex` (see Keyboard navigation table); opens the dropdown if closed
+- On `Tab` with suggestions visible: commit highlighted (or first) suggestion, prevent default, keep focus
 - On item click (`mousedown`): commit that tag, keep focus on input, close dropdown
 - Click outside: close dropdown
-- When `tagsLoading` is `true`: autocomplete dropdown is disabled (does not open on focus or typing); input placeholder changes to `"Loading tags…"` instead of `"Add a tag…"`; normal autocomplete behaviour resumes once `tagsLoading` becomes `false`
+- When `tagsLoading` is `true`: autocomplete dropdown is disabled (does not open on focus, typing, or ArrowDown); input placeholder changes to `"Loading tags…"` instead of `"Add a tag…"`; normal autocomplete behaviour resumes once `tagsLoading` becomes `false`
 
 **Autocomplete dropdown** is a simple `<ul>` positioned `absolute` below the input (no reuse of `AutocompleteDropdown` component — the interaction model differs):
 
@@ -175,9 +201,10 @@ const dropdownStyle: React.CSSProperties = {
 
 **Accessibility:**
 
-- Input has `role="combobox"`, `aria-expanded`, `aria-autocomplete="list"`, `aria-controls` pointing to the dropdown `id`
+- Input has `role="combobox"`, `aria-expanded`, `aria-autocomplete="list"`, `aria-controls` pointing to the dropdown `id`, and `aria-activedescendant` pointing to the highlighted option's `id` (or omitted when `highlightedIndex === -1`)
 - Dropdown has `role="listbox"`
-- Each suggestion item has `role="option"`, `aria-selected`
+- Each suggestion item has `role="option"`, an `id` of the form `tag-input-option-{index}`, and `aria-selected={index === highlightedIndex}`
+- Highlighted item is visually distinguished (e.g. background colour `#e0e7ff`, the same as the existing `AutocompleteDropdown` highlight)
 - Remove button has `aria-label="Remove tag {tagName}"`
 
 ### 3. RecipeEditor (`frontend/src/pages/RecipesPage/RecipeEditor.tsx`)
@@ -654,11 +681,31 @@ Response body: `{ tags: string[] }` — a sorted, deduplicated, lowercased array
 
 **Validates: Requirements 4.1, 4.4, 4.6**
 
+### Property 11: Keyboard highlight stays in bounds
+
+*For any* `suggestions` array of length `n ≥ 1` and any sequence of `ArrowDown`/`ArrowUp` keypresses starting from `highlightedIndex = -1`, the resulting `highlightedIndex` should always satisfy `-1 ≤ highlightedIndex < n`, with `-1` only possible as the initial state. After at least one ArrowDown or ArrowUp on a non-empty list, `highlightedIndex` should be in `[0, n - 1]`.
+
+**Validates: Requirement 4a.1, 4a.2**
+
+### Property 12: Tab and Enter commit consistently with user intent
+
+For Tab — *for any* `suggestions` array, pressing `Tab` when the dropdown is open should: (a) if `suggestions.length === 0`, leave `tags` unchanged and allow default focus shift; (b) if `suggestions.length > 0` and `highlightedIndex >= 0`, append `suggestions[highlightedIndex]` to `tags` (subject to dedup); (c) if `suggestions.length > 0` and `highlightedIndex === -1`, append `suggestions[0]` to `tags` (subject to dedup). When the dropdown is closed, Tab allows default focus shift without committing.
+
+For Enter — *for any* `inputValue` and `suggestions` array, pressing `Enter`: (a) if `highlightedIndex >= 0`, appends `suggestions[highlightedIndex]` to `tags` (subject to dedup); (b) if `highlightedIndex === -1`, commits the trimmed+lowercased `inputValue` (subject to dedup and non-empty checks) regardless of whether the dropdown is open or closed. Enter never silently substitutes a suggestion for what the user typed unless they actively highlighted one with ArrowUp/ArrowDown.
+
+**Validates: Requirements 4a.4, 4a.5, 4a.6, 4a.7**
+
 ### Property 10: Tag cloud shows sorted distinct tags
 
 *For any* array of recipes, the tags displayed in the `TagCloud` should equal the sorted, deduplicated union of all `recipe.tags` arrays across all recipes.
 
 **Validates: Requirements 6.1**
+
+---
+
+## Renumbered Requirements Reference
+
+The keyboard-navigation acceptance criteria live under **Requirement 4a** in `requirements.md` (added alongside Requirement 4 to avoid renumbering existing requirements). Properties 11 and 12 above validate Requirement 4a.
 
 ---
 

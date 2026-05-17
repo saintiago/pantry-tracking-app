@@ -37,7 +37,7 @@ This feature adds a category (tag) system to recipes. Every recipe must have at 
 #### Acceptance Criteria
 
 1. THE RecipeEditor SHALL allow the user to add any number of tags to a recipe.
-2. WHEN the user types in the Tag_Input and presses Enter, comma, semicolon, or period, THE Tag_Input SHALL commit the current non-empty trimmed, lowercased input as a new Tag_Chip and clear the input field.
+2. WHEN the user types in the Tag_Input and presses Enter, comma, semicolon, or period, THE Tag_Input SHALL commit the current non-empty trimmed, lowercased input as a new Tag_Chip and clear the input field. NOTE: When the autocomplete dropdown has a highlighted suggestion (the user navigated with ArrowUp/ArrowDown), Enter instead commits the highlighted suggestion per Requirement 4a.6.
 3. WHEN a tag is committed, THE Tag_Input SHALL retain keyboard focus so the user can continue entering tags without re-clicking.
 4. WHEN the user commits a tag whose trimmed, lowercased value matches an existing tag on the same recipe, THE Tag_Input SHALL discard the duplicate and not add a second chip.
 5. THE RecipeEditor SHALL display each committed tag as a Tag_Chip positioned above the Tag_Input field.
@@ -60,11 +60,27 @@ This feature adds a category (tag) system to recipes. Every recipe must have at 
 #### Acceptance Criteria
 
 1. WHEN the user types one or more characters in the Tag_Input, THE Tag_Autocomplete SHALL display existing tags from the user's recipes that contain the typed text (case-insensitive substring match).
-2. WHEN the user selects a suggestion from the Tag_Autocomplete, THE Tag_Input SHALL commit that tag as a Tag_Chip and clear the input field.
+2. WHEN the user selects a suggestion from the Tag_Autocomplete (via mouse click, Tab, or Enter on a highlighted suggestion), THE Tag_Input SHALL commit that tag as a Tag_Chip and clear the input field.
 3. WHEN the Tag_Autocomplete is visible and the user presses Escape, THE Tag_Autocomplete SHALL close without committing any tag.
 4. THE Tag_Autocomplete SHALL show at most 10 suggestions at a time.
 5. WHEN the Tag_Input receives focus, THE Tag_Autocomplete SHALL display all available tags (excluding those already on the recipe), up to 10 suggestions.
 6. THE Tag_Autocomplete SHALL exclude tags already present on the current recipe from its suggestions.
+
+### Requirement 4a: Tag Autocomplete Keyboard Navigation
+
+**User Story:** As a keyboard user, I want to navigate and select autocomplete suggestions without using the mouse, so that I can enter tags quickly.
+
+#### Acceptance Criteria
+
+1. WHEN the Tag_Autocomplete is visible and the user presses ArrowDown, THE Tag_Autocomplete SHALL move the highlighted suggestion to the next item, wrapping from the last item to the first.
+2. WHEN the Tag_Autocomplete is visible and the user presses ArrowUp, THE Tag_Autocomplete SHALL move the highlighted suggestion to the previous item, wrapping from the first item to the last.
+3. WHEN the Tag_Autocomplete is closed and the user presses ArrowDown in the Tag_Input, THE Tag_Autocomplete SHALL open and highlight the first suggestion.
+4. WHEN the Tag_Autocomplete is visible with at least one suggestion and the user presses Tab, THE Tag_Input SHALL commit the highlighted suggestion (or the first suggestion if none is highlighted) as a Tag_Chip, prevent the default Tab focus shift, clear the input, and retain focus on the Tag_Input.
+5. WHEN the Tag_Autocomplete is closed (no suggestions visible) and the user presses Tab, THE Tag_Input SHALL allow the default Tab behaviour and SHALL NOT commit the current input as a tag.
+6. WHEN the user has highlighted a suggestion via ArrowUp/ArrowDown (`highlightedIndex >= 0`) and presses Enter, THE Tag_Input SHALL commit the highlighted suggestion as a Tag_Chip and SHALL NOT commit the raw `inputValue`.
+7. WHEN no suggestion is highlighted (`highlightedIndex === -1`) and the user presses Enter, THE Tag_Input SHALL commit the current trimmed, lowercased `inputValue` as a Tag_Chip per Requirement 2.2 — regardless of whether the autocomplete dropdown is open or closed.
+8. WHEN the highlighted suggestion changes, THE Tag_Autocomplete SHALL visually distinguish the highlighted item (e.g. background colour) and set `aria-activedescendant` on the Tag_Input to the highlighted option's `id`.
+9. WHEN the user types or edits the input value, THE Tag_Autocomplete SHALL reset the highlighted index to -1 (no highlight) so a subsequent Enter commits the user's typed text rather than a stale highlighted suggestion.
 
 ### Requirement 5: Tags Displayed on Recipe Cards and Detail View
 

@@ -217,6 +217,55 @@ Implement a tag-based category system for recipes. The work spans five layers: b
 - [x] 12. Final checkpoint — Ensure all tests pass
   - Run `npm test` from the workspace root; ensure all unit and property tests pass. Ask the user if questions arise.
 
+- [ ] 13. Add keyboard navigation to the Tag_Autocomplete dropdown
+  - [x] 13.1 Update `frontend/src/components/TagInput/TagInput.tsx` with `highlightedIndex` state and ArrowUp/ArrowDown/Tab/Enter handling
+    - Add `highlightedIndex` state, initialized to `-1`
+    - ArrowDown: open dropdown if closed and highlight first; otherwise advance with wrap
+    - ArrowUp: open dropdown if closed and highlight last; otherwise retreat with wrap (`-1` wraps to last)
+    - Tab when dropdown is open with suggestions: commit `suggestions[highlightedIndex >= 0 ? highlightedIndex : 0]`, prevent default, retain focus
+    - Tab when dropdown is closed or empty: allow default focus shift, do not commit `inputValue`
+    - Enter when `highlightedIndex >= 0`: commit the highlighted suggestion
+    - Enter when `highlightedIndex === -1`: commit the trimmed+lowercased `inputValue` (existing behaviour) — never auto-substitute a suggestion the user did not actively highlight
+    - Reset `highlightedIndex` to `-1` on input change, on commit, and on Escape
+    - Add `aria-activedescendant` to the combobox input pointing to the highlighted option's `id` (or omitted when `-1`)
+    - Add highlighted visual style (background `#e0e7ff`)
+    - _Requirements: 4a.1, 4a.2, 4a.3, 4a.4, 4a.5, 4a.6, 4a.7, 4a.8, 4a.9_
+
+  - [x] 13.2 Add unit tests for keyboard navigation in `frontend/src/components/TagInput/__tests__/TagInput.test.tsx`
+    - ArrowDown moves highlight forward and wraps from last to first
+    - ArrowUp moves highlight backward and wraps from first to last
+    - ArrowDown on a closed dropdown opens it and highlights first
+    - Tab commits the highlighted suggestion
+    - Tab commits the first suggestion when none is highlighted
+    - Tab does not commit and allows default focus shift when dropdown is closed
+    - Enter commits the highlighted suggestion when one is highlighted
+    - Enter commits typed `inputValue` (not first suggestion) when nothing is highlighted
+    - Typing after highlighting resets the highlight so a subsequent Enter commits the typed text
+    - `aria-activedescendant` reflects the highlighted option
+    - Escape resets the highlight and closes the dropdown
+    - _Requirements: 4a.1–4a.9_
+
+  - [x] 13.3 Add property tests in `frontend/src/components/TagInput/__tests__/TagInput.property.test.tsx`
+    - **Property 11: Keyboard highlight stays in bounds** — for any non-empty suggestions and any sequence of ArrowUp/ArrowDown, exactly one option is selected
+    - **Property 12 (Tab branch)**: Tab commits `suggestions[highlightedIndex ?? 0]` when dropdown is open with suggestions
+    - **Property 12 (Enter branch)**: Enter commits typed text when nothing highlighted, highlighted suggestion otherwise
+    - Use `{ numRuns: 50 }` to avoid timeout
+    - **Validates: Requirements 4a.1, 4a.2, 4a.4, 4a.6, 4a.7**
+
+  - [x] 13.4 Verify all tests pass
+    - Run `npm test` from the workspace root and ensure all tests still pass
+
+  - [x] 13.5 Add e2e tests for keyboard autocomplete in `e2e/recipe-management.spec.ts`
+    - Tab on focused empty input commits the first suggestion
+    - ArrowDown then Enter commits the highlighted suggestion (not the first)
+    - ArrowDown then Tab commits the highlighted suggestion
+    - ArrowUp from initial state wraps to last suggestion
+    - ArrowDown wraps from last back to first
+    - Enter commits typed text when no arrow has been pressed (even when dropdown is open with matching suggestions)
+    - Typing after ArrowDown resets the highlight so a subsequent Enter commits the typed text
+    - `aria-activedescendant` is set after ArrowDown
+    - _Requirements: 4a.1, 4a.2, 4a.3, 4a.4, 4a.6, 4a.7, 4a.8, 4a.9_
+
 ## Notes
 
 - Tasks marked with `*` are optional and can be skipped for faster MVP
