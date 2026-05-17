@@ -15,23 +15,22 @@ const RecipesPage: React.FC = () => {
   const [allTags, setAllTags] = useState<string[]>([]);
   const [tagsLoading, setTagsLoading] = useState(true);
 
-  // Fetch all tags on mount in parallel with recipe list fetch (non-blocking).
-  useEffect(() => {
-    let cancelled = false;
+  // Re-fetch all tags from the API and update allTags state.
+  // Called on mount and after any recipe save so newly added tags are reflected immediately.
+  const refreshTags = React.useCallback(() => {
+    setTagsLoading(true);
     fetchRecipeTags()
-      .then((tags) => {
-        if (!cancelled) setAllTags(tags);
-      })
+      .then(setAllTags)
       .catch(() => {
         // silent fail — autocomplete just won't have suggestions
       })
-      .finally(() => {
-        if (!cancelled) setTagsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+      .finally(() => setTagsLoading(false));
   }, []);
+
+  // Fetch all tags on mount in parallel with recipe list fetch (non-blocking).
+  useEffect(() => {
+    refreshTags();
+  }, [refreshTags]);
 
   if (view.mode === 'list') {
     return (
@@ -58,7 +57,10 @@ const RecipesPage: React.FC = () => {
   if (view.mode === 'editor-new') {
     return (
       <RecipeEditor
-        onSaved={(id) => setView({ mode: 'detail', recipeId: id })}
+        onSaved={(id) => {
+          refreshTags();
+          setView({ mode: 'detail', recipeId: id });
+        }}
         onCancel={() => setView({ mode: 'list' })}
         allTags={allTags}
         tagsLoading={tagsLoading}
@@ -70,7 +72,10 @@ const RecipesPage: React.FC = () => {
   return (
     <RecipeEditor
       recipeId={view.recipeId}
-      onSaved={(id) => setView({ mode: 'detail', recipeId: id })}
+      onSaved={(id) => {
+        refreshTags();
+        setView({ mode: 'detail', recipeId: id });
+      }}
       onCancel={() => setView({ mode: 'detail', recipeId: view.recipeId })}
       allTags={allTags}
       tagsLoading={tagsLoading}
