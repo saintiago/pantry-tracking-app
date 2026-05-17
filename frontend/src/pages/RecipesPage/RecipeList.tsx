@@ -1,20 +1,37 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { fetchRecipes, computeTotalTime } from '../../api/recipes/recipes';
 import type { Recipe } from '../../api/recipes/recipes';
+import RecipeFilterPanel, {
+  EMPTY_PANEL_VALUE,
+  RecipeFilterPanelValue,
+  isAllInactive,
+} from './RecipeFilterPanel';
+import { filterRecipes, validateMaxTimeInput, RecipeFilters } from '../../api/recipes/filter';
+import type { InventoryIndex } from '../../api/recipes/availability';
 
 interface RecipeListProps {
   onSelect: (recipeId: string) => void;
   onNew: () => void;
   allTags: string[];
   tagsLoading: boolean;
+  inventoryIndex: InventoryIndex;
+  inventoryLoading: boolean;
 }
 
-const RecipeList: React.FC<RecipeListProps> = ({ onSelect, onNew, allTags, tagsLoading }) => {
+const RecipeList: React.FC<RecipeListProps> = ({
+  onSelect,
+  onNew,
+  allTags,
+  tagsLoading,
+  inventoryIndex,
+  inventoryLoading,
+}) => {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [activeTagFilters, setActiveTagFilters] = useState<string[]>([]);
+  const [panel, setPanel] = useState<RecipeFilterPanelValue>(EMPTY_PANEL_VALUE);
 
   useEffect(() => {
     let cancelled = false;
@@ -35,13 +52,25 @@ const RecipeList: React.FC<RecipeListProps> = ({ onSelect, onNew, allTags, tagsL
     };
   }, []);
 
-  const filtered = useMemo(
-    () =>
-      recipes
-        .filter((r) => r.name.toLowerCase().includes(search.toLowerCase()))
-        .filter((r) => activeTagFilters.every((t) => (r.tags ?? []).includes(t))),
-    [recipes, search, activeTagFilters],
-  );
+  const filtered = useMemo(() => {
+    const resolvedFilters: RecipeFilters = {
+      nameQuery: search,
+      activeTags: activeTagFilters,
+      maxPrepTime: validateMaxTimeInput(panel.maxPrepTimeInput).value,
+      maxCookTime: validateMaxTimeInput(panel.maxCookTimeInput).value,
+      maxTotalTime: validateMaxTimeInput(panel.maxTotalTimeInput).value,
+      onlyAllAvailable: panel.onlyAllAvailable,
+    };
+    return filterRecipes(recipes, resolvedFilters, inventoryIndex);
+  }, [recipes, search, activeTagFilters, panel, inventoryIndex]);
+
+  const isAnyFilterActive =
+    search.trim() !== '' ||
+    activeTagFilters.length > 0 ||
+    panel.maxPrepTimeInput !== '' ||
+    panel.maxCookTimeInput !== '' ||
+    panel.maxTotalTimeInput !== '' ||
+    panel.onlyAllAvailable;
 
   if (loading) {
     return (
@@ -105,12 +134,21 @@ const RecipeList: React.FC<RecipeListProps> = ({ onSelect, onNew, allTags, tagsL
         </div>
       ) : null}
 
+      {/* Recipe filter panel */}
+      <RecipeFilterPanel
+        value={panel}
+        onChange={setPanel}
+        isAllInactive={isAllInactive(panel)}
+        onClear={() => setPanel(EMPTY_PANEL_VALUE)}
+        inventoryLoading={inventoryLoading}
+      />
+
       {filtered.length === 0 ? (
         <div style={styles.emptyState} role="status">
           {recipes.length === 0 ? (
-            <p style={styles.statusText}>No recipes yet. Tap "New Recipe" to add one.</p>
-          ) : activeTagFilters.length > 0 ? (
-            <p style={styles.statusText}>No recipes match the selected tags.</p>
+            <p style={styles.statusText}>No recipes yet. Tap &quot;New Recipe&quot; to add one.</p>
+          ) : isAnyFilterActive ? (
+            <p style={styles.statusText}>No recipes match the selected filters.</p>
           ) : (
             <p style={styles.statusText}>No recipes match your search.</p>
           )}

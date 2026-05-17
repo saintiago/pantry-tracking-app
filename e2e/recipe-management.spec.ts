@@ -396,7 +396,7 @@ test.describe('Recipe Management', () => {
   test('search shows empty state when no recipes match', async ({ page }) => {
     await page.getByLabel('Search recipes').fill('zzznomatch');
 
-    await expect(page.getByText('No recipes match your search.')).toBeVisible();
+    await expect(page.getByText('No recipes match the selected filters.')).toBeVisible();
     await expect(page.getByText('Pasta Carbonara')).not.toBeVisible();
     await expect(page.getByText('Tomato Soup')).not.toBeVisible();
   });
@@ -1074,13 +1074,13 @@ test.describe('Recipe Management', () => {
     await expect(page.getByText('Tomato Soup')).toBeVisible();
   });
 
-  test('shows "No recipes match the selected tags." when no recipes match', async ({ page }) => {
+  test('shows "No recipes match the selected filters." when no recipes match', async ({ page }) => {
     // Both 'italian' and 'soup' — no recipe has both
     const tagCloud = page.getByRole('group', { name: 'Filter by tag' });
     await tagCloud.getByRole('button', { name: 'italian' }).click();
     await tagCloud.getByRole('button', { name: 'soup' }).click();
 
-    await expect(page.getByText('No recipes match the selected tags.')).toBeVisible();
+    await expect(page.getByText('No recipes match the selected filters.')).toBeVisible();
   });
 
   test('tag cloud shows a spinner while tags are loading', async ({ page }) => {
