@@ -1,9 +1,12 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 import StorageLocationManager from '../../components/StorageLocationManager/StorageLocationManager';
 import InventoryList from '../../components/InventoryList/InventoryList';
 import { InAppNotification } from '../../components/InventoryList/InventoryList';
-import BarcodeScanner from '../../components/BarcodeScanner/BarcodeScanner';
+// Type-only import — erased at compile time, does not pull in Quagga
 import type { BarcodeLookupResult } from '../../components/BarcodeScanner/BarcodeScanner';
+
+// Lazy value import — Vite emits a separate chunk
+const BarcodeScanner = lazy(() => import('../../components/BarcodeScanner/BarcodeScanner'));
 import type { AddItemData } from '../AddItemPage/AddItemPage';
 import type { StorageLocation } from '../../api/locations/locations';
 import type { InventoryItem } from '../../components/InventoryList/InventoryList';
@@ -19,6 +22,89 @@ import {
   addInventoryItem,
   deleteInventoryItem,
 } from '../../api/inventory/inventory';
+
+// --- Barcode Scanner Loading Fallback ---
+
+export const BarcodeScannerLoadingFallback: React.FC = () => (
+  <div
+    role="status"
+    aria-live="polite"
+    aria-label="Loading barcode scanner"
+    data-testid="barcode-scanner-loading"
+    style={styles.scannerLoadingOverlay}
+  >
+    <div style={styles.scannerLoadingModal}>
+      <div style={styles.scannerLoadingSpinner} aria-hidden="true" />
+      <p style={styles.scannerLoadingText}>Loading scanner…</p>
+    </div>
+  </div>
+);
+
+// --- Barcode Scanner Error Boundary ---
+
+interface BarcodeScannerErrorBoundaryProps {
+  onClose: () => void;
+  onRetry: () => void;
+  children: React.ReactNode;
+}
+
+interface BarcodeScannerErrorBoundaryState {
+  error: Error | null;
+}
+
+export class BarcodeScannerErrorBoundary extends React.Component<
+  BarcodeScannerErrorBoundaryProps,
+  BarcodeScannerErrorBoundaryState
+> {
+  state: BarcodeScannerErrorBoundaryState = { error: null };
+
+  static getDerivedStateFromError(error: Error): BarcodeScannerErrorBoundaryState {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo): void {
+    // Error is captured in state via getDerivedStateFromError; info available for logging
+    void error;
+    void info;
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div
+          data-testid="barcode-scanner-error"
+          style={styles.scannerErrorOverlay}
+        >
+          <div style={styles.scannerErrorModal}>
+            <p style={styles.scannerErrorText}>Couldn't load the scanner.</p>
+            <div style={styles.scannerErrorButtons}>
+              <button
+                style={styles.scannerErrorRetryButton}
+                onClick={() => {
+                  this.setState({ error: null });
+                  this.props.onRetry();
+                }}
+                type="button"
+              >
+                Retry
+              </button>
+              <button
+                style={styles.scannerErrorCloseButton}
+                onClick={this.props.onClose}
+                type="button"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// --- InventoryPage ---
 
 interface InventoryPageProps {
   onNavigate: (page: PageId) => void;
@@ -294,11 +380,23 @@ const InventoryPage: React.FC<InventoryPageProps> = ({ onNavigate: _onNavigate, 
         onRemove={handleRemoveLocation}
       />
 
-      <BarcodeScanner
-        isOpen={scannerOpen}
-        onClose={() => setScannerOpen(false)}
-        onBarcodeDetected={handleBarcodeDetected}
-      />
+      {scannerOpen && (
+        <BarcodeScannerErrorBoundary
+          onClose={() => setScannerOpen(false)}
+          onRetry={() => {
+            setScannerOpen(false);
+            setTimeout(() => setScannerOpen(true), 0);
+          }}
+        >
+          <Suspense fallback={<BarcodeScannerLoadingFallback />}>
+            <BarcodeScanner
+              isOpen={scannerOpen}
+              onClose={() => setScannerOpen(false)}
+              onBarcodeDetected={handleBarcodeDetected}
+            />
+          </Suspense>
+        </BarcodeScannerErrorBoundary>
+      )}
     </div>
   );
 };
@@ -413,6 +511,101 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#dc2626',
     marginBottom: '0.75rem',
     fontStyle: 'italic',
+  },
+  // BarcodeScannerLoadingFallback styles
+  scannerLoadingOverlay: {
+    position: 'fixed',
+    inset: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 100,
+    padding: '1rem',
+  },
+  scannerLoadingModal: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    width: '100%',
+    maxWidth: 480,
+    padding: '2rem 1.25rem',
+    boxSizing: 'border-box',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '1rem',
+  },
+  scannerLoadingSpinner: {
+    width: 40,
+    height: 40,
+    border: '4px solid #e5e7eb',
+    borderTopColor: '#16a34a',
+    borderRadius: '50%',
+    animation: 'spin 0.8s linear infinite',
+  },
+  scannerLoadingText: {
+    fontSize: '1rem',
+    fontWeight: 600,
+    color: '#374151',
+    margin: 0,
+  },
+  // BarcodeScannerErrorBoundary styles
+  scannerErrorOverlay: {
+    position: 'fixed',
+    inset: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 100,
+    padding: '1rem',
+  },
+  scannerErrorModal: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    width: '100%',
+    maxWidth: 480,
+    padding: '2rem 1.25rem',
+    boxSizing: 'border-box',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '1.25rem',
+  },
+  scannerErrorText: {
+    fontSize: '1rem',
+    fontWeight: 600,
+    color: '#374151',
+    margin: 0,
+    textAlign: 'center',
+  },
+  scannerErrorButtons: {
+    display: 'flex',
+    gap: '0.75rem',
+  },
+  scannerErrorRetryButton: {
+    minHeight: 44,
+    minWidth: 44,
+    padding: '0.625rem 1.25rem',
+    fontSize: '1rem',
+    fontWeight: 600,
+    color: '#ffffff',
+    backgroundColor: '#16a34a',
+    border: 'none',
+    borderRadius: 8,
+    cursor: 'pointer',
+  },
+  scannerErrorCloseButton: {
+    minHeight: 44,
+    minWidth: 44,
+    padding: '0.625rem 1.25rem',
+    fontSize: '1rem',
+    fontWeight: 600,
+    color: '#374151',
+    backgroundColor: '#f3f4f6',
+    border: '1px solid #d1d5db',
+    borderRadius: 8,
+    cursor: 'pointer',
   },
 };
 

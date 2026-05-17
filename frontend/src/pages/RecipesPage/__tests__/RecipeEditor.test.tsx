@@ -215,7 +215,7 @@ describe('RecipeEditor — create mode', () => {
     render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} allTags={[]} tagsLoading={false} />);
 
     await user.type(screen.getByLabelText(/ingredient 1 name/i), 'pas');
-    act(() => jest.advanceTimersByTime(350));
+    await act(async () => { jest.advanceTimersByTime(350); });
 
     await waitFor(() => expect(mockSearch).toHaveBeenCalledWith('name', 'pas'));
     await waitFor(() => expect(screen.getByTestId('autocomplete-dropdown')).toBeInTheDocument());
@@ -229,7 +229,7 @@ describe('RecipeEditor — create mode', () => {
     render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} allTags={[]} tagsLoading={false} />);
 
     await user.type(screen.getByLabelText(/ingredient 1 name/i), 'pa');
-    act(() => jest.advanceTimersByTime(350));
+    await act(async () => { jest.advanceTimersByTime(350); });
 
     expect(mockSearch).not.toHaveBeenCalled();
     expect(screen.queryByTestId('autocomplete-dropdown')).not.toBeInTheDocument();
@@ -245,7 +245,7 @@ describe('RecipeEditor — create mode', () => {
     render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} allTags={[]} tagsLoading={false} />);
 
     await user.type(screen.getByLabelText(/ingredient 1 name/i), 'pas');
-    act(() => jest.advanceTimersByTime(350));
+    await act(async () => { jest.advanceTimersByTime(350); });
 
     await waitFor(() => expect(mockSearch).toHaveBeenCalledTimes(5));
     expect(mockSearch).toHaveBeenCalledWith('name', 'pas');
@@ -267,7 +267,7 @@ describe('RecipeEditor — create mode', () => {
     render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} allTags={[]} tagsLoading={false} />);
 
     await user.type(screen.getByLabelText(/ingredient 1 name/i), 'pas');
-    act(() => jest.advanceTimersByTime(350));
+    await act(async () => { jest.advanceTimersByTime(350); });
 
     await waitFor(() => screen.getByTestId('autocomplete-dropdown'));
     // Should only show one item despite 5 searches returning the same item
@@ -295,7 +295,7 @@ describe('RecipeEditor — create mode', () => {
     render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} allTags={[]} tagsLoading={false} />);
 
     await user.type(screen.getByLabelText(/ingredient 1 name/i), 'bak');
-    act(() => jest.advanceTimersByTime(350));
+    await act(async () => { jest.advanceTimersByTime(350); });
 
     await waitFor(() => screen.getByTestId('dropdown-item-0'));
     expect(screen.getByText('Flour')).toBeInTheDocument();
@@ -317,7 +317,7 @@ describe('RecipeEditor — create mode', () => {
     render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} allTags={[]} tagsLoading={false} />);
 
     await user.type(screen.getByLabelText(/ingredient 1 name/i), 'pas');
-    act(() => jest.advanceTimersByTime(350));
+    await act(async () => { jest.advanceTimersByTime(350); });
 
     await waitFor(() => screen.getByTestId('dropdown-item-0'));
     await user.click(screen.getByTestId('dropdown-item-0'));

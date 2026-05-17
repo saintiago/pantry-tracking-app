@@ -1,8 +1,11 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
-import InventoryPage from '../InventoryPage';
+import InventoryPage, {
+  BarcodeScannerErrorBoundary,
+  BarcodeScannerLoadingFallback,
+} from '../InventoryPage';
 import type { StorageLocation } from '../../../api/locations/locations';
 import type { InventoryItem } from '../../../components/InventoryList/InventoryList';
 import type { PageId } from '../../../components/Layout/Layout';
@@ -21,6 +24,12 @@ jest.mock('../../../api/inventory/inventory', () => ({
   fetchInventory: jest.fn(),
   addInventoryItem: jest.fn(),
   deleteInventoryItem: jest.fn(),
+}));
+
+// Mock BarcodeScanner so Quagga is never loaded in jsdom
+jest.mock('../../../components/BarcodeScanner/BarcodeScanner', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => <div data-testid="barcode-scanner-mock" />),
 }));
 
 import {
@@ -468,14 +477,16 @@ describe('Inventory integration', () => {
     expect(capturedOnSubmit).toBeDefined();
 
     // Invoke the onSubmit callback directly (simulating AddItemPage form submission)
-    const result = await capturedOnSubmit!({
-      name: 'Eggs',
-      category: 'Dairy',
-      expirationDate: '2025-12-01',
-      locationId: 'loc-1',
-      quantity: 12,
-      unit: 'Unit',
-    });
+    const result = await act(async () =>
+      capturedOnSubmit!({
+        name: 'Eggs',
+        category: 'Dairy',
+        expirationDate: '2025-12-01',
+        locationId: 'loc-1',
+        quantity: 12,
+        unit: 'Unit',
+      }),
+    );
 
     expect(result).toEqual({});
     await waitFor(() => {
@@ -540,17 +551,214 @@ describe('Inventory integration', () => {
     expect(capturedOnSubmit).toBeDefined();
 
     // Invoke the onSubmit callback directly
-    await capturedOnSubmit!({
-      name: 'Butter',
-      category: 'Dairy',
-      expirationDate: '2025-12-01',
-      locationId: 'loc-1',
-      quantity: 1,
-      unit: 'Unit',
+    await act(async () => {
+      await capturedOnSubmit!({
+        name: 'Butter',
+        category: 'Dairy',
+        expirationDate: '2025-12-01',
+        locationId: 'loc-1',
+        quantity: 1,
+        unit: 'Unit',
+      });
     });
 
     await waitFor(() => {
       expect(screen.getByText('Butter is running low on stock')).toBeInTheDocument();
     });
+  });
+});
+
+describe('BarcodeScanner lazy loading', () => {
+  // These tests exercise BarcodeScannerLoadingFallback and BarcodeScannerErrorBoundary
+  // directly with a controlled React.lazy, avoiding the multiple-React-copies problem
+  // that arises from jest.isolateModules.
+  //
+  // We import the exported components from InventoryPage and build a minimal harness:
+  //   <BarcodeScannerErrorBoundary onClose onRetry>
+  //     <Suspense fallback={<BarcodeScannerLoadingFallback />}>
+  //       <LazyComponent />
+  //     </Suspense>
+  //   </BarcodeScannerErrorBoundary>
+
+  it('shows loading fallback while scanner chunk is loading', async () => {
+    let resolveImport!: (mod: { default: React.ComponentType }) => void;
+    const deferredImport = new Promise<{ default: React.ComponentType }>((resolve) => {
+      resolveImport = resolve;
+    });
+
+    const LazyScanner = React.lazy(() => deferredImport);
+    const onClose = jest.fn();
+    const onRetry = jest.fn();
+
+    render(
+      <BarcodeScannerErrorBoundary onClose={onClose} onRetry={onRetry}>
+        <React.Suspense fallback={<BarcodeScannerLoadingFallback />}>
+          <LazyScanner />
+        </React.Suspense>
+      </BarcodeScannerErrorBoundary>,
+    );
+
+    // Loading fallback should be visible while the import is pending
+    expect(screen.getByTestId('barcode-scanner-loading')).toBeInTheDocument();
+
+    // Resolve the import
+    act(() => {
+      resolveImport({ default: () => <div data-testid="barcode-scanner-mock" /> });
+    });
+
+    // Scanner mock should appear and loading fallback should disappear
+    await screen.findByTestId('barcode-scanner-mock');
+    expect(screen.queryByTestId('barcode-scanner-loading')).not.toBeInTheDocument();
+  });
+
+  it('does not show loading fallback on second scanner open (module cached)', async () => {
+    const user = userEvent.setup();
+    setupDefaults();
+
+    // The module-level mock resolves synchronously (simulating cached module).
+    renderInventoryPage();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Add item')).toBeInTheDocument();
+    });
+
+    // First open
+    await user.click(screen.getByLabelText('Add item'));
+    await user.click(screen.getByRole('menuitem', { name: /Barcode Scan/i }));
+    await screen.findByTestId('barcode-scanner-mock');
+    expect(screen.queryByTestId('barcode-scanner-loading')).not.toBeInTheDocument();
+
+    // Close scanner by invoking the onClose prop on the mock
+    const { default: BarcodeScanner } = await import('../../../components/BarcodeScanner/BarcodeScanner');
+    const mockCalls = (BarcodeScanner as jest.Mock).mock.calls;
+    const lastCallProps = mockCalls[mockCalls.length - 1][0];
+    act(() => lastCallProps.onClose());
+
+    // Second open
+    await user.click(screen.getByLabelText('Add item'));
+    await user.click(screen.getByRole('menuitem', { name: /Barcode Scan/i }));
+
+    // Loading fallback should NOT appear (module already cached)
+    expect(screen.queryByTestId('barcode-scanner-loading')).not.toBeInTheDocument();
+    await screen.findByTestId('barcode-scanner-mock');
+  });
+
+  it('shows error boundary overlay when scanner chunk fails to load', async () => {
+    const rejectedImport = Promise.reject(new Error('Loading chunk failed'));
+    // Prevent unhandled rejection warning
+    rejectedImport.catch(() => {});
+
+    const LazyScanner = React.lazy(() => rejectedImport);
+    const onClose = jest.fn();
+    const onRetry = jest.fn();
+
+    // Suppress React's error boundary console.error for this test
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(
+      <BarcodeScannerErrorBoundary onClose={onClose} onRetry={onRetry}>
+        <React.Suspense fallback={<BarcodeScannerLoadingFallback />}>
+          <LazyScanner />
+        </React.Suspense>
+      </BarcodeScannerErrorBoundary>,
+    );
+
+    // Error boundary should catch the failed import
+    await screen.findByTestId('barcode-scanner-error');
+    expect(screen.getByText("Couldn't load the scanner.")).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
+
+    // Click Close — onClose callback should be invoked
+    await userEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(onClose).toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
+  });
+
+  it('shows error boundary overlay and inventory UI remains when scanner fails (integration)', async () => {
+    const user = userEvent.setup();
+    setupDefaults();
+
+    // Override the module-level mock to reject for this test
+    const { default: BarcodeScanner } = await import('../../../components/BarcodeScanner/BarcodeScanner');
+    (BarcodeScanner as jest.Mock).mockImplementation(() => {
+      throw new Error('Loading chunk failed');
+    });
+
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    renderInventoryPage();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Add item')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByLabelText('Add item'));
+    await user.click(screen.getByRole('menuitem', { name: /Barcode Scan/i }));
+
+    // Error boundary should catch the render error
+    await screen.findByTestId('barcode-scanner-error');
+    expect(screen.getByText("Couldn't load the scanner.")).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
+
+    // Click Close — error overlay should unmount and inventory UI should remain
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.queryByTestId('barcode-scanner-error')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Add item')).toBeInTheDocument();
+
+    // Restore mock to normal behavior
+    (BarcodeScanner as jest.Mock).mockImplementation(() => <div data-testid="barcode-scanner-mock" />);
+    consoleSpy.mockRestore();
+  });
+
+  it('retries loading the scanner chunk after a failure', async () => {
+    let resolveSecondImport!: (mod: { default: React.ComponentType }) => void;
+    const secondImportPromise = new Promise<{ default: React.ComponentType }>((resolve) => {
+      resolveSecondImport = resolve;
+    });
+
+    // First lazy component always rejects
+    const LazyFirst = React.lazy(() => Promise.reject(new Error('Loading chunk failed')));
+    // Second lazy component resolves with the mock
+    const LazySecond = React.lazy(() => secondImportPromise);
+
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    // Stateful wrapper: starts with LazyFirst, switches to LazySecond on retry
+    const TestHarness: React.FC = () => {
+      const [retried, setRetried] = React.useState(false);
+      const LazyComponent = retried ? LazySecond : LazyFirst;
+      return (
+        <BarcodeScannerErrorBoundary
+          onClose={jest.fn()}
+          onRetry={() => setRetried(true)}
+        >
+          <React.Suspense fallback={<BarcodeScannerLoadingFallback />}>
+            <LazyComponent />
+          </React.Suspense>
+        </BarcodeScannerErrorBoundary>
+      );
+    };
+
+    render(<TestHarness />);
+
+    // Error boundary shows after first failure
+    await screen.findByTestId('barcode-scanner-error');
+
+    // Click Retry — this calls onRetry which switches to LazySecond
+    await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    // Resolve the second import
+    act(() => {
+      resolveSecondImport({ default: () => <div data-testid="barcode-scanner-mock" /> });
+    });
+
+    // Scanner should eventually appear
+    await screen.findByTestId('barcode-scanner-mock');
+    expect(screen.queryByTestId('barcode-scanner-error')).not.toBeInTheDocument();
+
+    consoleSpy.mockRestore();
   });
 });

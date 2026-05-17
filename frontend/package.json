@@ -1,6 +1,6 @@
 {
   "name": "frontend",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,7 +10,8 @@
     "type-check": "tsc --noEmit",
     "test": "jest",
     "test:unit": "jest",
-    "test:property": "jest --testPathPattern=property"
+    "test:property": "jest --testPathPattern=property",
+    "verify:bundle": "node scripts/verify-bundle-split.mjs"
   },
   "dependencies": {
     "@ericblade/quagga2": "^1.12.1",
