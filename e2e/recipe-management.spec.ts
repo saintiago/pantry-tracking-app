@@ -1215,6 +1215,168 @@ test.describe('Recipe Management', () => {
     await expect(page.getByRole('button', { name: 'Remove tag quick' })).toBeVisible();
   });
 
+  // ─── Tag refresh after edit ───────────────────────────────────────────────────
+
+  test('new tag added when editing a recipe appears in tag cloud filter after save', async ({
+    page,
+  }) => {
+    // After saving, RecipesPage calls refreshTags() → GET /recipes/tags.
+    // We override the tags route AFTER the initial mount fetch has already completed
+    // (beforeEach handled it). So the override only needs to handle the post-save call.
+    const recipeWithNewTag = {
+      ...mockRecipes[0],
+      tags: ['italian', 'quick', 'newlyadded'],
+      updatedAt: '2024-01-05T00:00:00Z',
+    };
+
+    await page.route('**/recipes/recipe-1', async (route) => {
+      if (route.request().method() === 'PUT') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ recipe: recipeWithNewTag }),
+        });
+      } else if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            recipe: recipeWithNewTag,
+            ingredientAvailability: mockRecipeWithAvailability.ingredientAvailability,
+            missingCount: 2,
+          }),
+        });
+      } else if (route.request().method() === 'DELETE') {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+      }
+    });
+
+    // Navigate to Pasta Carbonara and open the editor
+    await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
+    await page.getByTestId('edit-button').click();
+    await expect(page.getByRole('heading', { name: 'Edit Recipe' })).toBeVisible({
+      timeout: 5000,
+    });
+
+    // Add a brand-new tag that didn't exist before, then override the tags endpoint
+    // to return it — register the override just before saving so it captures the
+    // post-save refreshTags() call.
+    const tagInput = page.getByPlaceholder('Add a tag…');
+    await tagInput.fill('newlyadded');
+    await tagInput.press('Enter');
+    await expect(page.getByRole('button', { name: 'Remove tag newlyadded' })).toBeVisible();
+
+    // Override tags route to return updated list — registered just before save so
+    // the beforeEach handler (which already handled the mount fetch) is superseded.
+    await page.route('**/recipes/tags', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ tags: ['italian', 'newlyadded', 'quick', 'soup', 'vegetarian'] }),
+      });
+    });
+
+    // Save the recipe
+    await page.getByRole('button', { name: 'Save Changes' }).click();
+
+    // Should navigate to detail view
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
+
+    // Go back to the recipe list
+    await page.getByRole('button', { name: 'Go back' }).click();
+    await expect(page.getByRole('heading', { name: 'Recipes' })).toBeVisible({ timeout: 5000 });
+
+    // The new tag must appear in the tag cloud filter
+    const tagCloud = page.getByRole('group', { name: 'Filter by tag' });
+    await expect(tagCloud.getByRole('button', { name: 'newlyadded' })).toBeVisible({
+      timeout: 5000,
+    });
+  });
+
+  test('new tag added when editing a recipe appears in autocomplete when editing another recipe', async ({
+    page,
+  }) => {
+    const recipeWithNewTag = {
+      ...mockRecipes[0],
+      tags: ['italian', 'quick', 'newlyadded'],
+      updatedAt: '2024-01-05T00:00:00Z',
+    };
+
+    await page.route('**/recipes/recipe-1', async (route) => {
+      if (route.request().method() === 'PUT') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ recipe: recipeWithNewTag }),
+        });
+      } else if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            recipe: recipeWithNewTag,
+            ingredientAvailability: mockRecipeWithAvailability.ingredientAvailability,
+            missingCount: 2,
+          }),
+        });
+      } else if (route.request().method() === 'DELETE') {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+      }
+    });
+
+    // Edit Pasta Carbonara and add the new tag
+    await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
+    await page.getByTestId('edit-button').click();
+    await expect(page.getByRole('heading', { name: 'Edit Recipe' })).toBeVisible({
+      timeout: 5000,
+    });
+
+    const tagInput = page.getByPlaceholder('Add a tag…');
+    await tagInput.fill('newlyadded');
+    await tagInput.press('Enter');
+    await expect(page.getByRole('button', { name: 'Remove tag newlyadded' })).toBeVisible();
+
+    // Override tags route just before saving so the post-save refreshTags() call
+    // returns the updated list including the new tag.
+    await page.route('**/recipes/tags', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ tags: ['italian', 'newlyadded', 'quick', 'soup', 'vegetarian'] }),
+      });
+    });
+
+    await page.getByRole('button', { name: 'Save Changes' }).click();
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
+
+    // Go back to list, then open the editor for Tomato Soup
+    await page.getByRole('button', { name: 'Go back' }).click();
+    await expect(page.getByRole('heading', { name: 'Recipes' })).toBeVisible({ timeout: 5000 });
+
+    await page.getByRole('button', { name: 'View Tomato Soup' }).click();
+    await expect(page.getByRole('heading', { name: 'Tomato Soup' })).toBeVisible({
+      timeout: 5000,
+    });
+    await page.getByTestId('edit-button').click();
+    await expect(page.getByRole('heading', { name: 'Edit Recipe' })).toBeVisible({
+      timeout: 5000,
+    });
+
+    // Focus the tag input — autocomplete should show the newly added tag as a suggestion
+    await page.getByPlaceholder('Add a tag…').click();
+    await expect(page.getByRole('option', { name: 'newlyadded' })).toBeVisible({ timeout: 3000 });
+  });
+
   test('tags are included in the create API request body', async ({ page }) => {
     let capturedBody: Record<string, unknown> | null = null;
 
