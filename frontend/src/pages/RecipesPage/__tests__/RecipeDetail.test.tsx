@@ -28,6 +28,7 @@ const sampleData: RecipeWithAvailability = {
     recipeId: 'r1',
     userId: 'user-1',
     name: 'Pasta Carbonara',
+    tags: [],
     ingredients: [],
     instructions: 'Boil pasta. Mix eggs and cheese. Combine.',
     sourceUrl: 'https://example.com/pasta',
@@ -208,6 +209,55 @@ describe('RecipeDetail', () => {
       render(<RecipeDetail {...defaultProps} />);
       await waitFor(() => screen.getByText('Pasta Carbonara'));
       expect(screen.queryByRole('region', { name: /recipe time/i })).not.toBeInTheDocument();
+    });
+  });
+
+  // ─── Tags ────────────────────────────────────────────────────────────────────
+
+  describe('tags', () => {
+    it('renders tag chips for a recipe with tags', async () => {
+      const data: RecipeWithAvailability = {
+        ...sampleData,
+        recipe: { ...sampleData.recipe, tags: ['italian', 'quick'] },
+      };
+      mockFetchRecipeWithAvailability.mockResolvedValue(data);
+      render(<RecipeDetail {...defaultProps} />);
+      await waitFor(() => screen.getByRole('region', { name: /recipe tags/i }));
+      expect(screen.getByText('italian')).toBeInTheDocument();
+      expect(screen.getByText('quick')).toBeInTheDocument();
+    });
+
+    it('does not render tags section when recipe has no tags (empty array)', async () => {
+      const data: RecipeWithAvailability = {
+        ...sampleData,
+        recipe: { ...sampleData.recipe, tags: [] },
+      };
+      mockFetchRecipeWithAvailability.mockResolvedValue(data);
+      render(<RecipeDetail {...defaultProps} />);
+      await waitFor(() => screen.getByText('Pasta Carbonara'));
+      expect(screen.queryByRole('region', { name: /recipe tags/i })).not.toBeInTheDocument();
+    });
+
+    it('does not render tags section when recipe.tags is undefined (legacy records)', async () => {
+      const data: RecipeWithAvailability = {
+        ...sampleData,
+        recipe: { ...sampleData.recipe, tags: undefined as unknown as string[] },
+      };
+      mockFetchRecipeWithAvailability.mockResolvedValue(data);
+      render(<RecipeDetail {...defaultProps} />);
+      await waitFor(() => screen.getByText('Pasta Carbonara'));
+      expect(screen.queryByRole('region', { name: /recipe tags/i })).not.toBeInTheDocument();
+    });
+
+    it('chips have no remove button (read-only display)', async () => {
+      const data: RecipeWithAvailability = {
+        ...sampleData,
+        recipe: { ...sampleData.recipe, tags: ['italian'] },
+      };
+      mockFetchRecipeWithAvailability.mockResolvedValue(data);
+      render(<RecipeDetail {...defaultProps} />);
+      await waitFor(() => screen.getByText('italian'));
+      expect(screen.queryByRole('button', { name: /remove tag/i })).not.toBeInTheDocument();
     });
   });
 });

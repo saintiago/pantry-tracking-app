@@ -220,7 +220,7 @@ test.describe('Barcode Autofill Feature', () => {
     const nameInput = page.getByLabel('Product Name');
     await nameInput.click();
     await nameInput.press('End');
-    await nameInput.type(' - Edited');
+    await nameInput.pressSequentially(' - Edited');
 
     const bgColor = await nameInput.evaluate((el) => window.getComputedStyle(el).backgroundColor);
     expect(bgColor).toBe('rgb(255, 255, 255)');

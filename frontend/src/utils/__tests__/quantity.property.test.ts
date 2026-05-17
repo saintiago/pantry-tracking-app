@@ -28,7 +28,7 @@ describe('Property 5: Quantity formatter round-trip', () => {
       fc.integer({ min: 1, max: 99 }),
       fc.integer({ min: 1, max: 99 }),
     )
-    .filter(([, num, den]) => den > 0)
+    .filter(([, _num, den]) => den > 0)
     .map(([whole, num, den]) => `${whole} ${num}/${den}`);
 
   const validFractionalStringArb = fc.oneof(

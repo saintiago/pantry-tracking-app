@@ -22,7 +22,7 @@ function makeEvent(overrides: Partial<APIGatewayProxyEvent> = {}): APIGatewayPro
     queryStringParameters: null,
     multiValueQueryStringParameters: null,
     stageVariables: null,
-    requestContext: {} as any,
+    requestContext: {} as unknown as APIGatewayProxyEvent['requestContext'],
     resource: '',
     ...overrides,
   };

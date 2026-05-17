@@ -18,6 +18,7 @@ recipesApiModule.computeTotalTime = realComputeTotalTime;
 function makeRecipe(overrides: Partial<Recipe> & { recipeId: string; name: string }): Recipe {
   return {
     userId: 'user-1',
+    tags: [],
     ingredients: [],
     instructions: 'Some instructions',
     createdAt: '2024-01-01T00:00:00Z',
@@ -36,6 +37,7 @@ const sampleRecipes: Recipe[] = [
 describe('RecipeList', () => {
   const onSelect = jest.fn();
   const onNew = jest.fn();
+  const defaultProps = { onSelect, onNew, allTags: [] as string[], tagsLoading: false };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -43,13 +45,13 @@ describe('RecipeList', () => {
 
   it('shows loading state while fetching', () => {
     mockFetchRecipes.mockReturnValue(new Promise(() => {})); // never resolves
-    render(<RecipeList onSelect={onSelect} onNew={onNew} />);
+    render(<RecipeList {...defaultProps} />);
     expect(screen.getByRole('status', { name: /loading recipes/i })).toBeInTheDocument();
   });
 
   it('renders recipe list after fetch', async () => {
     mockFetchRecipes.mockResolvedValue(sampleRecipes);
-    render(<RecipeList onSelect={onSelect} onNew={onNew} />);
+    render(<RecipeList {...defaultProps} />);
     await waitFor(() => expect(screen.getByText('Pasta Carbonara')).toBeInTheDocument());
     expect(screen.getByText('Chicken Soup')).toBeInTheDocument();
     expect(screen.getByText('Banana Bread')).toBeInTheDocument();
@@ -57,20 +59,20 @@ describe('RecipeList', () => {
 
   it('shows empty state when no recipes exist', async () => {
     mockFetchRecipes.mockResolvedValue([]);
-    render(<RecipeList onSelect={onSelect} onNew={onNew} />);
+    render(<RecipeList {...defaultProps} />);
     await waitFor(() => expect(screen.getByText(/no recipes yet/i)).toBeInTheDocument());
   });
 
   it('shows error message on fetch failure', async () => {
     mockFetchRecipes.mockRejectedValue(new Error('Network error'));
-    render(<RecipeList onSelect={onSelect} onNew={onNew} />);
+    render(<RecipeList {...defaultProps} />);
     await waitFor(() => expect(screen.getByText('Network error')).toBeInTheDocument());
   });
 
   it('calls onNew when New Recipe button is clicked', async () => {
     mockFetchRecipes.mockResolvedValue([]);
     const user = userEvent.setup();
-    render(<RecipeList onSelect={onSelect} onNew={onNew} />);
+    render(<RecipeList {...defaultProps} />);
     await waitFor(() => screen.getByRole('button', { name: /new recipe/i }));
     await user.click(screen.getByRole('button', { name: /new recipe/i }));
     expect(onNew).toHaveBeenCalledTimes(1);
@@ -79,7 +81,7 @@ describe('RecipeList', () => {
   it('calls onSelect with recipeId when a recipe row is clicked', async () => {
     mockFetchRecipes.mockResolvedValue(sampleRecipes);
     const user = userEvent.setup();
-    render(<RecipeList onSelect={onSelect} onNew={onNew} />);
+    render(<RecipeList {...defaultProps} />);
     await waitFor(() => screen.getByText('Pasta Carbonara'));
     await user.click(screen.getByRole('button', { name: /view pasta carbonara/i }));
     expect(onSelect).toHaveBeenCalledWith('r1');
@@ -88,7 +90,7 @@ describe('RecipeList', () => {
   it('filters recipes by search input (case-insensitive)', async () => {
     mockFetchRecipes.mockResolvedValue(sampleRecipes);
     const user = userEvent.setup();
-    render(<RecipeList onSelect={onSelect} onNew={onNew} />);
+    render(<RecipeList {...defaultProps} />);
     await waitFor(() => screen.getByText('Pasta Carbonara'));
 
     await user.type(screen.getByRole('searchbox', { name: /search recipes/i }), 'chicken');
@@ -101,7 +103,7 @@ describe('RecipeList', () => {
   it('shows empty search state when no recipes match filter', async () => {
     mockFetchRecipes.mockResolvedValue(sampleRecipes);
     const user = userEvent.setup();
-    render(<RecipeList onSelect={onSelect} onNew={onNew} />);
+    render(<RecipeList {...defaultProps} />);
     await waitFor(() => screen.getByText('Pasta Carbonara'));
 
     await user.type(screen.getByRole('searchbox', { name: /search recipes/i }), 'zzznomatch');
@@ -112,7 +114,7 @@ describe('RecipeList', () => {
   it('shows missing-ingredient badge when missingCount > 0', async () => {
     const recipeWithMissing = { ...sampleRecipes[0], missingCount: 2 } as Recipe & { missingCount: number };
     mockFetchRecipes.mockResolvedValue([recipeWithMissing, sampleRecipes[1]]);
-    render(<RecipeList onSelect={onSelect} onNew={onNew} />);
+    render(<RecipeList {...defaultProps} />);
     await waitFor(() => screen.getByText('Pasta Carbonara'));
 
     expect(screen.getByLabelText(/2 ingredient\(s\) missing/i)).toBeInTheDocument();
@@ -123,7 +125,7 @@ describe('RecipeList', () => {
   it('does not show missing-ingredient badge when missingCount is 0', async () => {
     const recipeNoMissing = { ...sampleRecipes[0], missingCount: 0 } as Recipe & { missingCount: number };
     mockFetchRecipes.mockResolvedValue([recipeNoMissing]);
-    render(<RecipeList onSelect={onSelect} onNew={onNew} />);
+    render(<RecipeList {...defaultProps} />);
     await waitFor(() => screen.getByText('Pasta Carbonara'));
 
     expect(screen.queryByLabelText(/ingredient\(s\) missing/i)).not.toBeInTheDocument();
@@ -134,7 +136,7 @@ describe('RecipeList', () => {
   it('renders time badge for recipes with time fields', async () => {
     const recipeWithTime = makeRecipe({ recipeId: 'r1', name: 'Pasta Carbonara', prepTime: 10, cookTime: 20 });
     mockFetchRecipes.mockResolvedValue([recipeWithTime]);
-    render(<RecipeList onSelect={onSelect} onNew={onNew} />);
+    render(<RecipeList {...defaultProps} />);
     await waitFor(() => screen.getByText('Pasta Carbonara'));
 
     // The badge text should be "30 min"
@@ -145,7 +147,7 @@ describe('RecipeList', () => {
 
   it('renders no time badge for recipes without time fields', async () => {
     mockFetchRecipes.mockResolvedValue([sampleRecipes[0]]);
-    render(<RecipeList onSelect={onSelect} onNew={onNew} />);
+    render(<RecipeList {...defaultProps} />);
     await waitFor(() => screen.getByText('Pasta Carbonara'));
 
     expect(screen.queryByText(/\d+ min$/)).not.toBeInTheDocument();
@@ -157,6 +159,7 @@ describe('RecipeList', () => {
 describe('portions badge', () => {
   const onSelect = jest.fn();
   const onNew = jest.fn();
+  const defaultProps = { onSelect, onNew, allTags: [] as string[], tagsLoading: false };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -165,7 +168,7 @@ describe('portions badge', () => {
   it('renders portions badge for recipes with a portions value', async () => {
     const recipeWithPortions = makeRecipe({ recipeId: 'r1', name: 'Pasta Carbonara', portions: 4 });
     mockFetchRecipes.mockResolvedValue([recipeWithPortions]);
-    render(<RecipeList onSelect={onSelect} onNew={onNew} />);
+    render(<RecipeList {...defaultProps} />);
     await waitFor(() => screen.getByText('Pasta Carbonara'));
 
     expect(screen.getByLabelText('4 portions')).toBeInTheDocument();
@@ -174,7 +177,7 @@ describe('portions badge', () => {
   it('does not render portions badge for recipes without portions', async () => {
     const recipeWithoutPortions = makeRecipe({ recipeId: 'r1', name: 'Pasta Carbonara' });
     mockFetchRecipes.mockResolvedValue([recipeWithoutPortions]);
-    render(<RecipeList onSelect={onSelect} onNew={onNew} />);
+    render(<RecipeList {...defaultProps} />);
     await waitFor(() => screen.getByText('Pasta Carbonara'));
 
     expect(screen.queryByLabelText(/portions/i)).not.toBeInTheDocument();

@@ -9,9 +9,7 @@ import {
   DeleteCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { randomUUID } from 'crypto';
-import { VALID_UNITS, LEGACY_UNIT_MAP, resolveUnit } from '../../types/units';
-
-const ACCEPTED_UNITS = new Set([...VALID_UNITS, ...Object.keys(LEGACY_UNIT_MAP)]);
+import { resolveUnit } from '../../types/units';
 
 const TABLE_NAME = process.env.TABLE_NAME ?? 'PantryApp';
 
@@ -96,6 +94,43 @@ export function validatePortions(parsed: Record<string, unknown>): string | null
   const v = parsed.portions;
   if (typeof v !== 'number' || !Number.isInteger(v) || v < 1) {
     return 'portions must be a positive integer';
+  }
+  return null;
+}
+
+/**
+ * Normalizes a raw tags input: trims, lowercases, filters empty strings, deduplicates.
+ * Pure function — no side effects.
+ */
+export function normalizeTags(raw: unknown[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== 'string') continue;
+    const normalized = item.trim().toLowerCase();
+    if (normalized.length === 0) continue;
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    result.push(normalized);
+  }
+  return result;
+}
+
+/**
+ * Validates the tags field in a parsed request body.
+ * Returns an error string if tags is absent, not an array, or empty after normalization.
+ * Returns null if valid.
+ */
+export function validateTags(parsed: Record<string, unknown>): string | null {
+  if (parsed.tags === undefined || parsed.tags === null) {
+    return 'tags is required';
+  }
+  if (!Array.isArray(parsed.tags)) {
+    return 'tags must be an array';
+  }
+  const normalized = normalizeTags(parsed.tags as unknown[]);
+  if (normalized.length === 0) {
+    return 'At least one tag is required';
   }
   return null;
 }
@@ -296,6 +331,17 @@ async function createRecipe(
     });
   }
 
+  const tagsError = validateTags(parsed);
+  if (tagsError) {
+    return response(400, {
+      error: 'VALIDATION_ERROR',
+      message: tagsError,
+      details: [{ field: 'tags', message: tagsError }],
+    });
+  }
+
+  const normalizedTags = normalizeTags(parsed.tags as unknown[]);
+
   const now = new Date().toISOString();
   const recipeId = randomUUID();
 
@@ -306,6 +352,7 @@ async function createRecipe(
     recipeId,
     userId,
     name: String(parsed.name).trim(),
+    tags: normalizedTags,
     ingredients: parsed.ingredients,
     instructions: parsed.instructions ?? '',
     createdAt: now,
@@ -411,6 +458,17 @@ async function updateRecipe(
     });
   }
 
+  if (parsed.tags !== undefined) {
+    const tagsError = validateTags(parsed);
+    if (tagsError) {
+      return response(400, {
+        error: 'VALIDATION_ERROR',
+        message: tagsError,
+        details: [{ field: 'tags', message: tagsError }],
+      });
+    }
+  }
+
   const now = new Date().toISOString();
   const expressionAttrNames: Record<string, string> = { '#updatedAt': 'updatedAt' };
   const expressionAttrValues: Record<string, unknown> = { ':now': now, ':inc': 1 };
@@ -434,6 +492,16 @@ async function updateRecipe(
       expressionAttrValues[valAlias] = parsed[field];
       updateParts.push(`${alias} = ${valAlias}`);
     }
+  }
+
+  // Handle tags separately — needs normalization
+  if (parsed.tags !== undefined) {
+    const normalizedTags = normalizeTags(parsed.tags as unknown[]);
+    const alias = '#f_tags';
+    const valAlias = ':v_tags';
+    expressionAttrNames[alias] = 'tags';
+    expressionAttrValues[valAlias] = normalizedTags;
+    updateParts.push(`${alias} = ${valAlias}`);
   }
 
   // Handle explicit null values for prepTime/cookTime — use REMOVE to delete the attribute
@@ -476,6 +544,36 @@ async function updateRecipe(
     }
     throw err;
   }
+}
+
+async function listRecipeTags(userId: string): Promise<APIGatewayProxyResult> {
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+      ExpressionAttributeValues: {
+        ':pk': `USER#${userId}`,
+        ':skPrefix': 'RECIPE#',
+      },
+      ProjectionExpression: 'tags',
+    }),
+  );
+
+  const allTags: string[] = [];
+  for (const item of result.Items ?? []) {
+    if (Array.isArray(item.tags)) {
+      for (const tag of item.tags) {
+        if (typeof tag === 'string') {
+          allTags.push(tag.trim().toLowerCase());
+        }
+      }
+    }
+  }
+
+  // Deduplicate and sort
+  const uniqueTags = [...new Set(allTags)].sort();
+
+  return response(200, { tags: uniqueTags });
 }
 
 async function deleteRecipe(
@@ -544,6 +642,11 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     if (method === 'POST' && !recipeId) {
       return await createRecipe(userId, event.body);
+    }
+
+    // Must be before GET /recipes/{recipeId} to avoid "tags" being treated as a recipeId
+    if (method === 'GET' && recipeId === 'tags') {
+      return await listRecipeTags(userId);
     }
 
     if (method === 'GET' && recipeId) {

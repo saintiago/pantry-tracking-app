@@ -107,6 +107,14 @@ async function setupMockAPI(page: Page) {
       });
     }
   });
+
+  await page.route('**/recipes/tags', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ tags: [] }),
+    });
+  });
 }
 
 async function loginAndGoToRecipes(page: Page) {
@@ -209,6 +217,10 @@ test.describe('Recipe Units Format', () => {
     await page.getByLabel('Ingredient 1 unit').selectOption('cup');
     await page.getByLabel('Portions').fill('2');
 
+    // Add a tag (required since recipe-categories feature)
+    await page.getByPlaceholder('Add a tag…').fill('baking');
+    await page.keyboard.press('Enter');
+
     await page.getByRole('button', { name: 'Create Recipe' }).click();
 
     // Should navigate to detail view
@@ -264,6 +276,10 @@ test.describe('Recipe Units Format', () => {
     await page.getByLabel('Ingredient 1 unit').selectOption('cup');
     await page.getByLabel('Portions').fill('2');
 
+    // Add a tag (required since recipe-categories feature)
+    await page.getByPlaceholder('Add a tag…').fill('baking');
+    await page.keyboard.press('Enter');
+
     await page.getByRole('button', { name: 'Create Recipe' }).click();
 
     await expect(page.getByRole('heading', { name: 'Mixed Number Recipe' })).toBeVisible({ timeout: 5000 });
@@ -317,6 +333,10 @@ test.describe('Recipe Units Format', () => {
     await page.getByLabel('Ingredient 1 quantity').fill('1');
     await page.getByLabel('Ingredient 1 unit').selectOption('cup');
     await page.getByLabel('Portions').fill('2');
+
+    // Add a tag (required since recipe-categories feature)
+    await page.getByPlaceholder('Add a tag…').fill('baking');
+    await page.keyboard.press('Enter');
 
     await page.getByRole('button', { name: 'Create Recipe' }).click();
 

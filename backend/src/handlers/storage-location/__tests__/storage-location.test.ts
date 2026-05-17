@@ -34,7 +34,7 @@ function makeEvent(overrides: Partial<APIGatewayProxyEvent> = {}): APIGatewayPro
     requestContext: {
       authorizer: { claims: { sub: 'user-123' } },
       requestId: 'req-1',
-    } as any,
+    } as unknown as APIGatewayProxyEvent['requestContext'],
     resource: '',
     ...overrides,
   };
@@ -47,7 +47,7 @@ describe('Storage Location Lambda handler', () => {
 
   it('returns 401 when userId is missing', async () => {
     const result = await handler(
-      makeEvent({ requestContext: { authorizer: {}, requestId: 'req-1' } as any }),
+      makeEvent({ requestContext: { authorizer: {}, requestId: 'req-1' } as unknown as APIGatewayProxyEvent['requestContext'] }),
     );
     expect(result.statusCode).toBe(401);
   });
@@ -186,7 +186,7 @@ describe('Storage Location Lambda handler', () => {
     it('returns 404 when location does not exist', async () => {
       mockSend.mockResolvedValueOnce({ Items: [] }); // no duplicates
       const condErr = new Error('Condition not met');
-      (condErr as any).name = 'ConditionalCheckFailedException';
+      (condErr as NodeJS.ErrnoException).name = 'ConditionalCheckFailedException';
       mockSend.mockRejectedValueOnce(condErr);
 
       const result = await handler(

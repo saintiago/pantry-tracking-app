@@ -99,9 +99,13 @@ interface Recipe {
   recipeId: string;
   userId: string;
   name: string;
+  tags: string[];          // Required, non-empty; always lowercase, trimmed, deduplicated
   ingredients: RecipeIngredient[];
   instructions: string;
   sourceUrl?: string;
+  prepTime?: number;       // Optional prep time in minutes (non-negative integer)
+  cookTime?: number;       // Optional cook time in minutes (non-negative integer)
+  portions: number;        // Required; positive integer (≥ 1)
   createdAt: string;
   updatedAt: string;
   syncVersion: number;
@@ -188,6 +192,7 @@ interface SyncQueueItem {
 | POST | /inventory/barcode-lookup | Inventory | Yes | Lookup product by barcode (external API) |
 | GET | /recipes | Recipe | Yes | List all recipes |
 | POST | /recipes | Recipe | Yes | Create recipe |
+| GET | /recipes/tags | Recipe | Yes | Get all distinct tags across user's recipes |
 | GET | /recipes/{recipeId} | Recipe | Yes | Get recipe with availability |
 | PUT | /recipes/{recipeId} | Recipe | Yes | Update recipe |
 | DELETE | /recipes/{recipeId} | Recipe | Yes | Delete recipe |
@@ -299,9 +304,25 @@ interface RenameLocationRequest { name: string; }  // unique per user
 // POST /recipes
 interface CreateRecipeRequest {
   name: string;
+  tags: string[];               // required, at least one; normalized to lowercase
   ingredients: RecipeIngredient[];  // at least one required
   instructions: string;
   sourceUrl?: string;
+  prepTime?: number;            // optional, non-negative integer (minutes)
+  cookTime?: number;            // optional, non-negative integer (minutes)
+  portions: number;             // required, positive integer
+}
+
+// PUT /recipes/{recipeId}
+interface UpdateRecipeRequest {
+  name?: string;
+  tags?: string[];              // if provided, must be non-empty; normalized to lowercase
+  ingredients?: RecipeIngredient[];
+  instructions?: string;
+  sourceUrl?: string;
+  prepTime?: number | null;     // null = explicit removal
+  cookTime?: number | null;     // null = explicit removal
+  portions?: number;
 }
 
 // GET /recipes/{recipeId} response
@@ -309,6 +330,11 @@ interface RecipeWithAvailability {
   recipe: Recipe;
   ingredientAvailability: IngredientStatus[];
   missingCount: number;
+}
+
+// GET /recipes/tags response
+interface ListRecipeTagsResponse {
+  tags: string[];   // sorted, deduplicated, lowercased union of all tags across user's recipes
 }
 ```
 

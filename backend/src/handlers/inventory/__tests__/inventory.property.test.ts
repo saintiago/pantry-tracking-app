@@ -36,7 +36,7 @@ function makeEvent(overrides: Partial<APIGatewayProxyEvent> = {}): APIGatewayPro
     requestContext: {
       authorizer: { claims: { sub: 'user-prop-test' } },
       requestId: 'req-prop',
-    } as any,
+    } as unknown as APIGatewayProxyEvent['requestContext'],
     resource: '',
     ...overrides,
   };

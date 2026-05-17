@@ -138,6 +138,17 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipeId, onEdit, onBack, o
 
       {/* Content */}
       <div style={styles.content}>
+        {/* Tags */}
+        {(recipe.tags ?? []).length > 0 && (
+          <section style={styles.tagsSection} aria-label="Recipe tags">
+            {(recipe.tags ?? []).map((tag) => (
+              <span key={tag} style={styles.tagChip}>
+                {tag}
+              </span>
+            ))}
+          </section>
+        )}
+
         {/* Time display */}
         {totalTime !== undefined && (
           <section style={styles.timeSection} aria-label="Recipe time">
@@ -449,5 +460,18 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#374151',
     padding: '0.25rem 0',
     borderBottom: '1px solid #f3f4f6',
+  },
+  tagsSection: {
+    display: 'flex',
+    flexWrap: 'wrap' as const,
+    gap: '0.4rem',
+  },
+  tagChip: {
+    backgroundColor: '#dbeafe',
+    color: '#1e40af',
+    borderRadius: 16,
+    fontWeight: 600,
+    fontSize: '0.875rem',
+    padding: '0.2rem 0.5rem',
   },
 };

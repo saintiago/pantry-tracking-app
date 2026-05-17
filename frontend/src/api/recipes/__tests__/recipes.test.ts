@@ -4,6 +4,7 @@ import {
   fetchRecipeWithAvailability,
   updateRecipe,
   deleteRecipe,
+  fetchRecipeTags,
 } from '../recipes';
 
 jest.mock('../../../config', () => ({
@@ -44,6 +45,7 @@ const mockRecipe = {
   recipeId: 'recipe-1',
   userId: 'user-1',
   name: 'Pasta',
+  tags: ['italian', 'quick'],
   ingredients: [{ name: 'Pasta', quantity: 200, unit: 'Gram' }],
   instructions: 'Boil pasta.',
   createdAt: '2024-01-01T00:00:00Z',
@@ -99,6 +101,7 @@ describe('fetchRecipes', () => {
 describe('createRecipe', () => {
   const newRecipeData = {
     name: 'Pasta',
+    tags: ['italian'],
     ingredients: [{ name: 'Pasta', quantity: 200, unit: 'Gram' }],
     instructions: 'Boil pasta.',
   };
@@ -271,6 +274,7 @@ describe('createRecipe — time fields', () => {
 
     const data = {
       name: 'Pasta',
+      tags: ['italian'],
       ingredients: [{ name: 'Pasta', quantity: 200, unit: 'Gram' }],
       instructions: 'Boil pasta.',
       prepTime: 10,
@@ -321,6 +325,7 @@ describe('createRecipe — portions field', () => {
 
     const data = {
       name: 'Pasta',
+      tags: ['italian'],
       ingredients: [{ name: 'Pasta', quantity: 200, unit: 'Gram' }],
       instructions: 'Boil pasta.',
       portions: 4,
@@ -356,5 +361,93 @@ describe('updateRecipe — portions field', () => {
 
     const callBody = JSON.parse((mockFetch().mock.calls[0][1] as RequestInit).body as string);
     expect(callBody).not.toHaveProperty('portions');
+  });
+});
+
+describe('fetchRecipeTags', () => {
+  it('sends GET /recipes/tags with auth header and returns tags array', async () => {
+    const tags = ['italian', 'quick', 'soup'];
+    mockFetch().mockResolvedValue({
+      ok: true,
+      json: async () => ({ tags }),
+    } as Response);
+
+    const result = await fetchRecipeTags();
+
+    expect(mockFetch()).toHaveBeenCalledWith('https://api.example.com/recipes/tags', {
+      headers: expectedHeaders,
+    });
+    expect(result).toEqual(tags);
+  });
+
+  it('throws when not authenticated', async () => {
+    mockGetCurrentSession.mockResolvedValue(null);
+    await expect(fetchRecipeTags()).rejects.toThrow('Not authenticated');
+  });
+
+  it('throws with server error message on failure', async () => {
+    mockFetch().mockResolvedValue({
+      ok: false,
+      json: async () => ({ message: 'Internal server error' }),
+    } as Response);
+
+    await expect(fetchRecipeTags()).rejects.toThrow('Internal server error');
+  });
+
+  it('throws with default message when response has no message', async () => {
+    mockFetch().mockResolvedValue({
+      ok: false,
+      json: async () => ({}),
+    } as Response);
+
+    await expect(fetchRecipeTags()).rejects.toThrow('Failed to fetch recipe tags');
+  });
+});
+
+describe('createRecipe — tags field', () => {
+  it('sends tags in request body when provided', async () => {
+    mockFetch().mockResolvedValue({
+      ok: true,
+      json: async () => ({ recipe: mockRecipe }),
+    } as Response);
+
+    const data = {
+      name: 'Pasta',
+      tags: ['italian', 'quick'],
+      ingredients: [{ name: 'Pasta', quantity: 200, unit: 'Gram' }],
+      instructions: 'Boil pasta.',
+      portions: 4,
+    };
+
+    await createRecipe(data);
+
+    const callBody = JSON.parse((mockFetch().mock.calls[0][1] as RequestInit).body as string);
+    expect(callBody.tags).toEqual(['italian', 'quick']);
+  });
+});
+
+describe('updateRecipe — tags field', () => {
+  it('sends tags in request body when provided', async () => {
+    mockFetch().mockResolvedValue({
+      ok: true,
+      json: async () => ({ recipe: mockRecipe }),
+    } as Response);
+
+    await updateRecipe('recipe-1', { tags: ['italian', 'quick'] });
+
+    const callBody = JSON.parse((mockFetch().mock.calls[0][1] as RequestInit).body as string);
+    expect(callBody.tags).toEqual(['italian', 'quick']);
+  });
+
+  it('does not include tags in body when not provided', async () => {
+    mockFetch().mockResolvedValue({
+      ok: true,
+      json: async () => ({ recipe: mockRecipe }),
+    } as Response);
+
+    await updateRecipe('recipe-1', { name: 'Updated' });
+
+    const callBody = JSON.parse((mockFetch().mock.calls[0][1] as RequestInit).body as string);
+    expect(callBody).not.toHaveProperty('tags');
   });
 });

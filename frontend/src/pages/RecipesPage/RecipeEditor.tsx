@@ -11,11 +11,14 @@ import AutocompleteDropdown from '../../components/AutocompleteDropdown/Autocomp
 import type { InventoryItem } from '../../components/AutocompleteDropdown/AutocompleteDropdown';
 import { VALID_UNITS, getUnitLabel, resolveUnit } from '../../types/units';
 import { parseFractionalQuantity, formatQuantity } from '../../utils/quantity';
+import TagInput from '../../components/TagInput/TagInput';
 
 export interface RecipeEditorProps {
   recipeId?: string; // undefined = create mode
   onSaved: (recipeId: string) => void;
   onCancel: () => void;
+  allTags: string[];      // passed from RecipesPage
+  tagsLoading: boolean;   // passed from RecipesPage
 }
 
 interface IngredientRow extends Omit<RecipeIngredient, 'quantity'> {
@@ -31,6 +34,7 @@ interface FormErrors {
   prepTime?: string;
   cookTime?: string;
   portions?: string;
+  tags?: string;
 }
 
 interface DropdownState {
@@ -68,7 +72,7 @@ function validatePortionsField(value: string): string | undefined {
   return undefined;
 }
 
-const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel }) => {
+const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel, allTags, tagsLoading }) => {
   const isEdit = recipeId !== undefined;
 
   const [name, setName] = useState('');
@@ -80,6 +84,9 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
   const [loading, setLoading] = useState(isEdit);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Tags
+  const [tags, setTags] = useState<string[]>([]);
 
   // Time fields (stored as strings for controlled number inputs)
   const [prepTime, setPrepTime] = useState('');
@@ -135,6 +142,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
         setOriginalPrepTime(recipe.prepTime);
         setOriginalCookTime(recipe.cookTime);
         setSelectedPortions(recipe.portions ?? 1);
+        setTags(recipe.tags ?? []);
       })
       .catch((err) => {
         if (!cancelled)
@@ -310,8 +318,10 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
       if (portionsErr) errs.portions = portionsErr;
     }
 
+    if (tags.length === 0) errs.tags = 'At least one tag is required.';
+
     return errs;
-  }, [name, instructions, ingredients, prepTime, cookTime, portions, isEdit]);
+  }, [name, instructions, ingredients, prepTime, cookTime, portions, isEdit, tags]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -359,14 +369,14 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
 
       try {
         if (isEdit && recipeId) {
-          await updateRecipe(recipeId, { ...baseData, ...timeFields, portions: selectedPortions });
+          await updateRecipe(recipeId, { ...baseData, ...timeFields, portions: selectedPortions, tags });
           onSaved(recipeId);
         } else {
           // In create mode, timeFields only contains number | undefined (never null)
           const createTimeFields: { prepTime?: number; cookTime?: number } = {};
           if (timeFields.prepTime != null) createTimeFields.prepTime = timeFields.prepTime as number;
           if (timeFields.cookTime != null) createTimeFields.cookTime = timeFields.cookTime as number;
-          const recipe = await createRecipe({ ...baseData, ...createTimeFields, portions: Number(portions) });
+          const recipe = await createRecipe({ ...baseData, ...createTimeFields, portions: Number(portions), tags });
           onSaved(recipe.recipeId);
         }
       } catch (err) {
@@ -375,7 +385,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
         setSubmitting(false);
       }
     },
-    [validate, name, instructions, sourceUrl, ingredients, isEdit, recipeId, onSaved, prepTime, cookTime, originalPrepTime, originalCookTime, portions, selectedPortions],
+    [validate, name, instructions, sourceUrl, ingredients, isEdit, recipeId, onSaved, prepTime, cookTime, originalPrepTime, originalCookTime, portions, selectedPortions, tags],
   );
 
   if (loading) {
@@ -435,6 +445,23 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
               {errors.name}
             </span>
           )}
+        </div>
+
+        {/* Tags */}
+        <div style={styles.fieldGroup}>
+          <label style={styles.label}>
+            Tags <span aria-hidden="true">*</span>
+          </label>
+          <TagInput
+            tags={tags}
+            onChange={(newTags) => {
+              setTags(newTags);
+              setErrors((prev) => ({ ...prev, tags: undefined }));
+            }}
+            allTags={allTags}
+            tagsLoading={tagsLoading}
+            error={errors.tags}
+          />
         </div>
 
         {/* Instructions */}

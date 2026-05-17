@@ -12,6 +12,7 @@ export interface Recipe {
   recipeId: string;
   userId: string;
   name: string;
+  tags: string[];
   ingredients: RecipeIngredient[];
   instructions: string;
   sourceUrl?: string;
@@ -88,7 +89,7 @@ export async function fetchRecipeWithAvailability(recipeId: string): Promise<Rec
 
 export async function updateRecipe(
   recipeId: string,
-  data: Partial<Pick<Recipe, 'name' | 'ingredients' | 'instructions' | 'sourceUrl' | 'portions'>> & {
+  data: Partial<Pick<Recipe, 'name' | 'ingredients' | 'instructions' | 'sourceUrl' | 'portions' | 'tags'>> & {
     prepTime?: number | null;
     cookTime?: number | null;
   },
@@ -117,6 +118,21 @@ export async function deleteRecipe(recipeId: string): Promise<void> {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.message ?? 'Failed to delete recipe');
   }
+}
+
+/**
+ * Fetches all distinct tags across all of the user's recipes.
+ * Returns a sorted, deduplicated, lowercased array of tag strings.
+ */
+export async function fetchRecipeTags(): Promise<string[]> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_URL}/recipes/tags`, { headers });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.message ?? 'Failed to fetch recipe tags');
+  }
+  const body = await res.json();
+  return body.tags;
 }
 
 /**

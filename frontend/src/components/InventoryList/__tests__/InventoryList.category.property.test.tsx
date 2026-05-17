@@ -9,7 +9,6 @@ import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import fc from 'fast-check';
 import InventoryList, {
-  InventoryItem,
   CategorySummary,
   CategoryCard,
   groupItemsByCategory,

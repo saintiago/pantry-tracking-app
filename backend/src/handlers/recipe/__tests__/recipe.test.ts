@@ -34,7 +34,7 @@ function makeEvent(overrides: Partial<APIGatewayProxyEvent> = {}): APIGatewayPro
     requestContext: {
       authorizer: { claims: { sub: 'user-123' } },
       requestId: 'req-1',
-    } as any,
+    } as unknown as APIGatewayProxyEvent['requestContext'],
     resource: '',
     ...overrides,
   };
@@ -49,6 +49,7 @@ const validRecipe = {
   instructions: 'Boil pasta. Mix with eggs.',
   sourceUrl: 'https://example.com/carbonara',
   portions: 4,
+  tags: ['italian'],
 };
 
 describe('Recipe Lambda handler', () => {
@@ -60,14 +61,14 @@ describe('Recipe Lambda handler', () => {
 
   it('returns 401 when userId is missing', async () => {
     const result = await handler(
-      makeEvent({ requestContext: { authorizer: {}, requestId: 'req-1' } as any }),
+      makeEvent({ requestContext: { authorizer: {}, requestId: 'req-1' } as unknown as APIGatewayProxyEvent['requestContext'] }),
     );
     expect(result.statusCode).toBe(401);
   });
 
   it('returns 401 when authorizer is null', async () => {
     const result = await handler(
-      makeEvent({ requestContext: { authorizer: null, requestId: 'req-1' } as any }),
+      makeEvent({ requestContext: { authorizer: null, requestId: 'req-1' } as unknown as APIGatewayProxyEvent['requestContext'] }),
     );
     expect(result.statusCode).toBe(401);
   });
@@ -122,7 +123,7 @@ describe('Recipe Lambda handler', () => {
 
     it('returns 401 when auth is missing', async () => {
       const result = await handler(
-        makeEvent({ requestContext: { authorizer: {}, requestId: 'req-1' } as any }),
+        makeEvent({ requestContext: { authorizer: {}, requestId: 'req-1' } as unknown as APIGatewayProxyEvent['requestContext'] }),
       );
       expect(result.statusCode).toBe(401);
     });
@@ -184,7 +185,7 @@ describe('Recipe Lambda handler', () => {
       mockSend.mockResolvedValueOnce({});
       mockSend.mockResolvedValueOnce({ Items: [] });
       mockSend.mockResolvedValue({});
-      const { sourceUrl: _, ...noUrl } = validRecipe;
+      const { sourceUrl: _sourceUrl, ...noUrl } = validRecipe;
 
       const result = await handler(
         makeEvent({ httpMethod: 'POST', body: JSON.stringify(noUrl) }),
@@ -367,7 +368,7 @@ describe('Recipe Lambda handler', () => {
         makeEvent({
           httpMethod: 'POST',
           body: JSON.stringify(validRecipe),
-          requestContext: { authorizer: {}, requestId: 'req-1' } as any,
+          requestContext: { authorizer: {}, requestId: 'req-1' } as unknown as APIGatewayProxyEvent['requestContext'],
         }),
       );
       expect(result.statusCode).toBe(401);
@@ -456,7 +457,7 @@ describe('Recipe Lambda handler', () => {
       const result = await handler(
         makeEvent({
           pathParameters: { recipeId: 'recipe-1' },
-          requestContext: { authorizer: {}, requestId: 'req-1' } as any,
+          requestContext: { authorizer: {}, requestId: 'req-1' } as unknown as APIGatewayProxyEvent['requestContext'],
         }),
       );
       expect(result.statusCode).toBe(401);
@@ -577,7 +578,7 @@ describe('Recipe Lambda handler', () => {
           httpMethod: 'PUT',
           pathParameters: { recipeId: 'recipe-1' },
           body: JSON.stringify({ name: 'Updated' }),
-          requestContext: { authorizer: {}, requestId: 'req-1' } as any,
+          requestContext: { authorizer: {}, requestId: 'req-1' } as unknown as APIGatewayProxyEvent['requestContext'],
         }),
       );
       expect(result.statusCode).toBe(401);
@@ -660,7 +661,7 @@ describe('Recipe Lambda handler', () => {
         makeEvent({
           httpMethod: 'DELETE',
           pathParameters: { recipeId: 'recipe-1' },
-          requestContext: { authorizer: {}, requestId: 'req-1' } as any,
+          requestContext: { authorizer: {}, requestId: 'req-1' } as unknown as APIGatewayProxyEvent['requestContext'],
         }),
       );
       expect(result.statusCode).toBe(401);
@@ -793,7 +794,7 @@ describe('Recipe Lambda handler', () => {
     });
 
     it('returns 400 when portions is missing', async () => {
-      const { portions: _, ...noPortions } = validRecipe;
+      const { portions: _portions, ...noPortions } = validRecipe;
 
       const result = await handler(
         makeEvent({ httpMethod: 'POST', body: JSON.stringify(noPortions) }),
@@ -905,6 +906,164 @@ describe('Recipe Lambda handler', () => {
 
       expect(result.statusCode).toBe(200);
       expect(body.recipe.portions).toBe(4);
+    });
+  });
+
+  // ─── GET /recipes/tags ───────────────────────────────────────────────────────
+
+  describe('GET /recipes/tags', () => {
+    it('returns sorted distinct tags across all user recipes', async () => {
+      mockSend.mockResolvedValueOnce({
+        Items: [
+          { tags: ['italian', 'quick'] },
+          { tags: ['SOUP', 'vegetarian', 'quick'] },
+          { tags: ['Italian'] },
+        ],
+      });
+
+      const result = await handler(
+        makeEvent({ pathParameters: { recipeId: 'tags' } }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.tags).toEqual(['italian', 'quick', 'soup', 'vegetarian']);
+    });
+
+    it('returns empty array when user has no recipes', async () => {
+      mockSend.mockResolvedValueOnce({ Items: [] });
+
+      const result = await handler(
+        makeEvent({ pathParameters: { recipeId: 'tags' } }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.tags).toEqual([]);
+    });
+
+    it('does not conflict with GET /recipes/{recipeId} — actual recipeId still works', async () => {
+      const recipe = {
+        PK: 'USER#user-123',
+        SK: 'RECIPE#recipe-1',
+        recipeId: 'recipe-1',
+        name: 'Pasta',
+        ingredients: [{ name: 'Pasta', quantity: 200, unit: 'Gram' }],
+      };
+      mockSend.mockResolvedValueOnce({ Item: recipe });
+      mockSend.mockResolvedValueOnce({ Items: [] });
+
+      const result = await handler(
+        makeEvent({ pathParameters: { recipeId: 'recipe-1' } }),
+      );
+
+      expect(result.statusCode).toBe(200);
+      expect(JSON.parse(result.body).recipe).toBeDefined();
+    });
+  });
+
+  // ─── Tags field validation ────────────────────────────────────────────────────
+
+  describe('POST /recipes — tags field', () => {
+    it('creates recipe with valid tags and returns 201 with normalized tags', async () => {
+      mockSend.mockResolvedValueOnce({});
+      mockSend.mockResolvedValueOnce({ Items: [] });
+      mockSend.mockResolvedValue({});
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'POST',
+          body: JSON.stringify({ ...validRecipe, tags: ['Italian', 'QUICK', 'italian'] }),
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(201);
+      expect(body.recipe.tags).toEqual(['italian', 'quick']);
+    });
+
+    it('returns 400 when tags is absent', async () => {
+      const { tags: _tags, ...noTags } = validRecipe;
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'POST',
+          body: JSON.stringify(noTags),
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(400);
+      expect(body.error).toBe('VALIDATION_ERROR');
+      expect(body.details).toEqual(
+        expect.arrayContaining([expect.objectContaining({ field: 'tags' })]),
+      );
+    });
+
+    it('returns 400 when tags is empty array', async () => {
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'POST',
+          body: JSON.stringify({ ...validRecipe, tags: [] }),
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(400);
+      expect(body.error).toBe('VALIDATION_ERROR');
+    });
+
+    it('returns 400 when tags contains only whitespace strings', async () => {
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'POST',
+          body: JSON.stringify({ ...validRecipe, tags: ['   ', '  '] }),
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(400);
+      expect(body.error).toBe('VALIDATION_ERROR');
+    });
+  });
+
+  describe('PUT /recipes/{recipeId} — tags field', () => {
+    it('returns 400 when tags is empty array', async () => {
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'PUT',
+          pathParameters: { recipeId: 'recipe-1' },
+          body: JSON.stringify({ tags: [] }),
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(400);
+      expect(body.error).toBe('VALIDATION_ERROR');
+    });
+
+    it('updates tags when valid tags provided', async () => {
+      mockSend.mockResolvedValueOnce({
+        Attributes: {
+          recipeId: 'recipe-1',
+          name: 'Pasta',
+          tags: ['italian', 'quick'],
+          syncVersion: 2,
+          updatedAt: '2025-01-01T00:00:00.000Z',
+        },
+      });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'PUT',
+          pathParameters: { recipeId: 'recipe-1' },
+          body: JSON.stringify({ tags: ['Italian', 'QUICK'] }),
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.recipe.tags).toEqual(['italian', 'quick']);
     });
   });
 });

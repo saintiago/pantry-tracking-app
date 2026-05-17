@@ -1,17 +1,20 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { fetchRecipes, computeTotalTime } from '../../api/recipes/recipes';
 import type { Recipe } from '../../api/recipes/recipes';
 
 interface RecipeListProps {
   onSelect: (recipeId: string) => void;
   onNew: () => void;
+  allTags: string[];
+  tagsLoading: boolean;
 }
 
-const RecipeList: React.FC<RecipeListProps> = ({ onSelect, onNew }) => {
+const RecipeList: React.FC<RecipeListProps> = ({ onSelect, onNew, allTags, tagsLoading }) => {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [activeTagFilters, setActiveTagFilters] = useState<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,7 +35,13 @@ const RecipeList: React.FC<RecipeListProps> = ({ onSelect, onNew }) => {
     };
   }, []);
 
-  const filtered = recipes.filter((r) => r.name.toLowerCase().includes(search.toLowerCase()));
+  const filtered = useMemo(
+    () =>
+      recipes
+        .filter((r) => r.name.toLowerCase().includes(search.toLowerCase()))
+        .filter((r) => activeTagFilters.every((t) => (r.tags ?? []).includes(t))),
+    [recipes, search, activeTagFilters],
+  );
 
   if (loading) {
     return (
@@ -68,10 +77,40 @@ const RecipeList: React.FC<RecipeListProps> = ({ onSelect, onNew }) => {
         aria-label="Search recipes"
       />
 
+      {/* Tag cloud filter */}
+      {tagsLoading ? (
+        <div style={styles.tagCloudSpinner} role="status" aria-label="Loading tags…">
+          <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading tags…</span>
+        </div>
+      ) : allTags.length > 0 ? (
+        <div style={styles.tagCloud} role="group" aria-label="Filter by tag">
+          {allTags.map((tag) => {
+            const isActive = activeTagFilters.includes(tag);
+            return (
+              <button
+                key={tag}
+                type="button"
+                onClick={() =>
+                  setActiveTagFilters((prev) =>
+                    isActive ? prev.filter((t) => t !== tag) : [...prev, tag],
+                  )
+                }
+                style={isActive ? styles.tagCloudButtonActive : styles.tagCloudButtonInactive}
+                aria-pressed={isActive}
+              >
+                {tag}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
       {filtered.length === 0 ? (
         <div style={styles.emptyState} role="status">
           {recipes.length === 0 ? (
             <p style={styles.statusText}>No recipes yet. Tap "New Recipe" to add one.</p>
+          ) : activeTagFilters.length > 0 ? (
+            <p style={styles.statusText}>No recipes match the selected tags.</p>
           ) : (
             <p style={styles.statusText}>No recipes match your search.</p>
           )}
@@ -81,6 +120,7 @@ const RecipeList: React.FC<RecipeListProps> = ({ onSelect, onNew }) => {
           {filtered.map((recipe) => {
             const missingCount = (recipe as Recipe & { missingCount?: number }).missingCount;
             const totalTime = computeTotalTime(recipe.prepTime, recipe.cookTime);
+            const recipeTags = recipe.tags ?? [];
             return (
               <li key={recipe.recipeId} style={styles.listItem}>
                 <button
@@ -89,7 +129,18 @@ const RecipeList: React.FC<RecipeListProps> = ({ onSelect, onNew }) => {
                   type="button"
                   aria-label={`View ${recipe.name}`}
                 >
-                  <span style={styles.recipeName}>{recipe.name}</span>
+                  <div style={styles.rowContent}>
+                    <span style={styles.recipeName}>{recipe.name}</span>
+                    {recipeTags.length > 0 && (
+                      <div style={styles.tagChipRow}>
+                        {recipeTags.map((tag) => (
+                          <span key={tag} style={styles.tagChip}>
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <span style={styles.badgeGroup}>
                     {totalTime !== undefined && (
                       <span style={styles.timeBadge} aria-label={`${totalTime} minutes total`}>
@@ -102,7 +153,10 @@ const RecipeList: React.FC<RecipeListProps> = ({ onSelect, onNew }) => {
                       </span>
                     )}
                     {missingCount != null && missingCount > 0 && (
-                      <span style={styles.missingBadge} aria-label={`${missingCount} ingredient(s) missing`}>
+                      <span
+                        style={styles.missingBadge}
+                        aria-label={`${missingCount} ingredient(s) missing`}
+                      >
                         {missingCount} missing
                       </span>
                     )}
@@ -159,6 +213,39 @@ const styles: Record<string, React.CSSProperties> = {
     width: '100%',
     boxSizing: 'border-box',
   },
+  tagCloud: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '0.4rem',
+  },
+  tagCloudButtonInactive: {
+    backgroundColor: '#dbeafe',
+    color: '#1e40af',
+    border: 'none',
+    borderRadius: 16,
+    padding: '0.25rem 0.75rem',
+    fontSize: '0.8125rem',
+    fontWeight: 600,
+    cursor: 'pointer',
+    minHeight: 32,
+  },
+  tagCloudButtonActive: {
+    backgroundColor: '#1e40af',
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: 16,
+    padding: '0.25rem 0.75rem',
+    fontSize: '0.8125rem',
+    fontWeight: 600,
+    cursor: 'pointer',
+    minHeight: 32,
+  },
+  tagCloudSpinner: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '0.5rem 0',
+  },
   list: {
     listStyle: 'none',
     margin: 0,
@@ -186,9 +273,28 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: 'left',
     gap: '0.5rem',
   },
-  recipeName: {
+  rowContent: {
     flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.3rem',
+    minWidth: 0,
+  },
+  recipeName: {
     fontWeight: 500,
+  },
+  tagChipRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '0.3rem',
+  },
+  tagChip: {
+    backgroundColor: '#dbeafe',
+    color: '#1e40af',
+    borderRadius: 16,
+    fontWeight: 600,
+    fontSize: '0.75rem',
+    padding: '0.15rem 0.5rem',
   },
   missingBadge: {
     flexShrink: 0,

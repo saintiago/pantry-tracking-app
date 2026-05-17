@@ -34,7 +34,7 @@ function makeEvent(overrides: Partial<APIGatewayProxyEvent> = {}): APIGatewayPro
     requestContext: {
       authorizer: { claims: { sub: 'user-123' } },
       requestId: 'req-1',
-    } as any,
+    } as unknown as APIGatewayProxyEvent['requestContext'],
     resource: '',
     ...overrides,
   };
@@ -56,7 +56,7 @@ describe('Inventory Lambda handler', () => {
 
   it('returns 401 when userId is missing', async () => {
     const result = await handler(
-      makeEvent({ requestContext: { authorizer: {}, requestId: 'req-1' } as any }),
+      makeEvent({ requestContext: { authorizer: {}, requestId: 'req-1' } as unknown as APIGatewayProxyEvent['requestContext'] }),
     );
     expect(result.statusCode).toBe(401);
   });

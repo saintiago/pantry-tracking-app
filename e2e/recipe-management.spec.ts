@@ -14,6 +14,7 @@ const mockRecipes = [
     recipeId: 'recipe-1',
     userId: 'test-user',
     name: 'Pasta Carbonara',
+    tags: ['italian', 'quick'],
     ingredients: [
       { name: 'Pasta', quantity: 200, unit: 'g' },
       { name: 'Eggs', quantity: 3, unit: 'Unit' },
@@ -32,6 +33,7 @@ const mockRecipes = [
     recipeId: 'recipe-2',
     userId: 'test-user',
     name: 'Tomato Soup',
+    tags: ['soup', 'vegetarian'],
     ingredients: [
       { name: 'Tomatoes', quantity: 500, unit: 'g' },
       { name: 'Onion', quantity: 1, unit: 'Unit' },
@@ -58,6 +60,7 @@ const newRecipe = {
   recipeId: 'recipe-new',
   userId: 'test-user',
   name: 'New Test Recipe',
+  tags: ['baking'],
   ingredients: [{ name: 'Flour', quantity: 300, unit: 'g' }],
   instructions: 'Mix and bake.',
   portions: 2,
@@ -71,6 +74,7 @@ const updatedRecipe = {
   name: 'Pasta Carbonara Updated',
   instructions: 'Updated instructions.',
   portions: 4,
+  tags: ['italian', 'quick'],
   updatedAt: '2024-01-04T00:00:00Z',
 };
 
@@ -140,6 +144,18 @@ async function setupMockAPI(page: Page) {
         body: JSON.stringify({ recipe: newRecipe }),
       });
     }
+  });
+
+  // GET /recipes/tags — must be registered after generic /recipes route
+  // Playwright routes are matched in reverse registration order (LIFO),
+  // so a later registration takes precedence. Glob `**/recipes` doesn't
+  // match `/recipes/tags`, but registering this after is the safe pattern.
+  await page.route('**/recipes/tags', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ tags: ['italian', 'quick', 'soup', 'vegetarian'] }),
+    });
   });
 
   // GET/PUT/DELETE /recipes/{recipeId}
@@ -235,6 +251,10 @@ test.describe('Recipe Management', () => {
 
     // Fill in Portions
     await page.getByLabel('Portions').fill('2');
+
+    // Add a tag
+    await page.getByPlaceholder('Add a tag…').fill('baking');
+    await page.keyboard.press('Enter');
 
     // Submit
     await page.getByRole('button', { name: 'Create Recipe' }).click();
@@ -465,6 +485,7 @@ test.describe('Recipe Management', () => {
       recipeId: 'recipe-timed',
       userId: 'test-user',
       name: 'Timed Recipe',
+      tags: ['italian'],
       ingredients: [{ name: 'Flour', quantity: 300, unit: 'g' }],
       instructions: 'Mix and bake.',
       prepTime: 15,
@@ -515,6 +536,10 @@ test.describe('Recipe Management', () => {
     await page.getByLabel('Ingredient 1 quantity').fill('300');
     await page.getByLabel('Ingredient 1 unit').selectOption('g');
     await page.getByLabel('Portions').fill('2');
+
+    // Add a tag
+    await page.getByPlaceholder('Add a tag…').fill('italian');
+    await page.keyboard.press('Enter');
 
     await page.getByRole('button', { name: 'Create Recipe' }).click();
 
@@ -678,6 +703,7 @@ test.describe('Recipe Management', () => {
               recipeId: 'recipe-new2',
               userId: 'test-user',
               name: 'Mystery Stew',
+              tags: ['mystery'],
               ingredients: [{ name: 'Dragon Fruit', quantity: 1, unit: 'Unit' }],
               instructions: 'Cook it.',
               createdAt: '2024-01-05T00:00:00Z',
@@ -704,6 +730,7 @@ test.describe('Recipe Management', () => {
           recipe: {
             recipeId: 'recipe-new2',
             name: 'Mystery Stew',
+            tags: ['mystery'],
             ingredients: [{ name: 'Dragon Fruit', quantity: 1, unit: 'Unit' }],
             instructions: 'Cook it.',
           },
@@ -748,6 +775,10 @@ test.describe('Recipe Management', () => {
     await page.getByLabel('Ingredient 1 unit').selectOption('piece');
     await page.getByLabel('Portions').fill('2');
 
+    // Add a tag
+    await page.getByPlaceholder('Add a tag…').fill('mystery');
+    await page.keyboard.press('Enter');
+
     await page.getByRole('button', { name: 'Create Recipe' }).click();
 
     // Should navigate to detail — ingredient shows as missing (quantity 0)
@@ -773,6 +804,7 @@ test.describe('Recipe Management', () => {
       recipeId: 'recipe-portions',
       userId: 'test-user',
       name: 'Portioned Recipe',
+      tags: ['baking'],
       ingredients: [{ name: 'Flour', quantity: 300, unit: 'g' }],
       instructions: 'Mix and bake.',
       portions: 4,
@@ -820,6 +852,10 @@ test.describe('Recipe Management', () => {
     await page.getByLabel('Ingredient 1 quantity').fill('300');
     await page.getByLabel('Ingredient 1 unit').selectOption('g');
     await page.getByLabel('Portions').fill('4');
+
+    // Add a tag
+    await page.getByPlaceholder('Add a tag…').fill('baking');
+    await page.keyboard.press('Enter');
 
     await page.getByRole('button', { name: 'Create Recipe' }).click();
 
@@ -913,6 +949,7 @@ test.describe('Recipe Management', () => {
         { name: 'Bacon', quantity: 125, unit: 'g' },
       ],
       name: 'Pasta Carbonara',
+      tags: ['italian', 'quick'],
       instructions: 'Boil pasta. Fry bacon. Mix eggs. Combine.',
       updatedAt: '2024-01-04T00:00:00Z',
     };
@@ -967,5 +1004,254 @@ test.describe('Recipe Management', () => {
 
     // Tomato Soup has portions: 2
     await expect(page.getByLabel('2 portions')).toBeVisible();
+  });
+
+  // ─── Tag display ──────────────────────────────────────────────────────────────
+
+  test('recipe list shows tag chips below recipe name', async ({ page }) => {
+    // Pasta Carbonara has tags ['italian', 'quick']
+    const pastaRow = page.getByRole('button', { name: 'View Pasta Carbonara' });
+    await expect(pastaRow).toBeVisible();
+    await expect(pastaRow.getByText('italian', { exact: true })).toBeVisible();
+    await expect(pastaRow.getByText('quick', { exact: true })).toBeVisible();
+
+    // Tomato Soup has tags ['soup', 'vegetarian']
+    const tomatoRow = page.getByRole('button', { name: 'View Tomato Soup' });
+    await expect(tomatoRow.getByText('soup', { exact: true })).toBeVisible();
+    await expect(tomatoRow.getByText('vegetarian', { exact: true })).toBeVisible();
+  });
+
+  test('recipe detail shows tag chips below title', async ({ page }) => {
+    await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
+
+    const tagsSection = page.getByRole('region', { name: 'Recipe tags' });
+    await expect(tagsSection).toBeVisible();
+    await expect(tagsSection.getByText('italian')).toBeVisible();
+    await expect(tagsSection.getByText('quick')).toBeVisible();
+  });
+
+  test('list and detail tag chips are read-only (no remove button)', async ({ page }) => {
+    // List view — no remove buttons inside row buttons
+    const pastaRow = page.getByRole('button', { name: 'View Pasta Carbonara' });
+    await expect(pastaRow).toBeVisible();
+    // No remove tag buttons on the list page
+    await expect(page.getByRole('button', { name: /^Remove tag/ })).toHaveCount(0);
+
+    // Detail view
+    await pastaRow.click();
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
+    await expect(page.getByRole('button', { name: /^Remove tag/ })).toHaveCount(0);
+  });
+
+  // ─── Tag cloud filter ─────────────────────────────────────────────────────────
+
+  test('tag cloud is visible above recipe list', async ({ page }) => {
+    const tagCloud = page.getByRole('group', { name: 'Filter by tag' });
+    await expect(tagCloud).toBeVisible();
+    await expect(tagCloud.getByRole('button', { name: 'italian' })).toBeVisible();
+    await expect(tagCloud.getByRole('button', { name: 'quick' })).toBeVisible();
+    await expect(tagCloud.getByRole('button', { name: 'soup' })).toBeVisible();
+    await expect(tagCloud.getByRole('button', { name: 'vegetarian' })).toBeVisible();
+  });
+
+  test('clicking a tag filters the list to recipes with that tag', async ({ page }) => {
+    const tagCloud = page.getByRole('group', { name: 'Filter by tag' });
+    await tagCloud.getByRole('button', { name: 'soup' }).click();
+
+    // Only Tomato Soup should be visible
+    await expect(page.getByText('Tomato Soup')).toBeVisible();
+    await expect(page.getByText('Pasta Carbonara')).not.toBeVisible();
+  });
+
+  test('clicking an active tag removes the filter', async ({ page }) => {
+    const tagCloud = page.getByRole('group', { name: 'Filter by tag' });
+    const soupButton = tagCloud.getByRole('button', { name: 'soup' });
+
+    // Activate filter
+    await soupButton.click();
+    await expect(page.getByText('Pasta Carbonara')).not.toBeVisible();
+
+    // Click again to deactivate
+    await soupButton.click();
+    await expect(page.getByText('Pasta Carbonara')).toBeVisible();
+    await expect(page.getByText('Tomato Soup')).toBeVisible();
+  });
+
+  test('shows "No recipes match the selected tags." when no recipes match', async ({ page }) => {
+    // Both 'italian' and 'soup' — no recipe has both
+    const tagCloud = page.getByRole('group', { name: 'Filter by tag' });
+    await tagCloud.getByRole('button', { name: 'italian' }).click();
+    await tagCloud.getByRole('button', { name: 'soup' }).click();
+
+    await expect(page.getByText('No recipes match the selected tags.')).toBeVisible();
+  });
+
+  test('tag cloud shows a spinner while tags are loading', async ({ page }) => {
+    // Override the tags route with a delay BEFORE navigating, so the spinner
+    // is visible during the initial page load. page.route() takes precedence
+    // over the beforeEach mock because it's registered later (LIFO order).
+    await page.route('**/recipes/tags', async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ tags: ['italian', 'quick', 'soup', 'vegetarian'] }),
+      });
+    });
+
+    // Navigate fresh to the Recipes page (reload loses mock auth session)
+    await page.goto('/');
+    await page.waitForSelector('input[type="email"]', { timeout: 10000 });
+    await page.fill('input[type="email"]', 'test@example.com');
+    await page.fill('input[type="password"]', 'TestPassword123!');
+    await page.click('button[type="submit"]');
+    await page.waitForSelector('h2:has-text("Inventory")', { timeout: 10000 });
+    await page.getByRole('button', { name: 'Recipes' }).click();
+    await page.waitForSelector('h2:has-text("Recipes")', { timeout: 10000 });
+
+    // Spinner should be visible while the delayed tags fetch is in flight
+    await expect(page.getByRole('status', { name: 'Loading tags…' })).toBeVisible();
+
+    // After the delay resolves, the tag cloud should appear
+    await expect(page.getByRole('group', { name: 'Filter by tag' })).toBeVisible({ timeout: 5000 });
+  });
+
+  // ─── Tag input in RecipeEditor ────────────────────────────────────────────────
+
+  test('submitting form with no tags shows "At least one tag is required."', async ({ page }) => {
+    await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
+
+    // Fill required fields except tags
+    await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Test Recipe');
+    await page.getByRole('textbox', { name: 'Instructions' }).fill('Mix it');
+    await page.getByLabel('Ingredient 1 name').fill('Flour');
+    await page.getByLabel('Ingredient 1 quantity').fill('100');
+    await page.getByLabel('Ingredient 1 unit').selectOption('g');
+    await page.getByLabel('Portions').fill('2');
+
+    await page.getByRole('button', { name: 'Create Recipe' }).click();
+
+    await expect(page.getByText('At least one tag is required.')).toBeVisible();
+  });
+
+  test('typing a tag and pressing Enter commits it as a chip', async ({ page }) => {
+    await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
+
+    const tagInput = page.getByPlaceholder('Add a tag…');
+    await tagInput.fill('mexican');
+    await tagInput.press('Enter');
+
+    // Chip should appear with text 'mexican' and a remove button
+    await expect(page.getByRole('button', { name: 'Remove tag mexican' })).toBeVisible();
+  });
+
+  test('typing a tag and pressing comma commits it as a chip', async ({ page }) => {
+    await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
+
+    const tagInput = page.getByPlaceholder('Add a tag…');
+    await tagInput.fill('mexican');
+    await tagInput.press(',');
+
+    await expect(page.getByRole('button', { name: 'Remove tag mexican' })).toBeVisible();
+  });
+
+  test('pressing remove button on a chip removes it', async ({ page }) => {
+    await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
+
+    const tagInput = page.getByPlaceholder('Add a tag…');
+    await tagInput.fill('mexican');
+    await tagInput.press('Enter');
+
+    await expect(page.getByRole('button', { name: 'Remove tag mexican' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Remove tag mexican' }).click();
+
+    await expect(page.getByRole('button', { name: 'Remove tag mexican' })).toHaveCount(0);
+  });
+
+  test('tag autocomplete shows suggestions on focus', async ({ page }) => {
+    await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
+
+    await page.getByPlaceholder('Add a tag…').click();
+
+    // Should show all available tags as options (italian, quick, soup, vegetarian)
+    await expect(page.getByRole('option', { name: 'italian' })).toBeVisible({ timeout: 3000 });
+    await expect(page.getByRole('option', { name: 'quick' })).toBeVisible();
+  });
+
+  test('selecting a suggestion from autocomplete commits it as a chip', async ({ page }) => {
+    await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
+
+    await page.getByPlaceholder('Add a tag…').click();
+    const option = page.getByRole('option', { name: 'italian' });
+    await expect(option).toBeVisible({ timeout: 3000 });
+    await option.click();
+
+    await expect(page.getByRole('button', { name: 'Remove tag italian' })).toBeVisible();
+  });
+
+  test('tags are pre-populated when editing an existing recipe', async ({ page }) => {
+    await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
+
+    await page.getByTestId('edit-button').click();
+    await expect(page.getByRole('heading', { name: 'Edit Recipe' })).toBeVisible({ timeout: 5000 });
+
+    // Existing tags should be visible as chips with remove buttons
+    await expect(page.getByRole('button', { name: 'Remove tag italian' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Remove tag quick' })).toBeVisible();
+  });
+
+  test('tags are included in the create API request body', async ({ page }) => {
+    let capturedBody: Record<string, unknown> | null = null;
+
+    await page.route('**/recipes', async (route) => {
+      if (route.request().method() === 'POST') {
+        capturedBody = route.request().postDataJSON();
+        await route.fulfill({
+          status: 201,
+          contentType: 'application/json',
+          body: JSON.stringify({ recipe: { ...newRecipe, tags: ['italian'] } }),
+        });
+      } else if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ recipes: mockRecipes }),
+        });
+      }
+    });
+
+    await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
+
+    await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Tag Test Recipe');
+    await page.getByRole('textbox', { name: 'Instructions' }).fill('Mix it');
+    await page.getByLabel('Ingredient 1 name').fill('Flour');
+    await page.getByLabel('Ingredient 1 quantity').fill('100');
+    await page.getByLabel('Ingredient 1 unit').selectOption('g');
+    await page.getByLabel('Portions').fill('2');
+
+    const tagInput = page.getByPlaceholder('Add a tag…');
+    await tagInput.fill('italian');
+    await tagInput.press('Enter');
+
+    await page.getByRole('button', { name: 'Create Recipe' }).click();
+
+    await expect.poll(() => capturedBody).not.toBeNull();
+    expect((capturedBody as { tags?: string[] } | null)?.tags).toEqual(['italian']);
   });
 });
