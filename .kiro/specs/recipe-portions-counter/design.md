@@ -304,6 +304,8 @@ This is a pure derivation — no `useState` needed for the scaled quantities the
 
 ### RecipeList Changes
 
+> **Update:** The portions badge in `RecipeList` was removed (per UX request — it added clutter to the row without enough value). Per-row badges now show only `time` and `missing-ingredients`. The `portions` value remains available on the API and is still displayed/edited in `RecipeDetail` and `RecipeEditor`. Original design (no longer implemented) preserved below for historical reference:
+
 Each recipe row gains a portions badge alongside the existing time and missing-ingredient badges:
 
 ```tsx
@@ -453,7 +455,7 @@ The `portions` field error is displayed inline below the input, matching the exi
 
 Existing recipes in DynamoDB that pre-date this feature will not have a `portions` attribute. When the frontend reads such a recipe:
 - `RecipeDetail` initialises `selectedPortions` to `recipe.portions ?? 1`. The scaler controls are still shown (with `selectedPortions = 1`).
-- `RecipeList` renders the portions badge only when `recipe.portions !== undefined`.
+- `RecipeList` renders the portions badge only when `recipe.portions !== undefined`. *(Removed in a later UX change — see RecipeList Changes note above.)*
 - `RecipeEditor` in edit mode pre-populates `selectedPortions` from `recipe.portions ?? 1`.
 
 When the user saves an edit on a legacy recipe, the new `portions` value is persisted, migrating the recipe forward.

@@ -998,14 +998,6 @@ test.describe('Recipe Management', () => {
     await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
   });
 
-  test('recipe list shows portions badge for recipes with portions value', async ({ page }) => {
-    // Pasta Carbonara has portions: 4
-    await expect(page.getByLabel('4 portions')).toBeVisible();
-
-    // Tomato Soup has portions: 2
-    await expect(page.getByLabel('2 portions')).toBeVisible();
-  });
-
   // ─── Tag display ──────────────────────────────────────────────────────────────
 
   test('recipe list shows tag chips below recipe name', async ({ page }) => {

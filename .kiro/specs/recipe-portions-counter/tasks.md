@@ -200,7 +200,7 @@ Add a `portions` field to the Recipe entity and a `scaleIngredients` pure functi
     - Displays scaled ingredient quantities when `selectedPortions` differs from `recipe.portions`
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.8, 5.1, 5.4_
 
-- [x] 9. Add portions badge to RecipeList
+- [x] 9. Add portions badge to RecipeList *(reverted in a later change — badge removed from list view per UX request; see `recipe-portions-counter/design.md`)*
   - [x] 9.1 Render a portions badge per recipe row in `RecipeList.tsx`
     - When `recipe.portions !== undefined`, render `<span aria-label="{recipe.portions} portions">{recipe.portions} portions</span>` alongside the existing time and missing-ingredient badges
     - _Requirements: 2.8_
