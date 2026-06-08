@@ -71,3 +71,7 @@ cd infrastructure && npx cdk deploy
 # Frontend-only deploy
 ./scripts/deploy.sh --frontend-only
 ```
+
+## GitHub CLI
+
+The `gh` CLI tool is installed and authenticated for GitHub interactions (issues, PRs, releases, etc.). Use it directly for GitHub operations such as `gh issue view`, `gh pr create`, and `gh pr list`.

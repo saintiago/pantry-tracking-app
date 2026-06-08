@@ -37,19 +37,18 @@ ingredient presentation with availability rendering.
   - Update `IngredientAvailability` and `RecipeDetail`.
   - Run RecipeDetail and IngredientAvailability tests.
 
-- [ ] 5. Add end-to-end coverage
+- [x] 5. Add end-to-end coverage
   - [x] Add a Playwright scenario that creates and edits the new recipe fields.
   - [x] Verify section grouping, empty handful quantity, numbered instructions, chef notes, inline missing
         status, alphabetical units, and save-time portion scaling.
-  - [ ] Run the focused Playwright spec. On June 8, 2026, all 119 Playwright tests were
-        discovered but browser startup was blocked by `browserType.launch: spawn EPERM`. The in-app
-        Browser fallback also failed during sandbox initialization, so no browser process could run.
+  - [x] Run the focused Playwright spec. On June 8, 2026 the earlier `browserType.launch: spawn EPERM`
+        blocker no longer reproduced: recipe-management passes 54/54 and the full suite passes 119/119.
 
-- [ ] 6. Verify and publish
+- [x] 6. Verify and publish
   - [x] Run `npm run lint`.
   - [x] Run `npm run type-check`.
   - [x] Run `npm run test:unit`.
   - [x] Run `npm run test:property`.
   - [x] Run backend and frontend production builds.
-  - [ ] Run `npm run test:e2e`. Blocked by the browser startup restrictions documented above.
+  - [x] Run `npm run test:e2e`. Passes 119/119.
   - [ ] Commit, push, and open a non-draft PR linked to issue #4.
