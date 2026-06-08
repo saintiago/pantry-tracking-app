@@ -51,4 +51,4 @@ ingredient presentation with availability rendering.
   - [x] Run `npm run test:property`.
   - [x] Run backend and frontend production builds.
   - [x] Run `npm run test:e2e`. Passes 119/119.
-  - [ ] Commit, push, and open a non-draft PR linked to issue #4.
+  - [x] Commit, push, and open a non-draft PR linked to issue #4.
