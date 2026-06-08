@@ -3,8 +3,9 @@ import { getCurrentSession } from '../../auth/cognitoClient/cognitoClient';
 
 export interface RecipeIngredient {
   name: string;
-  quantity: number;
+  quantity: number | null;
   unit: string;
+  section?: string;
   inventoryItemId?: string;
 }
 
@@ -14,7 +15,8 @@ export interface Recipe {
   name: string;
   tags: string[];
   ingredients: RecipeIngredient[];
-  instructions: string;
+  instructions: string | string[];
+  chefNotes?: string;
   sourceUrl?: string;
   prepTime?: number;
   cookTime?: number;
@@ -26,7 +28,7 @@ export interface Recipe {
 
 export interface IngredientStatus {
   name: string;
-  required: number;
+  required: number | null;
   unit: string;
   available: number;
   status: 'available' | 'partial' | 'missing';
@@ -77,7 +79,9 @@ export async function createRecipe(
   return body.recipe;
 }
 
-export async function fetchRecipeWithAvailability(recipeId: string): Promise<RecipeWithAvailability> {
+export async function fetchRecipeWithAvailability(
+  recipeId: string,
+): Promise<RecipeWithAvailability> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${API_URL}/recipes/${recipeId}`, { headers });
   if (!res.ok) {
@@ -89,7 +93,10 @@ export async function fetchRecipeWithAvailability(recipeId: string): Promise<Rec
 
 export async function updateRecipe(
   recipeId: string,
-  data: Partial<Pick<Recipe, 'name' | 'ingredients' | 'instructions' | 'sourceUrl' | 'portions' | 'tags'>> & {
+  data: Partial<
+    Pick<Recipe, 'name' | 'ingredients' | 'instructions' | 'sourceUrl' | 'portions' | 'tags'>
+  > & {
+    chefNotes?: string | null;
     prepTime?: number | null;
     cookTime?: number | null;
   },
@@ -158,7 +165,9 @@ export function scaleIngredients(
   ingredients: RecipeIngredient[],
   fromPortions: number,
   toPortions: number,
-): number[] {
+): Array<number | null> {
   const factor = toPortions / fromPortions;
-  return ingredients.map((ing) => Math.round(ing.quantity * factor * 100) / 100);
+  return ingredients.map((ing) =>
+    ing.quantity === null ? null : Math.round(ing.quantity * factor * 100) / 100,
+  );
 }

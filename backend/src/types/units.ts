@@ -6,34 +6,37 @@ export interface UnitMetadata {
 }
 
 export const UNIT_METADATA: Record<string, UnitMetadata> = {
-  tsp:     { key: 'tsp',     singular: 'teaspoon',   abbreviation: 'tsp',  plural: 'teaspoons'   },
-  tbsp:    { key: 'tbsp',    singular: 'tablespoon',  abbreviation: 'tbsp', plural: 'tablespoons' },
-  cup:     { key: 'cup',     singular: 'cup',         abbreviation: 'c',    plural: 'cups'        },
-  ml:      { key: 'ml',      singular: 'milliliter',  abbreviation: 'ml',   plural: 'milliliters' },
-  l:       { key: 'l',       singular: 'liter',       abbreviation: 'l',    plural: 'liters'      },
-  g:       { key: 'g',       singular: 'gram',        abbreviation: 'g',    plural: 'grams'       },
-  kg:      { key: 'kg',      singular: 'kilogram',    abbreviation: 'kg',   plural: 'kilograms'   },
-  piece:   { key: 'piece',   singular: 'piece',       abbreviation: 'pc',   plural: 'pieces'      },
-  slice:   { key: 'slice',   singular: 'slice',       abbreviation: 'sl',   plural: 'slices'      },
-  clove:   { key: 'clove',   singular: 'clove',       abbreviation: 'cl',   plural: 'cloves'      },
-  pinch:   { key: 'pinch',   singular: 'pinch',       abbreviation: 'pn',   plural: 'pinches'     },
-  handful: { key: 'handful', singular: 'handful',     abbreviation: 'hf',   plural: 'handfuls'    },
-  stick:   { key: 'stick',   singular: 'stick',       abbreviation: 'st',   plural: 'sticks'      },
-  can:     { key: 'can',     singular: 'can',         abbreviation: 'cn',   plural: 'cans'        },
-  bottle:  { key: 'bottle',  singular: 'bottle',      abbreviation: 'bt',   plural: 'bottles'     },
-  zest:    { key: 'zest',    singular: 'zest',        abbreviation: 'zst',  plural: 'zests'       },
+  tsp: { key: 'tsp', singular: 'teaspoon', abbreviation: 'tsp', plural: 'teaspoons' },
+  tbsp: { key: 'tbsp', singular: 'tablespoon', abbreviation: 'tbsp', plural: 'tablespoons' },
+  cup: { key: 'cup', singular: 'cup', abbreviation: 'c', plural: 'cups' },
+  ml: { key: 'ml', singular: 'milliliter', abbreviation: 'ml', plural: 'milliliters' },
+  l: { key: 'l', singular: 'liter', abbreviation: 'l', plural: 'liters' },
+  g: { key: 'g', singular: 'gram', abbreviation: 'g', plural: 'grams' },
+  kg: { key: 'kg', singular: 'kilogram', abbreviation: 'kg', plural: 'kilograms' },
+  piece: { key: 'piece', singular: 'piece', abbreviation: 'pc', plural: 'pieces' },
+  slice: { key: 'slice', singular: 'slice', abbreviation: 'sl', plural: 'slices' },
+  clove: { key: 'clove', singular: 'clove', abbreviation: 'cl', plural: 'cloves' },
+  pinch: { key: 'pinch', singular: 'pinch', abbreviation: 'pn', plural: 'pinches' },
+  handful: { key: 'handful', singular: 'handful', abbreviation: 'hf', plural: 'handfuls' },
+  stick: { key: 'stick', singular: 'stick', abbreviation: 'st', plural: 'sticks' },
+  can: { key: 'can', singular: 'can', abbreviation: 'cn', plural: 'cans' },
+  bottle: { key: 'bottle', singular: 'bottle', abbreviation: 'bt', plural: 'bottles' },
+  zest: { key: 'zest', singular: 'zest', abbreviation: 'zst', plural: 'zests' },
+  unit: { key: 'unit', singular: 'unit', abbreviation: 'unit', plural: 'units' },
 };
 
 export type UnitType = keyof typeof UNIT_METADATA;
 
-export const VALID_UNITS: UnitType[] = Object.keys(UNIT_METADATA) as UnitType[];
+export const VALID_UNITS: UnitType[] = (Object.keys(UNIT_METADATA) as UnitType[]).sort((a, b) =>
+  UNIT_METADATA[a].singular.localeCompare(UNIT_METADATA[b].singular),
+);
 
 export const LEGACY_UNIT_MAP: Record<string, UnitType> = {
-  Gram:       'g',
-  Kilo:       'kg',
+  Gram: 'g',
+  Kilo: 'kg',
   Milliliter: 'ml',
-  Liter:      'l',
-  Unit:       'piece',
+  Liter: 'l',
+  Unit: 'piece',
 };
 
 /**

@@ -20,7 +20,9 @@ const mockUpdate = recipesApi.updateRecipe as jest.MockedFunction<typeof recipes
 const mockFetch = recipesApi.fetchRecipeWithAvailability as jest.MockedFunction<
   typeof recipesApi.fetchRecipeWithAvailability
 >;
-const mockSearch = inventoryApi.searchInventory as jest.MockedFunction<typeof inventoryApi.searchInventory>;
+const mockSearch = inventoryApi.searchInventory as jest.MockedFunction<
+  typeof inventoryApi.searchInventory
+>;
 
 function makeRecipe(overrides: Partial<Recipe> = {}): Recipe {
   return {
@@ -51,7 +53,13 @@ describe('RecipeEditor — create mode', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockSearch.mockResolvedValue({ field: 'name', query: '', resultType: 'items', items: [], count: 0 });
+    mockSearch.mockResolvedValue({
+      field: 'name',
+      query: '',
+      resultType: 'items',
+      items: [],
+      count: 0,
+    });
   });
 
   it('renders create form with empty fields', () => {
@@ -122,7 +130,14 @@ describe('RecipeEditor — create mode', () => {
     const newRecipe = makeRecipe({ recipeId: 'new-id' });
     mockCreate.mockResolvedValue(newRecipe);
 
-    render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} allTags={['italian', 'quick']} tagsLoading={false} />);
+    render(
+      <RecipeEditor
+        onSaved={onSaved}
+        onCancel={onCancel}
+        allTags={['italian', 'quick']}
+        tagsLoading={false}
+      />,
+    );
 
     await user.type(screen.getByRole('textbox', { name: /^name$/i }), 'Pasta');
     await user.type(screen.getByRole('textbox', { name: /instructions/i }), 'Cook it');
@@ -143,7 +158,7 @@ describe('RecipeEditor — create mode', () => {
     expect(mockCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'Pasta',
-        instructions: 'Cook it',
+        instructions: ['Cook it'],
         ingredients: [{ name: 'Pasta', quantity: 200, unit: 'g' }],
       }),
     );
@@ -215,7 +230,9 @@ describe('RecipeEditor — create mode', () => {
     render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} allTags={[]} tagsLoading={false} />);
 
     await user.type(screen.getByLabelText(/ingredient 1 name/i), 'pas');
-    await act(async () => { jest.advanceTimersByTime(350); });
+    await act(async () => {
+      jest.advanceTimersByTime(350);
+    });
 
     await waitFor(() => expect(mockSearch).toHaveBeenCalledWith('name', 'pas'));
     await waitFor(() => expect(screen.getByTestId('autocomplete-dropdown')).toBeInTheDocument());
@@ -229,7 +246,9 @@ describe('RecipeEditor — create mode', () => {
     render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} allTags={[]} tagsLoading={false} />);
 
     await user.type(screen.getByLabelText(/ingredient 1 name/i), 'pa');
-    await act(async () => { jest.advanceTimersByTime(350); });
+    await act(async () => {
+      jest.advanceTimersByTime(350);
+    });
 
     expect(mockSearch).not.toHaveBeenCalled();
     expect(screen.queryByTestId('autocomplete-dropdown')).not.toBeInTheDocument();
@@ -239,13 +258,21 @@ describe('RecipeEditor — create mode', () => {
 
   it('searches across name, barcode, brand, category, and whereToBuy fields in parallel', async () => {
     jest.useFakeTimers();
-    mockSearch.mockResolvedValue({ field: 'name', query: 'pas', resultType: 'items', items: [], count: 0 });
+    mockSearch.mockResolvedValue({
+      field: 'name',
+      query: 'pas',
+      resultType: 'items',
+      items: [],
+      count: 0,
+    });
 
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} allTags={[]} tagsLoading={false} />);
 
     await user.type(screen.getByLabelText(/ingredient 1 name/i), 'pas');
-    await act(async () => { jest.advanceTimersByTime(350); });
+    await act(async () => {
+      jest.advanceTimersByTime(350);
+    });
 
     await waitFor(() => expect(mockSearch).toHaveBeenCalledTimes(5));
     expect(mockSearch).toHaveBeenCalledWith('name', 'pas');
@@ -261,13 +288,21 @@ describe('RecipeEditor — create mode', () => {
     jest.useFakeTimers();
     const item = { itemId: 'i1', name: 'Pasta', category: 'Dry Goods', unit: 'Gram' } as never;
     // Same item returned by both name and category search
-    mockSearch.mockResolvedValue({ field: 'name', query: 'pas', resultType: 'items', items: [item], count: 1 });
+    mockSearch.mockResolvedValue({
+      field: 'name',
+      query: 'pas',
+      resultType: 'items',
+      items: [item],
+      count: 1,
+    });
 
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} allTags={[]} tagsLoading={false} />);
 
     await user.type(screen.getByLabelText(/ingredient 1 name/i), 'pas');
-    await act(async () => { jest.advanceTimersByTime(350); });
+    await act(async () => {
+      jest.advanceTimersByTime(350);
+    });
 
     await waitFor(() => screen.getByTestId('autocomplete-dropdown'));
     // Should only show one item despite 5 searches returning the same item
@@ -295,7 +330,9 @@ describe('RecipeEditor — create mode', () => {
     render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} allTags={[]} tagsLoading={false} />);
 
     await user.type(screen.getByLabelText(/ingredient 1 name/i), 'bak');
-    await act(async () => { jest.advanceTimersByTime(350); });
+    await act(async () => {
+      jest.advanceTimersByTime(350);
+    });
 
     await waitFor(() => screen.getByTestId('dropdown-item-0'));
     expect(screen.getByText('Flour')).toBeInTheDocument();
@@ -317,7 +354,9 @@ describe('RecipeEditor — create mode', () => {
     render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} allTags={[]} tagsLoading={false} />);
 
     await user.type(screen.getByLabelText(/ingredient 1 name/i), 'pas');
-    await act(async () => { jest.advanceTimersByTime(350); });
+    await act(async () => {
+      jest.advanceTimersByTime(350);
+    });
 
     await waitFor(() => screen.getByTestId('dropdown-item-0'));
     await user.click(screen.getByTestId('dropdown-item-0'));
@@ -364,7 +403,9 @@ describe('RecipeEditor — create mode', () => {
 
     await user.click(screen.getByRole('button', { name: /create recipe/i }));
 
-    expect(await screen.findByText(/portions must be a positive whole number/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/portions must be a positive whole number/i),
+    ).toBeInTheDocument();
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
@@ -403,9 +444,7 @@ describe('RecipeEditor — create mode', () => {
     await user.click(screen.getByRole('button', { name: /create recipe/i }));
 
     await waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1));
-    expect(mockCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ portions: 4 }),
-    );
+    expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ portions: 4 }));
   });
 });
 
@@ -415,18 +454,40 @@ describe('RecipeEditor — edit mode', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockSearch.mockResolvedValue({ field: 'name', query: '', resultType: 'items', items: [], count: 0 });
+    mockSearch.mockResolvedValue({
+      field: 'name',
+      query: '',
+      resultType: 'items',
+      items: [],
+      count: 0,
+    });
   });
 
   it('shows loading state while fetching recipe', () => {
     mockFetch.mockReturnValue(new Promise(() => {}));
-    render(<RecipeEditor recipeId="r1" onSaved={onSaved} onCancel={onCancel} allTags={[]} tagsLoading={false} />);
+    render(
+      <RecipeEditor
+        recipeId="r1"
+        onSaved={onSaved}
+        onCancel={onCancel}
+        allTags={[]}
+        tagsLoading={false}
+      />,
+    );
     expect(screen.getByRole('status', { name: /loading recipe/i })).toBeInTheDocument();
   });
 
   it('shows error state when fetch fails', async () => {
     mockFetch.mockRejectedValue(new Error('Not found'));
-    render(<RecipeEditor recipeId="r1" onSaved={onSaved} onCancel={onCancel} allTags={[]} tagsLoading={false} />);
+    render(
+      <RecipeEditor
+        recipeId="r1"
+        onSaved={onSaved}
+        onCancel={onCancel}
+        allTags={[]}
+        tagsLoading={false}
+      />,
+    );
     expect(await screen.findByText('Not found')).toBeInTheDocument();
   });
 
@@ -442,7 +503,15 @@ describe('RecipeEditor — edit mode', () => {
     });
     mockFetch.mockResolvedValue(makeAvailability(recipe));
 
-    render(<RecipeEditor recipeId="r1" onSaved={onSaved} onCancel={onCancel} allTags={[]} tagsLoading={false} />);
+    render(
+      <RecipeEditor
+        recipeId="r1"
+        onSaved={onSaved}
+        onCancel={onCancel}
+        allTags={[]}
+        tagsLoading={false}
+      />,
+    );
 
     await waitFor(() =>
       expect(screen.getByRole('textbox', { name: /^name$/i })).toHaveValue('Chicken Soup'),
@@ -455,8 +524,18 @@ describe('RecipeEditor — edit mode', () => {
 
   it('renders Edit Recipe heading in edit mode', async () => {
     mockFetch.mockResolvedValue(makeAvailability(makeRecipe()));
-    render(<RecipeEditor recipeId="r1" onSaved={onSaved} onCancel={onCancel} allTags={[]} tagsLoading={false} />);
-    await waitFor(() => expect(screen.getByRole('heading', { name: /edit recipe/i })).toBeInTheDocument());
+    render(
+      <RecipeEditor
+        recipeId="r1"
+        onSaved={onSaved}
+        onCancel={onCancel}
+        allTags={[]}
+        tagsLoading={false}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: /edit recipe/i })).toBeInTheDocument(),
+    );
   });
 
   it('calls updateRecipe and onSaved on successful submit', async () => {
@@ -465,7 +544,15 @@ describe('RecipeEditor — edit mode', () => {
     mockFetch.mockResolvedValue(makeAvailability(recipe));
     mockUpdate.mockResolvedValue({ ...recipe, name: 'Updated Name' });
 
-    render(<RecipeEditor recipeId="r1" onSaved={onSaved} onCancel={onCancel} allTags={[]} tagsLoading={false} />);
+    render(
+      <RecipeEditor
+        recipeId="r1"
+        onSaved={onSaved}
+        onCancel={onCancel}
+        allTags={[]}
+        tagsLoading={false}
+      />,
+    );
     await waitFor(() =>
       expect(screen.getByRole('textbox', { name: /^name$/i })).toHaveValue('Pasta Carbonara'),
     );
@@ -477,8 +564,37 @@ describe('RecipeEditor — edit mode', () => {
     await user.click(screen.getByRole('button', { name: /save changes/i }));
 
     await waitFor(() => expect(mockUpdate).toHaveBeenCalledTimes(1));
-    expect(mockUpdate).toHaveBeenCalledWith('r1', expect.objectContaining({ name: 'Updated Name' }));
+    expect(mockUpdate).toHaveBeenCalledWith(
+      'r1',
+      expect.objectContaining({ name: 'Updated Name' }),
+    );
     expect(onSaved).toHaveBeenCalledWith('r1');
+  });
+
+  it('removes existing chef notes when the field is cleared', async () => {
+    const user = userEvent.setup();
+    const recipe = makeRecipe({ chefNotes: 'Use fresh herbs.' });
+    mockFetch.mockResolvedValue(makeAvailability(recipe));
+    mockUpdate.mockResolvedValue({ ...recipe, chefNotes: undefined });
+
+    render(
+      <RecipeEditor
+        recipeId="r1"
+        onSaved={onSaved}
+        onCancel={onCancel}
+        allTags={[]}
+        tagsLoading={false}
+      />,
+    );
+
+    const chefNotes = await screen.findByLabelText(/chef's notes/i);
+    expect(chefNotes).toHaveValue('Use fresh herbs.');
+    await user.clear(chefNotes);
+    await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+    await waitFor(() =>
+      expect(mockUpdate).toHaveBeenCalledWith('r1', expect.objectContaining({ chefNotes: null })),
+    );
   });
 
   it('shows submit error banner when updateRecipe fails', async () => {
@@ -486,7 +602,15 @@ describe('RecipeEditor — edit mode', () => {
     mockFetch.mockResolvedValue(makeAvailability(makeRecipe()));
     mockUpdate.mockRejectedValue(new Error('Update failed'));
 
-    render(<RecipeEditor recipeId="r1" onSaved={onSaved} onCancel={onCancel} allTags={[]} tagsLoading={false} />);
+    render(
+      <RecipeEditor
+        recipeId="r1"
+        onSaved={onSaved}
+        onCancel={onCancel}
+        allTags={[]}
+        tagsLoading={false}
+      />,
+    );
     await waitFor(() =>
       expect(screen.getByRole('textbox', { name: /^name$/i })).toHaveValue('Pasta Carbonara'),
     );
@@ -504,14 +628,30 @@ describe('RecipeEditor — edit mode portions scaler', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockSearch.mockResolvedValue({ field: 'name', query: '', resultType: 'items', items: [], count: 0 });
+    mockSearch.mockResolvedValue({
+      field: 'name',
+      query: '',
+      resultType: 'items',
+      items: [],
+      count: 0,
+    });
   });
 
   it('renders +/– controls in edit mode instead of a plain input', async () => {
     mockFetch.mockResolvedValue(makeAvailability(makeRecipe({ portions: 2 })));
-    render(<RecipeEditor recipeId="r1" onSaved={onSaved} onCancel={onCancel} allTags={[]} tagsLoading={false} />);
+    render(
+      <RecipeEditor
+        recipeId="r1"
+        onSaved={onSaved}
+        onCancel={onCancel}
+        allTags={[]}
+        tagsLoading={false}
+      />,
+    );
 
-    await waitFor(() => expect(screen.getByRole('heading', { name: /edit recipe/i })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: /edit recipe/i })).toBeInTheDocument(),
+    );
 
     expect(screen.getByRole('button', { name: /increase portions/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /decrease portions/i })).toBeInTheDocument();
@@ -520,55 +660,88 @@ describe('RecipeEditor — edit mode portions scaler', () => {
 
   it('pre-populates selectedPortions from recipe.portions', async () => {
     mockFetch.mockResolvedValue(makeAvailability(makeRecipe({ portions: 4 })));
-    render(<RecipeEditor recipeId="r1" onSaved={onSaved} onCancel={onCancel} allTags={[]} tagsLoading={false} />);
+    render(
+      <RecipeEditor
+        recipeId="r1"
+        onSaved={onSaved}
+        onCancel={onCancel}
+        allTags={[]}
+        tagsLoading={false}
+      />,
+    );
 
-    await waitFor(() => expect(screen.getByRole('heading', { name: /edit recipe/i })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: /edit recipe/i })).toBeInTheDocument(),
+    );
 
     expect(screen.getByText(/4 portions/i)).toBeInTheDocument();
   });
 
   it('disables – button when selectedPortions is 1', async () => {
     mockFetch.mockResolvedValue(makeAvailability(makeRecipe({ portions: 1 })));
-    render(<RecipeEditor recipeId="r1" onSaved={onSaved} onCancel={onCancel} allTags={[]} tagsLoading={false} />);
+    render(
+      <RecipeEditor
+        recipeId="r1"
+        onSaved={onSaved}
+        onCancel={onCancel}
+        allTags={[]}
+        tagsLoading={false}
+      />,
+    );
 
-    await waitFor(() => expect(screen.getByRole('heading', { name: /edit recipe/i })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: /edit recipe/i })).toBeInTheDocument(),
+    );
 
     expect(screen.getByRole('button', { name: /decrease portions/i })).toBeDisabled();
   });
 
-  it('recalculates ingredient quantity fields when + is tapped', async () => {
+  it('does not recalculate ingredient quantity fields while portions change', async () => {
     const user = userEvent.setup();
     const recipe = makeRecipe({
       portions: 2,
       ingredients: [{ name: 'Flour', quantity: 100, unit: 'g' }],
     });
     mockFetch.mockResolvedValue(makeAvailability(recipe));
-    render(<RecipeEditor recipeId="r1" onSaved={onSaved} onCancel={onCancel} allTags={[]} tagsLoading={false} />);
+    render(
+      <RecipeEditor
+        recipeId="r1"
+        onSaved={onSaved}
+        onCancel={onCancel}
+        allTags={[]}
+        tagsLoading={false}
+      />,
+    );
 
     await waitFor(() => expect(screen.getByLabelText(/ingredient 1 quantity/i)).toHaveValue('100'));
 
     await user.click(screen.getByRole('button', { name: /increase portions/i }));
 
-    // 100 * (3/2) = 150
-    expect(screen.getByLabelText(/ingredient 1 quantity/i)).toHaveValue('150');
+    expect(screen.getByLabelText(/ingredient 1 quantity/i)).toHaveValue('100');
   });
 
-  it('recalculates ingredient quantity fields when – is tapped', async () => {
+  it('keeps ingredient quantity fields stable across repeated portion changes', async () => {
     const user = userEvent.setup();
     const recipe = makeRecipe({
       portions: 4,
       ingredients: [{ name: 'Flour', quantity: 200, unit: 'g' }],
     });
     mockFetch.mockResolvedValue(makeAvailability(recipe));
-    render(<RecipeEditor recipeId="r1" onSaved={onSaved} onCancel={onCancel} allTags={[]} tagsLoading={false} />);
+    render(
+      <RecipeEditor
+        recipeId="r1"
+        onSaved={onSaved}
+        onCancel={onCancel}
+        allTags={[]}
+        tagsLoading={false}
+      />,
+    );
 
     await waitFor(() => expect(screen.getByLabelText(/ingredient 1 quantity/i)).toHaveValue('200'));
 
-    // Tap + to go from 4 → 5 portions: 200 * (5/4) = 250
     await user.click(screen.getByRole('button', { name: /increase portions/i }));
-    expect(screen.getByLabelText(/ingredient 1 quantity/i)).toHaveValue('250');
+    expect(screen.getByLabelText(/ingredient 1 quantity/i)).toHaveValue('200');
 
-    // Tap – to go from 5 → 4 portions: 250 * (4/5) = 200
     await user.click(screen.getByRole('button', { name: /decrease portions/i }));
     expect(screen.getByLabelText(/ingredient 1 quantity/i)).toHaveValue('200');
   });
@@ -579,7 +752,15 @@ describe('RecipeEditor — edit mode portions scaler', () => {
     mockFetch.mockResolvedValue(makeAvailability(recipe));
     mockUpdate.mockResolvedValue({ ...recipe, portions: 3 });
 
-    render(<RecipeEditor recipeId="r1" onSaved={onSaved} onCancel={onCancel} allTags={[]} tagsLoading={false} />);
+    render(
+      <RecipeEditor
+        recipeId="r1"
+        onSaved={onSaved}
+        onCancel={onCancel}
+        allTags={[]}
+        tagsLoading={false}
+      />,
+    );
 
     await waitFor(() =>
       expect(screen.getByRole('textbox', { name: /^name$/i })).toHaveValue('Pasta Carbonara'),
@@ -589,7 +770,64 @@ describe('RecipeEditor — edit mode portions scaler', () => {
     await user.click(screen.getByRole('button', { name: /save changes/i }));
 
     await waitFor(() => expect(mockUpdate).toHaveBeenCalledTimes(1));
-    expect(mockUpdate).toHaveBeenCalledWith('r1', expect.objectContaining({ portions: 3 }));
+    expect(mockUpdate).toHaveBeenCalledWith(
+      'r1',
+      expect.objectContaining({
+        portions: 3,
+        ingredients: [{ name: 'Pasta', quantity: 300, unit: 'g' }],
+      }),
+    );
+  });
+});
+
+describe('RecipeEditor — issue 4 fields', () => {
+  const onSaved = jest.fn();
+  const onCancel = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSearch.mockResolvedValue({
+      field: 'name',
+      query: '',
+      resultType: 'items',
+      items: [],
+      count: 0,
+    });
+  });
+
+  it('allows an empty quantity for handful and includes section, steps, and chef notes', async () => {
+    const user = userEvent.setup();
+    mockCreate.mockResolvedValue(makeRecipe({ recipeId: 'new-id' }));
+    render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} allTags={[]} tagsLoading={false} />);
+
+    await user.type(screen.getByRole('textbox', { name: /^name$/i }), 'Sauce');
+    await user.type(screen.getByLabelText('Instructions'), 'Chop herbs');
+    await user.click(screen.getByRole('button', { name: /add step/i }));
+    await user.type(screen.getByLabelText('Instruction step 2'), 'Mix sauce');
+    await user.type(screen.getByLabelText(/chef's notes/i), 'Taste before serving.');
+    await user.type(screen.getByLabelText(/ingredient 1 name/i), 'Parsley');
+    await user.type(screen.getByLabelText(/ingredient 1 section/i), 'For the sauce');
+    await user.selectOptions(screen.getByLabelText(/ingredient 1 unit/i), 'handful');
+    await user.type(screen.getByLabelText(/portions/i), '2');
+    await user.type(screen.getByPlaceholderText('Add a tag…'), 'quick');
+    await user.keyboard('{Enter}');
+    await user.click(screen.getByRole('button', { name: /create recipe/i }));
+
+    await waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1));
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instructions: ['Chop herbs', 'Mix sauce'],
+        chefNotes: 'Taste before serving.',
+        ingredients: [
+          {
+            name: 'Parsley',
+            quantity: null,
+            unit: 'handful',
+            section: 'For the sauce',
+          },
+        ],
+      }),
+    );
   });
 });
 
@@ -599,11 +837,24 @@ describe('RecipeEditor — tags', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockSearch.mockResolvedValue({ field: 'name', query: '', resultType: 'items', items: [], count: 0 });
+    mockSearch.mockResolvedValue({
+      field: 'name',
+      query: '',
+      resultType: 'items',
+      items: [],
+      count: 0,
+    });
   });
 
   it('renders TagInput in the form', () => {
-    render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} allTags={['italian', 'quick']} tagsLoading={false} />);
+    render(
+      <RecipeEditor
+        onSaved={onSaved}
+        onCancel={onCancel}
+        allTags={['italian', 'quick']}
+        tagsLoading={false}
+      />,
+    );
     // TagInput renders a combobox input with placeholder "Add a tag…"
     expect(screen.getByPlaceholderText('Add a tag…')).toBeInTheDocument();
     // Tags label
@@ -635,7 +886,14 @@ describe('RecipeEditor — tags', () => {
     const user = userEvent.setup();
     mockCreate.mockResolvedValue(makeRecipe({ recipeId: 'new-recipe' }));
 
-    render(<RecipeEditor onSaved={onSaved} onCancel={onCancel} allTags={['italian', 'quick']} tagsLoading={false} />);
+    render(
+      <RecipeEditor
+        onSaved={onSaved}
+        onCancel={onCancel}
+        allTags={['italian', 'quick']}
+        tagsLoading={false}
+      />,
+    );
 
     // Fill required fields
     await user.type(screen.getByRole('textbox', { name: /^name$/i }), 'Test Recipe');
@@ -654,9 +912,7 @@ describe('RecipeEditor — tags', () => {
     await user.click(screen.getByRole('button', { name: /create recipe/i }));
 
     await waitFor(() => {
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ tags: ['italian'] }),
-      );
+      expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ tags: ['italian'] }));
     });
   });
 

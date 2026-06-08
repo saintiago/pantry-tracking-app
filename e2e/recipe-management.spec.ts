@@ -185,8 +185,20 @@ async function setupMockAPI(page: Page) {
         body: JSON.stringify({
           recipe: mockRecipes[1],
           ingredientAvailability: [
-            { name: 'Tomatoes', required: 500, unit: 'g', available: 500, status: 'available' as const },
-            { name: 'Onion', required: 1, unit: 'Unit', available: 1, status: 'available' as const },
+            {
+              name: 'Tomatoes',
+              required: 500,
+              unit: 'g',
+              available: 500,
+              status: 'available' as const,
+            },
+            {
+              name: 'Onion',
+              required: 1,
+              unit: 'Unit',
+              available: 1,
+              status: 'available' as const,
+            },
           ],
           missingCount: 0,
         }),
@@ -260,7 +272,9 @@ test.describe('Recipe Management', () => {
     await page.getByRole('button', { name: 'Create Recipe' }).click();
 
     // Should navigate to detail view for the new recipe
-    await expect(page.getByRole('heading', { name: 'New Test Recipe' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'New Test Recipe' })).toBeVisible({
+      timeout: 5000,
+    });
   });
 
   test('views recipe detail with ingredient availability statuses', async ({ page }) => {
@@ -268,13 +282,15 @@ test.describe('Recipe Management', () => {
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
 
     // Should show recipe name
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
 
     // Should show availability summary (2 missing/partial)
     await expect(page.getByText('2 ingredient(s) missing or partial')).toBeVisible();
 
-    // Should show ingredient statuses
-    const availability = page.getByLabel('Ingredient availability');
+    // Should show ingredient statuses (unified Ingredients list)
+    const availability = page.getByRole('region', { name: 'Ingredients' });
     await expect(availability.getByText('Pasta', { exact: true })).toBeVisible();
     await expect(availability.getByText('available', { exact: true })).toBeVisible();
 
@@ -304,7 +320,11 @@ test.describe('Recipe Management', () => {
         });
       } else if (route.request().method() === 'GET') {
         const responseData = saved
-          ? { recipe: updatedRecipe, ingredientAvailability: mockRecipeWithAvailability.ingredientAvailability, missingCount: 2 }
+          ? {
+              recipe: updatedRecipe,
+              ingredientAvailability: mockRecipeWithAvailability.ingredientAvailability,
+              missingCount: 2,
+            }
           : mockRecipeWithAvailability;
         await route.fulfill({
           status: 200,
@@ -318,7 +338,9 @@ test.describe('Recipe Management', () => {
 
     // Navigate to detail
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
 
     // Click Edit
     await page.getByTestId('edit-button').click();
@@ -332,7 +354,9 @@ test.describe('Recipe Management', () => {
     await page.getByRole('button', { name: 'Save Changes' }).click();
 
     // Should navigate back to detail view with updated name
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara Updated' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara Updated' })).toBeVisible({
+      timeout: 5000,
+    });
   });
 
   test('deletes a recipe and verifies it is removed from the list', async ({ page }) => {
@@ -350,7 +374,9 @@ test.describe('Recipe Management', () => {
 
     // Navigate to detail
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
 
     // Click Delete — accept the confirm dialog
     page.once('dialog', (dialog) => {
@@ -370,14 +396,18 @@ test.describe('Recipe Management', () => {
   test('cancels recipe deletion when user dismisses the confirm dialog', async ({ page }) => {
     // Navigate to detail
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
 
     // Dismiss the confirm dialog
     page.once('dialog', (dialog) => dialog.dismiss());
     await page.getByTestId('delete-button').click();
 
     // Should remain on the detail page
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 3000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 3000,
+    });
   });
 
   test('search/filter filters the recipe list by name', async ({ page }) => {
@@ -403,7 +433,9 @@ test.describe('Recipe Management', () => {
 
   test('back button from recipe detail returns to recipe list', async ({ page }) => {
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
 
     await page.getByRole('button', { name: 'Go back' }).click();
 
@@ -435,7 +467,9 @@ test.describe('Recipe Management', () => {
 
   test('source URL link opens in new tab', async ({ page }) => {
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
 
     const link = page.getByRole('link', { name: 'View original recipe' });
     await expect(link).toBeVisible();
@@ -469,9 +503,13 @@ test.describe('Recipe Management', () => {
     await expect(tomatoRow.getByLabel(/minutes total/)).not.toBeVisible();
   });
 
-  test('recipe detail shows prep, cook, and total time when both fields are set', async ({ page }) => {
+  test('recipe detail shows prep, cook, and total time when both fields are set', async ({
+    page,
+  }) => {
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
 
     const timeSection = page.getByRole('region', { name: 'Recipe time' });
     await expect(timeSection).toBeVisible();
@@ -543,7 +581,9 @@ test.describe('Recipe Management', () => {
 
     await page.getByRole('button', { name: 'Create Recipe' }).click();
 
-    await expect(page.getByRole('heading', { name: 'Timed Recipe' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Timed Recipe' })).toBeVisible({
+      timeout: 5000,
+    });
     const timeSection = page.getByRole('region', { name: 'Recipe time' });
     await expect(timeSection).toBeVisible();
     await expect(timeSection.getByText(/total: 40 min/i)).toBeVisible();
@@ -585,7 +625,9 @@ test.describe('Recipe Management', () => {
     });
 
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
 
     await page.getByTestId('edit-button').click();
     await expect(page.getByRole('heading', { name: 'Edit Recipe' })).toBeVisible({ timeout: 5000 });
@@ -600,13 +642,17 @@ test.describe('Recipe Management', () => {
     await page.getByRole('button', { name: 'Save Changes' }).click();
 
     // After save, detail view should show only cook time (total = 20)
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
     const timeSection = page.getByRole('region', { name: 'Recipe time' });
     await expect(timeSection).toBeVisible();
     await expect(timeSection.getByText(/total: 20 min/i)).toBeVisible();
   });
 
-  test('time field validation error shown for negative number in RecipeEditor', async ({ page }) => {
+  test('time field validation error shown for negative number in RecipeEditor', async ({
+    page,
+  }) => {
     await page.getByRole('button', { name: '+ New Recipe' }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
@@ -625,7 +671,9 @@ test.describe('Recipe Management', () => {
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible();
   });
 
-  test('ingredient name autocomplete shows inventory suggestions and autofills unit on select', async ({ page }) => {
+  test('ingredient name autocomplete shows inventory suggestions and autofills unit on select', async ({
+    page,
+  }) => {
     await page.getByRole('button', { name: '+ New Recipe' }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
@@ -644,7 +692,9 @@ test.describe('Recipe Management', () => {
     await expect(page.getByLabel('Ingredient 1 unit')).toHaveValue('g');
   });
 
-  test('ingredient autocomplete searches across all fields — category match shows items', async ({ page }) => {
+  test('ingredient autocomplete searches across all fields — category match shows items', async ({
+    page,
+  }) => {
     // Override search to return a result only for category field
     await page.route('**/inventory/search**', async (route) => {
       const url = route.request().url();
@@ -689,7 +739,9 @@ test.describe('Recipe Management', () => {
     await expect(page.getByLabel('Ingredient 1 unit')).toHaveValue('g');
   });
 
-  test('saving recipe with unrecognized ingredient — new item appears in inventory with quantity 0', async ({ page }) => {
+  test('saving recipe with unrecognized ingredient — new item appears in inventory with quantity 0', async ({
+    page,
+  }) => {
     // Track POST /recipes calls
     const recipeRequests: string[] = [];
     await page.route('**/recipes', async (route) => {
@@ -735,7 +787,13 @@ test.describe('Recipe Management', () => {
             instructions: 'Cook it.',
           },
           ingredientAvailability: [
-            { name: 'Dragon Fruit', required: 1, unit: 'Unit', available: 0, status: 'missing' as const },
+            {
+              name: 'Dragon Fruit',
+              required: 1,
+              unit: 'Unit',
+              available: 0,
+              status: 'missing' as const,
+            },
           ],
           missingCount: 1,
         }),
@@ -749,16 +807,18 @@ test.describe('Recipe Management', () => {
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            items: [{
-              itemId: 'auto-1',
-              name: 'Dragon Fruit',
-              category: 'Uncategorized',
-              quantity: 0,
-              unit: 'Unit',
-              isLowStock: true,
-              location: 'unknown',
-              expirationDate: '2099-12-31',
-            }],
+            items: [
+              {
+                itemId: 'auto-1',
+                name: 'Dragon Fruit',
+                category: 'Uncategorized',
+                quantity: 0,
+                unit: 'Unit',
+                isLowStock: true,
+                location: 'unknown',
+                expirationDate: '2099-12-31',
+              },
+            ],
           }),
         });
       }
@@ -782,7 +842,9 @@ test.describe('Recipe Management', () => {
     await page.getByRole('button', { name: 'Create Recipe' }).click();
 
     // Should navigate to detail — ingredient shows as missing (quantity 0)
-    await expect(page.getByRole('heading', { name: 'Mystery Stew' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Mystery Stew' })).toBeVisible({
+      timeout: 5000,
+    });
     await expect(page.getByText('1 ingredient(s) missing or partial')).toBeVisible();
     await expect(page.getByText('missing', { exact: true })).toBeVisible();
 
@@ -799,7 +861,9 @@ test.describe('Recipe Management', () => {
 
   // ─── Portions counter ─────────────────────────────────────────────────────────
 
-  test('creates a recipe with a portions value and detail view shows portions scaler', async ({ page }) => {
+  test('creates a recipe with a portions value and detail view shows portions scaler', async ({
+    page,
+  }) => {
     const recipeWithPortions = {
       recipeId: 'recipe-portions',
       userId: 'test-user',
@@ -860,7 +924,9 @@ test.describe('Recipe Management', () => {
     await page.getByRole('button', { name: 'Create Recipe' }).click();
 
     // Should navigate to detail view
-    await expect(page.getByRole('heading', { name: 'Portioned Recipe' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Portioned Recipe' })).toBeVisible({
+      timeout: 5000,
+    });
 
     // Portions scaler section should be visible and initialised to 4
     const portionsSection = page.getByRole('region', { name: 'Portions' });
@@ -868,7 +934,9 @@ test.describe('Recipe Management', () => {
     await expect(portionsSection.getByText('4')).toBeVisible();
   });
 
-  test('portions validation error shown when portions is empty in RecipeEditor', async ({ page }) => {
+  test('portions validation error shown when portions is empty in RecipeEditor', async ({
+    page,
+  }) => {
     await page.getByRole('button', { name: '+ New Recipe' }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
@@ -889,7 +957,9 @@ test.describe('Recipe Management', () => {
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible();
   });
 
-  test('portions scaler in RecipeDetail increments and decrements without API call', async ({ page }) => {
+  test('portions scaler in RecipeDetail increments and decrements without API call', async ({
+    page,
+  }) => {
     // Track all requests to recipe-1
     const recipe1Requests: string[] = [];
     await page.route('**/recipes/recipe-1', async (route) => {
@@ -913,7 +983,9 @@ test.describe('Recipe Management', () => {
 
     // Navigate to Pasta Carbonara detail view
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
 
     // Portions scaler section should be visible with initial value 4
     const portionsSection = page.getByRole('region', { name: 'Portions' });
@@ -939,7 +1011,8 @@ test.describe('Recipe Management', () => {
     await expect(portionsSection.getByText('4')).toBeVisible();
   });
 
-  test('portions scaler in RecipeEditor edit mode updates ingredient quantities and saves', async ({ page }) => {
+  test('portions scaler in RecipeEditor defers ingredient updates until save', async ({ page }) => {
+    let capturedUpdate: Record<string, unknown> | null = null;
     const scaledRecipe = {
       ...mockRecipes[0],
       portions: 5,
@@ -962,6 +1035,7 @@ test.describe('Recipe Management', () => {
           body: JSON.stringify(mockRecipeWithAvailability),
         });
       } else if (route.request().method() === 'PUT') {
+        capturedUpdate = route.request().postDataJSON();
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -974,7 +1048,9 @@ test.describe('Recipe Management', () => {
 
     // Navigate to Pasta Carbonara detail, click Edit
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
 
     await page.getByTestId('edit-button').click();
     await expect(page.getByRole('heading', { name: 'Edit Recipe' })).toBeVisible({ timeout: 5000 });
@@ -988,14 +1064,21 @@ test.describe('Recipe Management', () => {
     // Portions scaler should show 5 portions
     await expect(page.getByText('5 portions')).toBeVisible();
 
-    // Ingredient quantity for Pasta should be recalculated: 200 * 5/4 = 250
-    await expect(page.getByLabel('Ingredient 1 quantity')).toHaveValue('250');
+    // Ingredient quantities stay unchanged while the edit form is open.
+    await expect(page.getByLabel('Ingredient 1 quantity')).toHaveValue('200');
 
     // Save
     await page.getByRole('button', { name: 'Save Changes' }).click();
 
     // Should navigate back to detail view with updated recipe
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
+    expect((capturedUpdate as { portions?: number } | null)?.portions).toBe(5);
+    expect(
+      (capturedUpdate as { ingredients?: Array<{ quantity: number }> } | null)?.ingredients?.[0]
+        .quantity,
+    ).toBe(250);
   });
 
   // ─── Tag display ──────────────────────────────────────────────────────────────
@@ -1578,5 +1661,142 @@ test.describe('Recipe Management', () => {
 
     await expect.poll(() => capturedBody).not.toBeNull();
     expect((capturedBody as { tags?: string[] } | null)?.tags).toEqual(['italian']);
+  });
+
+  test('creates recipe sections, empty handful quantity, numbered steps, and chef notes', async ({
+    page,
+  }) => {
+    let capturedBody: Record<string, unknown> | null = null;
+
+    await page.route('**/recipes', async (route) => {
+      if (route.request().method() === 'POST') {
+        capturedBody = route.request().postDataJSON();
+        await route.fulfill({
+          status: 201,
+          contentType: 'application/json',
+          body: JSON.stringify({ recipe: { ...newRecipe, recipeId: 'issue-4-recipe' } }),
+        });
+      } else {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ recipes: mockRecipes }),
+        });
+      }
+    });
+
+    await page.getByRole('button', { name: '+ New Recipe' }).click();
+    const unitSelect = page.getByLabel('Ingredient 1 unit');
+    const labels = await unitSelect.locator('option:not([value=""])').allTextContents();
+    expect(labels).toEqual([...labels].sort((a, b) => a.localeCompare(b)));
+    await expect(unitSelect.locator('option[value="unit"]')).toBeAttached();
+
+    await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Herb Sauce');
+    await page.getByRole('textbox', { name: 'Instructions' }).fill('Chop herbs');
+    await page.getByRole('button', { name: '+ Add Step' }).click();
+    await page.getByRole('textbox', { name: 'Instruction step 2' }).fill('Mix sauce');
+    await page.getByLabel("Chef's notes").fill('Taste before serving.');
+    await page.getByLabel('Ingredient 1 name').fill('Parsley');
+    await page.getByLabel('Ingredient 1 section').fill('For the sauce');
+    await unitSelect.selectOption('handful');
+    await page.getByLabel('Portions').fill('2');
+    await page.getByPlaceholder('Add a tag…').fill('quick');
+    await page.getByPlaceholder('Add a tag…').press('Enter');
+    await page.getByRole('button', { name: 'Create Recipe' }).click();
+
+    await expect.poll(() => capturedBody).not.toBeNull();
+    expect(capturedBody).toMatchObject({
+      instructions: ['Chop herbs', 'Mix sauce'],
+      chefNotes: 'Taste before serving.',
+      ingredients: [
+        {
+          name: 'Parsley',
+          quantity: null,
+          unit: 'handful',
+          section: 'For the sauce',
+        },
+      ],
+    });
+  });
+
+  test('detail view renders sections, numbered steps, chef notes, and inline handful status', async ({
+    page,
+  }) => {
+    const issue4Recipe = {
+      recipeId: 'recipe-issue4',
+      userId: 'test-user',
+      name: 'Herb Sauce',
+      tags: ['quick'],
+      ingredients: [
+        { name: 'Parsley', quantity: null, unit: 'handful', section: 'For the sauce' },
+        { name: 'Salt', quantity: 1, unit: 'pinch', section: 'For the sauce' },
+        { name: 'Pasta', quantity: 200, unit: 'g' },
+      ],
+      instructions: ['Chop herbs', 'Mix sauce'],
+      chefNotes: 'Taste before serving.',
+      portions: 2,
+      createdAt: '2024-01-06T00:00:00Z',
+      updatedAt: '2024-01-06T00:00:00Z',
+      syncVersion: 1,
+    };
+
+    // List must include the recipe so we can open it (no deep linking).
+    await page.route('**/recipes', async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ recipes: [...mockRecipes, issue4Recipe] }),
+        });
+      }
+    });
+
+    await page.route('**/recipes/recipe-issue4', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          recipe: issue4Recipe,
+          ingredientAvailability: [
+            { name: 'Parsley', required: null, unit: 'handful', available: 0, status: 'missing' },
+            { name: 'Salt', required: 1, unit: 'pinch', available: 5, status: 'available' },
+            { name: 'Pasta', required: 200, unit: 'g', available: 0, status: 'missing' },
+          ],
+          missingCount: 2,
+        }),
+      });
+    });
+
+    // Reload the list so the overridden GET /recipes route is used.
+    await page.getByRole('button', { name: 'Inventory' }).click();
+    await page.waitForSelector('h2:has-text("Inventory")', { timeout: 5000 });
+    await page.getByRole('button', { name: 'Recipes' }).click();
+    await page.waitForSelector('h2:has-text("Recipes")', { timeout: 5000 });
+
+    await page.getByRole('button', { name: 'View Herb Sauce' }).click();
+    await expect(page.getByRole('heading', { name: 'Herb Sauce' })).toBeVisible({ timeout: 5000 });
+
+    const ingredients = page.getByRole('region', { name: 'Ingredients' });
+
+    // Section heading groups the sauce ingredients.
+    await expect(ingredients.getByRole('heading', { name: 'For the sauce' })).toBeVisible();
+
+    // Empty-quantity handful shows the unit label with no numeric prefix.
+    const parsleyRow = ingredients.locator('div', { hasText: 'Parsley' }).last();
+    await expect(parsleyRow).toContainText('handful');
+    await expect(parsleyRow).not.toContainText('0 handful');
+    // Inline status chip for the missing handful.
+    await expect(ingredients.getByText('missing', { exact: true }).first()).toBeVisible();
+
+    // Numbered instruction steps render as an ordered list.
+    const instructions = page.getByRole('list').filter({ hasText: 'Chop herbs' });
+    await expect(instructions.getByRole('listitem')).toHaveCount(2);
+    await expect(instructions.getByText('Chop herbs')).toBeVisible();
+    await expect(instructions.getByText('Mix sauce')).toBeVisible();
+
+    // Chef notes section appears below instructions.
+    const chefNotes = page.getByRole('region', { name: "Chef's notes" });
+    await expect(chefNotes).toBeVisible();
+    await expect(chefNotes.getByText('Taste before serving.')).toBeVisible();
   });
 });

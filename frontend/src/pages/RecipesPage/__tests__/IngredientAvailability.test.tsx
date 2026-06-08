@@ -4,9 +4,27 @@ import '@testing-library/jest-dom';
 import IngredientAvailability from '../IngredientAvailability';
 import { IngredientStatus } from '../../../api/recipes/recipes';
 
-const available: IngredientStatus = { name: 'Flour', required: 2, unit: 'Kilo', available: 3, status: 'available' };
-const partial: IngredientStatus = { name: 'Sugar', required: 4, unit: 'Gram', available: 2, status: 'partial' };
-const missing: IngredientStatus = { name: 'Eggs', required: 3, unit: 'Unit', available: 0, status: 'missing' };
+const available: IngredientStatus = {
+  name: 'Flour',
+  required: 2,
+  unit: 'Kilo',
+  available: 3,
+  status: 'available',
+};
+const partial: IngredientStatus = {
+  name: 'Sugar',
+  required: 4,
+  unit: 'Gram',
+  available: 2,
+  status: 'partial',
+};
+const missing: IngredientStatus = {
+  name: 'Eggs',
+  required: 3,
+  unit: 'Unit',
+  available: 0,
+  status: 'missing',
+};
 
 describe('IngredientAvailability', () => {
   it('shows "All ingredients available" when missingCount is 0', () => {
@@ -20,7 +38,9 @@ describe('IngredientAvailability', () => {
   });
 
   it('renders ingredient names', () => {
-    render(<IngredientAvailability availability={[available, partial, missing]} missingCount={2} />);
+    render(
+      <IngredientAvailability availability={[available, partial, missing]} missingCount={2} />,
+    );
     expect(screen.getByText('Flour')).toBeInTheDocument();
     expect(screen.getByText('Sugar')).toBeInTheDocument();
     expect(screen.getByText('Eggs')).toBeInTheDocument();
@@ -57,5 +77,25 @@ describe('IngredientAvailability', () => {
     render(<IngredientAvailability availability={[missing]} missingCount={1} />);
     const chip = screen.getByText('missing');
     expect(chip).toHaveStyle({ backgroundColor: '#dc2626' });
+  });
+
+  it('groups ingredients by section and renders a null handful without a number', () => {
+    render(
+      <IngredientAvailability
+        ingredients={[
+          { name: 'Parsley', quantity: null, unit: 'handful', section: 'For the sauce' },
+          { name: 'Salt', quantity: 1, unit: 'pinch', section: 'For the sauce' },
+        ]}
+        availability={[
+          { name: 'Parsley', required: null, unit: 'handful', available: 0, status: 'missing' },
+          { name: 'Salt', required: 1, unit: 'pinch', available: 1, status: 'available' },
+        ]}
+        missingCount={1}
+      />,
+    );
+
+    expect(screen.getAllByText('For the sauce')).toHaveLength(1);
+    expect(screen.getByText('handful')).toBeInTheDocument();
+    expect(screen.getByText('Parsley')).toBeInTheDocument();
   });
 });

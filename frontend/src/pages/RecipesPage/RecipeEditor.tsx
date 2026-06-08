@@ -17,13 +17,18 @@ export interface RecipeEditorProps {
   recipeId?: string; // undefined = create mode
   onSaved: (recipeId: string) => void;
   onCancel: () => void;
-  allTags: string[];      // passed from RecipesPage
-  tagsLoading: boolean;   // passed from RecipesPage
+  allTags: string[]; // passed from RecipesPage
+  tagsLoading: boolean; // passed from RecipesPage
 }
 
 interface IngredientRow extends Omit<RecipeIngredient, 'quantity'> {
   _id: number;
   quantityStr: string;
+}
+
+interface InstructionRow {
+  _id: number;
+  value: string;
 }
 
 interface FormErrors {
@@ -45,6 +50,7 @@ interface DropdownState {
 
 let nextId = 0;
 const makeRow = (): IngredientRow => ({ _id: ++nextId, name: '', quantityStr: '', unit: '' });
+const makeInstructionRow = (value = ''): InstructionRow => ({ _id: ++nextId, value });
 
 /**
  * Validates a time field string value.
@@ -72,11 +78,18 @@ function validatePortionsField(value: string): string | undefined {
   return undefined;
 }
 
-const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel, allTags, tagsLoading }) => {
+const RecipeEditor: React.FC<RecipeEditorProps> = ({
+  recipeId,
+  onSaved,
+  onCancel,
+  allTags,
+  tagsLoading,
+}) => {
   const isEdit = recipeId !== undefined;
 
   const [name, setName] = useState('');
-  const [instructions, setInstructions] = useState('');
+  const [instructions, setInstructions] = useState<InstructionRow[]>([makeInstructionRow()]);
+  const [chefNotes, setChefNotes] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
   const [ingredients, setIngredients] = useState<IngredientRow[]>([makeRow()]);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -100,6 +113,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
 
   // Portions scaler (edit mode only)
   const [selectedPortions, setSelectedPortions] = useState<number>(1);
+  const [originalPortions, setOriginalPortions] = useState<number>(1);
 
   // Per-row ingredient name autocomplete dropdowns
   const [dropdowns, setDropdowns] = useState<Record<number, DropdownState>>({});
@@ -124,14 +138,22 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
       .then(({ recipe }) => {
         if (cancelled) return;
         setName(recipe.name);
-        setInstructions(recipe.instructions);
+        const instructionSteps = Array.isArray(recipe.instructions)
+          ? recipe.instructions
+          : [recipe.instructions];
+        setInstructions(
+          instructionSteps.length > 0
+            ? instructionSteps.map((step) => makeInstructionRow(step))
+            : [makeInstructionRow()],
+        );
+        setChefNotes(recipe.chefNotes ?? '');
         setSourceUrl(recipe.sourceUrl ?? '');
         setIngredients(
           recipe.ingredients.length > 0
             ? recipe.ingredients.map((ing) => ({
                 ...ing,
                 _id: ++nextId,
-                quantityStr: formatQuantity(ing.quantity),
+                quantityStr: ing.quantity === null ? '' : formatQuantity(ing.quantity),
                 unit: resolveUnit(ing.unit),
               }))
             : [makeRow()],
@@ -142,11 +164,11 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
         setOriginalPrepTime(recipe.prepTime);
         setOriginalCookTime(recipe.cookTime);
         setSelectedPortions(recipe.portions ?? 1);
+        setOriginalPortions(recipe.portions ?? 1);
         setTags(recipe.tags ?? []);
       })
       .catch((err) => {
-        if (!cancelled)
-          setFetchError(err instanceof Error ? err.message : 'Failed to load recipe');
+        if (!cancelled) setFetchError(err instanceof Error ? err.message : 'Failed to load recipe');
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -166,9 +188,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
 
   const updateIngredientField = useCallback(
     (id: number, field: keyof Omit<IngredientRow, '_id'>, value: string) => {
-      setIngredients((prev) =>
-        prev.map((r) => (r._id === id ? { ...r, [field]: value } : r)),
-      );
+      setIngredients((prev) => prev.map((r) => (r._id === id ? { ...r, [field]: value } : r)));
       // Clear per-row error on change
       setErrors((prev) => {
         const rowErrors = { ...(prev.ingredientRows ?? {}) };
@@ -184,33 +204,16 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
   );
 
   const handlePortionsIncrement = useCallback(() => {
-    setIngredients((prev) => {
-      const quantities = prev.map((row) => parseFractionalQuantity(row.quantityStr) ?? 0);
-      const scaled = scaleIngredients(
-        prev.map((r, i) => ({ ...r, quantity: quantities[i] })),
-        selectedPortions,
-        selectedPortions + 1,
-      );
-      return prev.map((row, i) => ({ ...row, quantityStr: formatQuantity(scaled[i]) }));
-    });
     setSelectedPortions((p) => p + 1);
-  }, [selectedPortions]);
+  }, []);
 
   const handlePortionsDecrement = useCallback(() => {
     if (selectedPortions <= 1) return;
-    setIngredients((prev) => {
-      const quantities = prev.map((row) => parseFractionalQuantity(row.quantityStr) ?? 0);
-      const scaled = scaleIngredients(
-        prev.map((r, i) => ({ ...r, quantity: quantities[i] })),
-        selectedPortions,
-        selectedPortions - 1,
-      );
-      return prev.map((row, i) => ({ ...row, quantityStr: formatQuantity(scaled[i]) }));
-    });
     setSelectedPortions((p) => p - 1);
   }, [selectedPortions]);
 
-  const closeDropdown = useCallback((rowId: number) => {    setDropdowns((prev) => ({ ...prev, [rowId]: { visible: false, items: [], focusedIndex: -1 } }));
+  const closeDropdown = useCallback((rowId: number) => {
+    setDropdowns((prev) => ({ ...prev, [rowId]: { visible: false, items: [], focusedIndex: -1 } }));
   }, []);
 
   const handleIngredientNameChange = useCallback(
@@ -290,9 +293,12 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
     [dropdowns, closeDropdown],
   );
 
-  const validate = useCallback((): FormErrors => {    const errs: FormErrors = {};
+  const validate = useCallback((): FormErrors => {
+    const errs: FormErrors = {};
     if (!name.trim()) errs.name = 'Recipe name is required.';
-    if (!instructions.trim()) errs.instructions = 'Instructions are required.';
+    if (instructions.every((step) => !step.value.trim())) {
+      errs.instructions = 'Instructions are required.';
+    }
     if (ingredients.length === 0) errs.ingredients = 'At least one ingredient is required.';
 
     const rowErrors: Record<number, { name?: string; quantity?: string; unit?: string }> = {};
@@ -300,7 +306,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
       const rowErr: { name?: string; quantity?: string; unit?: string } = {};
       if (!row.name.trim()) rowErr.name = 'Name is required.';
       const parsedQty = parseFractionalQuantity(row.quantityStr);
-      if (!parsedQty || parsedQty <= 0) {
+      if (row.unit !== 'handful' && (!parsedQty || parsedQty <= 0)) {
         rowErr.quantity = 'Enter a valid quantity (e.g. 1, 1/2, 1 1/4).';
       }
       if (!row.unit.trim()) rowErr.unit = 'Unit is required.';
@@ -335,15 +341,36 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
       setSubmitError(null);
       setSubmitting(true);
 
+      const normalizedIngredients: RecipeIngredient[] = ingredients.map(
+        ({ name: ingredientName, quantityStr, unit, section }) => ({
+          name: ingredientName.trim(),
+          quantity:
+            unit === 'handful' && quantityStr.trim() === ''
+              ? null
+              : parseFractionalQuantity(quantityStr)!,
+          unit,
+          ...(section?.trim() ? { section: section.trim() } : {}),
+        }),
+      );
+      let ingredientsToSave = normalizedIngredients;
+      if (isEdit && selectedPortions !== originalPortions) {
+        const scaledQuantities = scaleIngredients(
+          normalizedIngredients,
+          originalPortions,
+          selectedPortions,
+        );
+        ingredientsToSave = normalizedIngredients.map((ingredient, index) => ({
+          ...ingredient,
+          quantity: scaledQuantities[index],
+        }));
+      }
+
       const baseData = {
         name: name.trim(),
-        instructions: instructions.trim(),
+        instructions: instructions.map((step) => step.value.trim()).filter(Boolean),
+        chefNotes: chefNotes.trim() || undefined,
         sourceUrl: sourceUrl.trim() || undefined,
-        ingredients: ingredients.map(({ name: n, quantityStr, unit }) => ({
-          name: n,
-          quantity: parseFractionalQuantity(quantityStr)!,
-          unit,
-        })),
+        ingredients: ingredientsToSave,
       };
 
       // Build time field payload
@@ -369,14 +396,27 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
 
       try {
         if (isEdit && recipeId) {
-          await updateRecipe(recipeId, { ...baseData, ...timeFields, portions: selectedPortions, tags });
+          await updateRecipe(recipeId, {
+            ...baseData,
+            ...timeFields,
+            chefNotes: chefNotes.trim() || null,
+            portions: selectedPortions,
+            tags,
+          });
           onSaved(recipeId);
         } else {
           // In create mode, timeFields only contains number | undefined (never null)
           const createTimeFields: { prepTime?: number; cookTime?: number } = {};
-          if (timeFields.prepTime != null) createTimeFields.prepTime = timeFields.prepTime as number;
-          if (timeFields.cookTime != null) createTimeFields.cookTime = timeFields.cookTime as number;
-          const recipe = await createRecipe({ ...baseData, ...createTimeFields, portions: Number(portions), tags });
+          if (timeFields.prepTime != null)
+            createTimeFields.prepTime = timeFields.prepTime as number;
+          if (timeFields.cookTime != null)
+            createTimeFields.cookTime = timeFields.cookTime as number;
+          const recipe = await createRecipe({
+            ...baseData,
+            ...createTimeFields,
+            portions: Number(portions),
+            tags,
+          });
           onSaved(recipe.recipeId);
         }
       } catch (err) {
@@ -385,7 +425,25 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
         setSubmitting(false);
       }
     },
-    [validate, name, instructions, sourceUrl, ingredients, isEdit, recipeId, onSaved, prepTime, cookTime, originalPrepTime, originalCookTime, portions, selectedPortions, tags],
+    [
+      validate,
+      name,
+      instructions,
+      chefNotes,
+      sourceUrl,
+      ingredients,
+      isEdit,
+      recipeId,
+      onSaved,
+      prepTime,
+      cookTime,
+      originalPrepTime,
+      originalCookTime,
+      portions,
+      selectedPortions,
+      originalPortions,
+      tags,
+    ],
   );
 
   if (loading) {
@@ -466,26 +524,67 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
 
         {/* Instructions */}
         <div style={styles.fieldGroup}>
-          <label htmlFor="recipe-instructions" style={styles.label}>
+          <span style={styles.label}>
             Instructions <span aria-hidden="true">*</span>
-          </label>
-          <textarea
-            id="recipe-instructions"
-            value={instructions}
-            onChange={(e) => {
-              setInstructions(e.target.value);
-              setErrors((prev) => ({ ...prev, instructions: undefined }));
-            }}
-            style={styles.textarea}
-            rows={5}
-            aria-required="true"
-            aria-invalid={!!errors.instructions}
-          />
+          </span>
+          {instructions.map((step, index) => (
+            <div key={step._id} style={styles.instructionRow}>
+              <span style={styles.stepNumber}>{index + 1}.</span>
+              <textarea
+                value={step.value}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setInstructions((current) =>
+                    current.map((item) => (item._id === step._id ? { ...item, value } : item)),
+                  );
+                  setErrors((prev) => ({ ...prev, instructions: undefined }));
+                }}
+                style={styles.textarea}
+                rows={2}
+                aria-label={index === 0 ? 'Instructions' : `Instruction step ${index + 1}`}
+                aria-required="true"
+                aria-invalid={!!errors.instructions}
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  setInstructions((current) =>
+                    current.length > 1 ? current.filter((item) => item._id !== step._id) : current,
+                  )
+                }
+                disabled={instructions.length === 1}
+                aria-label={`Remove instruction step ${index + 1}`}
+                style={styles.removeButton}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => setInstructions((current) => [...current, makeInstructionRow()])}
+            style={styles.addIngredientButton}
+          >
+            + Add Step
+          </button>
           {errors.instructions && (
             <span style={styles.fieldError} role="alert">
               {errors.instructions}
             </span>
           )}
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label htmlFor="recipe-chef-notes" style={styles.label}>
+            Chef&apos;s notes
+          </label>
+          <textarea
+            id="recipe-chef-notes"
+            value={chefNotes}
+            onChange={(e) => setChefNotes(e.target.value)}
+            style={styles.textarea}
+            rows={3}
+          />
         </div>
 
         {/* Source URL */}
@@ -635,10 +734,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
                   <div style={styles.ingredientFields}>
                     {/* Ingredient name */}
                     <div style={styles.ingredientNameGroup}>
-                      <label
-                        htmlFor={`ing-name-${row._id}`}
-                        style={styles.smallLabel}
-                      >
+                      <label htmlFor={`ing-name-${row._id}`} style={styles.smallLabel}>
                         Name
                       </label>
                       <div style={{ position: 'relative' }}>
@@ -652,7 +748,9 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
                           aria-invalid={!!rowErr?.name}
                           aria-autocomplete={dropdowns[row._id]?.visible ? 'list' : undefined}
                           aria-expanded={dropdowns[row._id]?.visible ?? false}
-                          aria-controls={dropdowns[row._id]?.visible ? `ing-dropdown-${row._id}` : undefined}
+                          aria-controls={
+                            dropdowns[row._id]?.visible ? `ing-dropdown-${row._id}` : undefined
+                          }
                         />
                         <AutocompleteDropdown
                           isVisible={dropdowns[row._id]?.visible ?? false}
@@ -691,13 +789,25 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
                       )}
                     </div>
 
+                    <div style={styles.ingredientNameGroup}>
+                      <label htmlFor={`ing-section-${row._id}`} style={styles.smallLabel}>
+                        Section
+                      </label>
+                      <input
+                        id={`ing-section-${row._id}`}
+                        type="text"
+                        value={row.section ?? ''}
+                        onChange={(e) => updateIngredientField(row._id, 'section', e.target.value)}
+                        style={styles.input}
+                        aria-label={`Ingredient ${index + 1} section`}
+                        placeholder="e.g. For the sauce"
+                      />
+                    </div>
+
                     {/* Quantity + Unit row */}
                     <div style={styles.qtyUnitRow}>
                       <div style={styles.qtyGroup}>
-                        <label
-                          htmlFor={`ing-qty-${row._id}`}
-                          style={styles.smallLabel}
-                        >
+                        <label htmlFor={`ing-qty-${row._id}`} style={styles.smallLabel}>
                           Qty
                         </label>
                         <input
@@ -720,10 +830,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
                       </div>
 
                       <div style={styles.unitGroup}>
-                        <label
-                          htmlFor={`ing-unit-${row._id}`}
-                          style={styles.smallLabel}
-                        >
+                        <label htmlFor={`ing-unit-${row._id}`} style={styles.smallLabel}>
                           Unit
                         </label>
                         <select
@@ -736,7 +843,9 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
                         >
                           <option value="">Select unit</option>
                           {VALID_UNITS.map((u) => (
-                            <option key={u} value={u}>{getUnitLabel(u, 1)}</option>
+                            <option key={u} value={u}>
+                              {getUnitLabel(u, 1)}
+                            </option>
                           ))}
                         </select>
                         {rowErr?.unit && (
@@ -774,12 +883,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({ recipeId, onSaved, onCancel
 
       {/* Fixed action bar */}
       <div style={styles.actionBar}>
-        <button
-          type="button"
-          onClick={onCancel}
-          style={styles.cancelButton}
-          disabled={submitting}
-        >
+        <button type="button" onClick={onCancel} style={styles.cancelButton} disabled={submitting}>
           Cancel
         </button>
         <button
@@ -1037,6 +1141,17 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#374151',
     minWidth: 80,
     textAlign: 'center' as const,
+  },
+  instructionRow: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '0.5rem',
+  },
+  stepNumber: {
+    paddingTop: '0.65rem',
+    minWidth: 24,
+    fontWeight: 700,
+    color: '#374151',
   },
   statusText: {
     color: '#6b7280',

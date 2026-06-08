@@ -30,7 +30,11 @@ export function computeAllAvailable(
 ): boolean {
   for (const ing of ingredients) {
     const available = inventoryIndex.get(ing.name.toLowerCase()) ?? 0;
-    if (available < ing.quantity) return false;
+    if (ing.quantity === null) {
+      if (available <= 0) return false;
+    } else if (available < ing.quantity) {
+      return false;
+    }
   }
   return true;
 }

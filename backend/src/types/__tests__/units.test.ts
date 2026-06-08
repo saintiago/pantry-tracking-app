@@ -8,16 +8,36 @@ import {
 } from '../units';
 
 describe('VALID_UNITS', () => {
-  it('contains exactly 16 entries', () => {
-    expect(VALID_UNITS).toHaveLength(16);
+  it('contains exactly 17 entries', () => {
+    expect(VALID_UNITS).toHaveLength(17);
   });
 
   it('contains all expected unit keys', () => {
     const expected = [
-      'tsp', 'tbsp', 'cup', 'ml', 'l', 'g', 'kg',
-      'piece', 'slice', 'clove', 'pinch', 'handful', 'stick', 'can', 'bottle', 'zest',
+      'tsp',
+      'tbsp',
+      'cup',
+      'ml',
+      'l',
+      'g',
+      'kg',
+      'piece',
+      'slice',
+      'clove',
+      'pinch',
+      'handful',
+      'stick',
+      'can',
+      'bottle',
+      'zest',
+      'unit',
     ];
     expect(VALID_UNITS).toEqual(expect.arrayContaining(expected));
+  });
+
+  it('is sorted alphabetically by singular label', () => {
+    const labels = VALID_UNITS.map((unit) => UNIT_METADATA[unit].singular);
+    expect(labels).toEqual([...labels].sort((a, b) => a.localeCompare(b)));
   });
 });
 

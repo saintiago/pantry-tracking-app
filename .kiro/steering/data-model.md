@@ -6,40 +6,53 @@ This is the single source of truth for DynamoDB schemas, entity interfaces, API 
 
 Single-table design pattern. Table name: `PantryApp`.
 
-| Attribute | Type | Description |
-|-----------|------|-------------|
-| PK | String | Partition Key (e.g., `USER#<userId>`) |
-| SK | String | Sort Key (e.g., `ITEM#<itemId>`) |
-| GSI1PK | String | GSI1 Partition Key |
-| GSI1SK | String | GSI1 Sort Key |
-| entityType | String | Entity discriminator |
-| createdAt | String | ISO timestamp |
-| updatedAt | String | ISO timestamp |
-| syncVersion | Number | Optimistic locking version |
+| Attribute   | Type   | Description                           |
+| ----------- | ------ | ------------------------------------- |
+| PK          | String | Partition Key (e.g., `USER#<userId>`) |
+| SK          | String | Sort Key (e.g., `ITEM#<itemId>`)      |
+| GSI1PK      | String | GSI1 Partition Key                    |
+| GSI1SK      | String | GSI1 Sort Key                         |
+| entityType  | String | Entity discriminator                  |
+| createdAt   | String | ISO timestamp                         |
+| updatedAt   | String | ISO timestamp                         |
+| syncVersion | Number | Optimistic locking version            |
 
 ## Access Patterns
 
-| Access Pattern | PK | SK | Index |
-|----------------|----|----|-------|
-| Get user's inventory items | `USER#<userId>` | `ITEM#` (begins_with) | Main |
-| Get single inventory item | `USER#<userId>` | `ITEM#<itemId>` | Main |
-| Get user's recipes | `USER#<userId>` | `RECIPE#` (begins_with) | Main |
-| Get single recipe | `USER#<userId>` | `RECIPE#<recipeId>` | Main |
-| Get meal plans by date | `USER#<userId>` | `MEAL#<date>#` (begins_with) | Main |
-| Get user's storage locations | `USER#<userId>` | `LOCATION#` (begins_with) | Main |
-| Get items by category | `USER#<userId>#CAT#<category>` | `ITEM#` | GSI1 |
-| Get low-stock items | `USER#<userId>#LOWSTOCK` | `ITEM#<itemId>` | GSI1 |
-| Get items by location | `USER#<userId>#LOC#<location>` | `ITEM#<itemId>` | GSI1 |
+| Access Pattern               | PK                             | SK                           | Index |
+| ---------------------------- | ------------------------------ | ---------------------------- | ----- |
+| Get user's inventory items   | `USER#<userId>`                | `ITEM#` (begins_with)        | Main  |
+| Get single inventory item    | `USER#<userId>`                | `ITEM#<itemId>`              | Main  |
+| Get user's recipes           | `USER#<userId>`                | `RECIPE#` (begins_with)      | Main  |
+| Get single recipe            | `USER#<userId>`                | `RECIPE#<recipeId>`          | Main  |
+| Get meal plans by date       | `USER#<userId>`                | `MEAL#<date>#` (begins_with) | Main  |
+| Get user's storage locations | `USER#<userId>`                | `LOCATION#` (begins_with)    | Main  |
+| Get items by category        | `USER#<userId>#CAT#<category>` | `ITEM#`                      | GSI1  |
+| Get low-stock items          | `USER#<userId>#LOWSTOCK`       | `ITEM#<itemId>`              | GSI1  |
+| Get items by location        | `USER#<userId>#LOC#<location>` | `ITEM#<itemId>`              | GSI1  |
 
 ## Shared Types
 
 ### UnitType
 
-```typescript
-type UnitType = 'Gram' | 'Kilo' | 'Milliliter' | 'Liter' | 'Unit';
+Units are defined by a metadata table (`backend/src/types/units.ts` and `frontend/src/types/units.ts`),
+keyed by a short unit key. Each entry carries `key`, `singular`, `abbreviation`, and `plural` labels.
 
-const VALID_UNITS: UnitType[] = ['Gram', 'Kilo', 'Milliliter', 'Liter', 'Unit'];
+```typescript
+type UnitType = keyof typeof UNIT_METADATA;
+// Keys: tsp, tbsp, cup, ml, l, g, kg, piece, slice, clove, pinch,
+//       handful, stick, can, bottle, zest, unit
+
+// VALID_UNITS is sorted alphabetically by the visible singular label (locale compare).
+const VALID_UNITS: UnitType[] = (Object.keys(UNIT_METADATA) as UnitType[]).sort((a, b) =>
+  UNIT_METADATA[a].singular.localeCompare(UNIT_METADATA[b].singular),
+);
+
+// Legacy values from earlier inventory data are normalized via LEGACY_UNIT_MAP:
+//   Gram -> g, Kilo -> kg, Milliliter -> ml, Liter -> l, Unit -> piece
 ```
+
+`resolveUnit()` maps any incoming value (modern key or legacy label) to a canonical unit key.
 
 ## Entity Schemas
 
@@ -47,29 +60,29 @@ const VALID_UNITS: UnitType[] = ['Gram', 'Kilo', 'Milliliter', 'Liter', 'Unit'];
 
 ```typescript
 interface InventoryItem {
-  PK: string;           // USER#<userId>
-  SK: string;           // ITEM#<itemId>
+  PK: string; // USER#<userId>
+  SK: string; // ITEM#<itemId>
   entityType: 'InventoryItem';
   itemId: string;
   userId: string;
   barcode?: string;
   name: string;
   category: string;
-  expirationDate: string;  // ISO date, REQUIRED
-  location: string;       // StorageLocation locationId
+  expirationDate: string; // ISO date, REQUIRED
+  location: string; // StorageLocation locationId
   quantity: number;
-  unit: UnitType;          // Constrained to: Gram, Kilo, Milliliter, Liter, Unit
+  unit: UnitType; // Constrained to: Gram, Kilo, Milliliter, Liter, Unit
   brand?: string;
   whereToBuy?: string;
   onlineStoreLink?: string;
-  pictureUrl?: string;     // S3 URL for item picture
+  pictureUrl?: string; // S3 URL for item picture
   threshold?: number;
-  isLowStock: boolean;     // true iff quantity <= threshold
+  isLowStock: boolean; // true iff quantity <= threshold
   createdAt: string;
   updatedAt: string;
   syncVersion: number;
-  GSI1PK?: string;      // USER#<userId>#CAT#<category> or USER#<userId>#LOC#<location>
-  GSI1SK?: string;      // ITEM#<itemId>
+  GSI1PK?: string; // USER#<userId>#CAT#<category> or USER#<userId>#LOC#<location>
+  GSI1SK?: string; // ITEM#<itemId>
 }
 ```
 
@@ -77,12 +90,12 @@ interface InventoryItem {
 
 ```typescript
 interface StorageLocation {
-  PK: string;           // USER#<userId>
-  SK: string;           // LOCATION#<locationId>
+  PK: string; // USER#<userId>
+  SK: string; // LOCATION#<locationId>
   entityType: 'StorageLocation';
   locationId: string;
   userId: string;
-  name: string;         // User-facing display name, unique per user (case-insensitive)
+  name: string; // User-facing display name, unique per user (case-insensitive)
   createdAt: string;
   updatedAt: string;
   syncVersion: number;
@@ -93,19 +106,20 @@ interface StorageLocation {
 
 ```typescript
 interface Recipe {
-  PK: string;           // USER#<userId>
-  SK: string;           // RECIPE#<recipeId>
+  PK: string; // USER#<userId>
+  SK: string; // RECIPE#<recipeId>
   entityType: 'Recipe';
   recipeId: string;
   userId: string;
   name: string;
-  tags: string[];          // Required, non-empty; always lowercase, trimmed, deduplicated
+  tags: string[]; // Required, non-empty; always lowercase, trimmed, deduplicated
   ingredients: RecipeIngredient[];
-  instructions: string;
+  instructions: string | string[]; // Array of ordered steps (new clients); legacy recipes may be a single string
+  chefNotes?: string; // Optional free-text notes shown below instructions
   sourceUrl?: string;
-  prepTime?: number;       // Optional prep time in minutes (non-negative integer)
-  cookTime?: number;       // Optional cook time in minutes (non-negative integer)
-  portions: number;        // Required; positive integer (≥ 1)
+  prepTime?: number; // Optional prep time in minutes (non-negative integer)
+  cookTime?: number; // Optional cook time in minutes (non-negative integer)
+  portions: number; // Required; positive integer (≥ 1)
   createdAt: string;
   updatedAt: string;
   syncVersion: number;
@@ -113,8 +127,9 @@ interface Recipe {
 
 interface RecipeIngredient {
   name: string;
-  quantity: number;
+  quantity: number | null; // null only allowed when unit is 'handful' (empty quantity)
   unit: string;
+  section?: string; // Optional grouping heading; consecutive ingredients share a section
   inventoryItemId?: string;
 }
 ```
@@ -123,15 +138,15 @@ interface RecipeIngredient {
 
 ```typescript
 interface MealPlan {
-  PK: string;           // USER#<userId>
-  SK: string;           // MEAL#<date>#<mealType>#<planId>
+  PK: string; // USER#<userId>
+  SK: string; // MEAL#<date>#<mealType>#<planId>
   entityType: 'MealPlan';
   planId: string;
   userId: string;
-  date: string;         // ISO date (YYYY-MM-DD)
+  date: string; // ISO date (YYYY-MM-DD)
   mealType: 'breakfast' | 'lunch' | 'dinner';
   recipeId: string;
-  recipeName: string;   // Denormalized for display
+  recipeName: string; // Denormalized for display
   createdAt: string;
   updatedAt: string;
   syncVersion: number;
@@ -142,8 +157,8 @@ interface MealPlan {
 
 ```typescript
 interface Receipt {
-  PK: string;           // USER#<userId>
-  SK: string;           // RECEIPT#<receiptId>
+  PK: string; // USER#<userId>
+  SK: string; // RECEIPT#<receiptId>
   entityType: 'Receipt';
   receiptId: string;
   userId: string;
@@ -180,36 +195,36 @@ interface SyncQueueItem {
 
 ## API Routes
 
-| Method | Path | Lambda | Auth | Description |
-|--------|------|--------|------|-------------|
-| POST | /auth/verify | Auth | No | Verify Cognito token |
-| GET | /inventory | Inventory | Yes | List all inventory items |
-| POST | /inventory | Inventory | Yes | Add inventory item |
-| PUT | /inventory/{itemId} | Inventory | Yes | Update inventory item |
-| DELETE | /inventory/{itemId} | Inventory | Yes | Remove inventory item |
-| GET | /inventory/low-stock | Inventory | Yes | Get items at or below threshold |
-| GET | /inventory/search | Inventory | Yes | Search inventory for autocomplete (query: field, query) |
-| POST | /inventory/barcode-lookup | Inventory | Yes | Lookup product by barcode (external API) |
-| GET | /recipes | Recipe | Yes | List all recipes |
-| POST | /recipes | Recipe | Yes | Create recipe |
-| GET | /recipes/tags | Recipe | Yes | Get all distinct tags across user's recipes |
-| GET | /recipes/{recipeId} | Recipe | Yes | Get recipe with availability |
-| PUT | /recipes/{recipeId} | Recipe | Yes | Update recipe |
-| DELETE | /recipes/{recipeId} | Recipe | Yes | Delete recipe |
-| GET | /meal-plans | MealPlan | Yes | Get meal plans (query: startDate, endDate) |
-| POST | /meal-plans | MealPlan | Yes | Create meal assignment |
-| PUT | /meal-plans/{planId} | MealPlan | Yes | Update assignment |
-| DELETE | /meal-plans/{planId} | MealPlan | Yes | Remove assignment |
-| POST | /shopping-list/generate | ShoppingList | Yes | Generate shopping list for date range |
-| PUT | /shopping-list | ShoppingList | Yes | Update shopping list (manual edits) |
-| POST | /receipts/upload | Receipt | Yes | Get presigned URL for upload |
-| POST | /receipts/{receiptId}/process | Receipt | Yes | Trigger OCR processing |
-| GET | /receipts/{receiptId}/status | Receipt | Yes | Check processing status |
-| GET | /locations | StorageLocation | Yes | List user's storage locations |
-| POST | /locations | StorageLocation | Yes | Create storage location |
-| PUT | /locations/{locationId} | StorageLocation | Yes | Rename storage location |
-| DELETE | /locations/{locationId} | StorageLocation | Yes | Remove storage location |
-| POST | /sync | Sync | Yes | Batch sync operations |
+| Method | Path                          | Lambda          | Auth | Description                                             |
+| ------ | ----------------------------- | --------------- | ---- | ------------------------------------------------------- |
+| POST   | /auth/verify                  | Auth            | No   | Verify Cognito token                                    |
+| GET    | /inventory                    | Inventory       | Yes  | List all inventory items                                |
+| POST   | /inventory                    | Inventory       | Yes  | Add inventory item                                      |
+| PUT    | /inventory/{itemId}           | Inventory       | Yes  | Update inventory item                                   |
+| DELETE | /inventory/{itemId}           | Inventory       | Yes  | Remove inventory item                                   |
+| GET    | /inventory/low-stock          | Inventory       | Yes  | Get items at or below threshold                         |
+| GET    | /inventory/search             | Inventory       | Yes  | Search inventory for autocomplete (query: field, query) |
+| POST   | /inventory/barcode-lookup     | Inventory       | Yes  | Lookup product by barcode (external API)                |
+| GET    | /recipes                      | Recipe          | Yes  | List all recipes                                        |
+| POST   | /recipes                      | Recipe          | Yes  | Create recipe                                           |
+| GET    | /recipes/tags                 | Recipe          | Yes  | Get all distinct tags across user's recipes             |
+| GET    | /recipes/{recipeId}           | Recipe          | Yes  | Get recipe with availability                            |
+| PUT    | /recipes/{recipeId}           | Recipe          | Yes  | Update recipe                                           |
+| DELETE | /recipes/{recipeId}           | Recipe          | Yes  | Delete recipe                                           |
+| GET    | /meal-plans                   | MealPlan        | Yes  | Get meal plans (query: startDate, endDate)              |
+| POST   | /meal-plans                   | MealPlan        | Yes  | Create meal assignment                                  |
+| PUT    | /meal-plans/{planId}          | MealPlan        | Yes  | Update assignment                                       |
+| DELETE | /meal-plans/{planId}          | MealPlan        | Yes  | Remove assignment                                       |
+| POST   | /shopping-list/generate       | ShoppingList    | Yes  | Generate shopping list for date range                   |
+| PUT    | /shopping-list                | ShoppingList    | Yes  | Update shopping list (manual edits)                     |
+| POST   | /receipts/upload              | Receipt         | Yes  | Get presigned URL for upload                            |
+| POST   | /receipts/{receiptId}/process | Receipt         | Yes  | Trigger OCR processing                                  |
+| GET    | /receipts/{receiptId}/status  | Receipt         | Yes  | Check processing status                                 |
+| GET    | /locations                    | StorageLocation | Yes  | List user's storage locations                           |
+| POST   | /locations                    | StorageLocation | Yes  | Create storage location                                 |
+| PUT    | /locations/{locationId}       | StorageLocation | Yes  | Rename storage location                                 |
+| DELETE | /locations/{locationId}       | StorageLocation | Yes  | Remove storage location                                 |
+| POST   | /sync                         | Sync            | Yes  | Batch sync operations                                   |
 
 ## API Request/Response Interfaces
 
@@ -220,10 +235,10 @@ interface SyncQueueItem {
 interface AddInventoryRequest {
   name: string;
   category: string;
-  expirationDate: string;  // ISO date, required
+  expirationDate: string; // ISO date, required
   locationId: string;
   quantity: number;
-  unit: UnitType;          // Must be a valid UnitType value
+  unit: UnitType; // Must be a valid UnitType value
   barcode?: string;
   brand?: string;
   whereToBuy?: string;
@@ -239,7 +254,7 @@ interface UpdateInventoryRequest {
   expirationDate?: string;
   locationId?: string;
   quantity?: number;
-  unit?: UnitType;         // Validated against UnitType when provided
+  unit?: UnitType; // Validated against UnitType when provided
   barcode?: string;
   brand?: string;
   whereToBuy?: string;
@@ -270,28 +285,41 @@ interface InventorySearchResponse {
   field: string;
   query: string;
   resultType: 'items' | 'values';
-  items?: InventoryItem[];  // For barcode and name fields (returns full items)
-  values?: string[];         // For category, brand, whereToBuy, onlineStoreLink (returns distinct values)
-  count: number;             // Number of results (max 10)
+  items?: InventoryItem[]; // For barcode and name fields (returns full items)
+  values?: string[]; // For category, brand, whereToBuy, onlineStoreLink (returns distinct values)
+  count: number; // Number of results (max 10)
 }
 
 // POST /inventory/barcode-lookup
-interface BarcodeLookupRequest { barcode: string; }
-interface BarcodeLookupResponse { found: boolean; product?: ProductInfo; }
+interface BarcodeLookupRequest {
+  barcode: string;
+}
+interface BarcodeLookupResponse {
+  found: boolean;
+  product?: ProductInfo;
+}
 ```
 
 ### Storage Locations
 
 ```typescript
 // GET /locations response
-interface ListLocationsResponse { locations: StorageLocation[]; }
+interface ListLocationsResponse {
+  locations: StorageLocation[];
+}
 
 // POST /locations
-interface CreateLocationRequest { name: string; }  // unique per user
-interface CreateLocationResponse { location: StorageLocation; }
+interface CreateLocationRequest {
+  name: string;
+} // unique per user
+interface CreateLocationResponse {
+  location: StorageLocation;
+}
 
 // PUT /locations/{locationId}
-interface RenameLocationRequest { name: string; }  // unique per user
+interface RenameLocationRequest {
+  name: string;
+} // unique per user
 
 // DELETE /locations/{locationId}
 // Returns 400 if location contains inventory items
@@ -304,24 +332,26 @@ interface RenameLocationRequest { name: string; }  // unique per user
 // POST /recipes
 interface CreateRecipeRequest {
   name: string;
-  tags: string[];               // required, at least one; normalized to lowercase
-  ingredients: RecipeIngredient[];  // at least one required
-  instructions: string;
+  tags: string[]; // required, at least one; normalized to lowercase
+  ingredients: RecipeIngredient[]; // at least one required; null quantity only for 'handful'
+  instructions: string | string[]; // non-empty string OR non-empty array of non-empty steps
+  chefNotes?: string | null; // optional free-text notes; null removes notes on update
   sourceUrl?: string;
-  prepTime?: number;            // optional, non-negative integer (minutes)
-  cookTime?: number;            // optional, non-negative integer (minutes)
-  portions: number;             // required, positive integer
+  prepTime?: number; // optional, non-negative integer (minutes)
+  cookTime?: number; // optional, non-negative integer (minutes)
+  portions: number; // required, positive integer
 }
 
 // PUT /recipes/{recipeId}
 interface UpdateRecipeRequest {
   name?: string;
-  tags?: string[];              // if provided, must be non-empty; normalized to lowercase
+  tags?: string[]; // if provided, must be non-empty; normalized to lowercase
   ingredients?: RecipeIngredient[];
-  instructions?: string;
+  instructions?: string | string[]; // if provided: non-empty string or non-empty array of non-empty steps
+  chefNotes?: string; // optional free-text notes
   sourceUrl?: string;
-  prepTime?: number | null;     // null = explicit removal
-  cookTime?: number | null;     // null = explicit removal
+  prepTime?: number | null; // null = explicit removal
+  cookTime?: number | null; // null = explicit removal
   portions?: number;
 }
 
@@ -334,7 +364,7 @@ interface RecipeWithAvailability {
 
 // GET /recipes/tags response
 interface ListRecipeTagsResponse {
-  tags: string[];   // sorted, deduplicated, lowercased union of all tags across user's recipes
+  tags: string[]; // sorted, deduplicated, lowercased union of all tags across user's recipes
 }
 ```
 
@@ -343,7 +373,7 @@ interface ListRecipeTagsResponse {
 ```typescript
 // POST /meal-plans
 interface CreateMealPlanRequest {
-  date: string;       // ISO date
+  date: string; // ISO date
   mealType: 'breakfast' | 'lunch' | 'dinner';
   recipeId: string;
   recipeName: string; // Denormalized for display
@@ -354,21 +384,29 @@ interface CreateMealPlanRequest {
 
 ```typescript
 // POST /shopping-list/generate
-interface GenerateShoppingListRequest { startDate: string; endDate: string; }
+interface GenerateShoppingListRequest {
+  startDate: string;
+  endDate: string;
+}
 interface ShoppingListResponse {
   items: ShoppingItem[];
   dateRange: { start: string; end: string };
 }
 
 // PUT /shopping-list
-interface UpdateShoppingListRequest { items: ShoppingItem[]; }
+interface UpdateShoppingListRequest {
+  items: ShoppingItem[];
+}
 ```
 
 ### Receipts
 
 ```typescript
 // POST /receipts/upload response
-interface UploadUrlResponse { uploadUrl: string; receiptId: string; }
+interface UploadUrlResponse {
+  uploadUrl: string;
+  receiptId: string;
+}
 
 // POST /receipts/{receiptId}/process response
 interface ProcessReceiptResponse {
@@ -426,11 +464,11 @@ pantry-app-storage-{env}/
 
 Database: `PantryAppDB`, Version: 2
 
-| Store | Key | Indexes |
-|-------|-----|---------|
-| inventoryItems | itemId | byCategory, byLocation, byLowStock, byExpirationDate, bySyncVersion |
-| recipes | recipeId | byName, bySyncVersion |
-| mealPlans | planId | byDate, bySyncVersion |
-| syncQueue | id | byStatus, byTimestamp |
-| storageLocations | locationId | byName, bySyncVersion |
-| metadata | string key | — |
+| Store            | Key        | Indexes                                                             |
+| ---------------- | ---------- | ------------------------------------------------------------------- |
+| inventoryItems   | itemId     | byCategory, byLocation, byLowStock, byExpirationDate, bySyncVersion |
+| recipes          | recipeId   | byName, bySyncVersion                                               |
+| mealPlans        | planId     | byDate, bySyncVersion                                               |
+| syncQueue        | id         | byStatus, byTimestamp                                               |
+| storageLocations | locationId | byName, bySyncVersion                                               |
+| metadata         | string key | —                                                                   |

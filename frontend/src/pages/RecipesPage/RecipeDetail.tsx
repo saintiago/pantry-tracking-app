@@ -1,9 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { deleteRecipe, fetchRecipeWithAvailability, computeTotalTime, scaleIngredients } from '../../api/recipes/recipes';
+import {
+  deleteRecipe,
+  fetchRecipeWithAvailability,
+  computeTotalTime,
+  scaleIngredients,
+} from '../../api/recipes/recipes';
 import type { RecipeWithAvailability } from '../../api/recipes/recipes';
 import IngredientAvailability from './IngredientAvailability';
-import { formatQuantity } from '../../utils/quantity';
-import { getUnitLabel, resolveUnit } from '../../types/units';
+import { resolveUnit } from '../../types/units';
 
 interface RecipeDetailProps {
   recipeId: string;
@@ -105,7 +109,11 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipeId, onEdit, onBack, o
 
   const totalTime = computeTotalTime(recipe.prepTime, recipe.cookTime);
 
-  const scaledQuantities = scaleIngredients(recipe.ingredients, recipe.portions ?? 1, selectedPortions);
+  const scaledQuantities = scaleIngredients(
+    recipe.ingredients,
+    recipe.portions ?? 1,
+    selectedPortions,
+  );
 
   const displayedIngredients = recipe.ingredients.map((ing, i) => ({
     ...ing,
@@ -118,12 +126,21 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipeId, onEdit, onBack, o
     ...item,
     required: scaledQuantities[i] ?? item.required,
   }));
+  const instructionSteps = Array.isArray(recipe.instructions)
+    ? recipe.instructions
+    : [recipe.instructions];
 
   return (
     <div style={styles.page}>
       {/* Header */}
       <div style={styles.pageHeader}>
-        <button onClick={onBack} style={styles.backButton} type="button" aria-label="Go back" disabled={deleting}>
+        <button
+          onClick={onBack}
+          style={styles.backButton}
+          type="button"
+          aria-label="Go back"
+          disabled={deleting}
+        >
           ← Back
         </button>
         <h2 style={styles.pageTitle}>{recipe.name}</h2>
@@ -156,10 +173,14 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipeId, onEdit, onBack, o
               <>
                 <span style={styles.timeItem}>Prep: {recipe.prepTime} min</span>
                 <span style={styles.timeItem}>Cook: {recipe.cookTime} min</span>
-                <span style={{ ...styles.timeItem, ...styles.totalTime }}>Total: {totalTime} min</span>
+                <span style={{ ...styles.timeItem, ...styles.totalTime }}>
+                  Total: {totalTime} min
+                </span>
               </>
             ) : (
-              <span style={{ ...styles.timeItem, ...styles.totalTime }}>Total: {totalTime} min</span>
+              <span style={{ ...styles.timeItem, ...styles.totalTime }}>
+                Total: {totalTime} min
+              </span>
             )}
           </section>
         )}
@@ -191,31 +212,30 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipeId, onEdit, onBack, o
           </div>
         </section>
 
-        {/* Ingredients display */}
-        {displayedIngredients.length > 0 && (
-          <section style={styles.section} aria-label="Ingredients">
-            <h3 style={styles.sectionTitle}>Ingredients</h3>
-            <ul style={styles.ingredientList}>
-              {displayedIngredients.map((ing, i) => (
-                <li key={i} style={styles.ingredientItem}>
-                  <span>
-                    {formatQuantity(ing.quantity)} {getUnitLabel(ing.unit, ing.quantity)}
-                  </span>
-                  <span>{ing.name}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        {/* Ingredient availability */}
-        <IngredientAvailability availability={scaledAvailability} missingCount={missingCount} />
+        <IngredientAvailability
+          ingredients={displayedIngredients}
+          availability={scaledAvailability}
+          missingCount={missingCount}
+        />
 
         {/* Instructions */}
         <section style={styles.section}>
           <h3 style={styles.sectionTitle}>Instructions</h3>
-          <p style={styles.instructions}>{recipe.instructions}</p>
+          <ol style={styles.instructionsList}>
+            {instructionSteps.filter(Boolean).map((step, index) => (
+              <li key={index} style={styles.instructions}>
+                {step}
+              </li>
+            ))}
+          </ol>
         </section>
+
+        {recipe.chefNotes && (
+          <section style={styles.section} aria-label="Chef's notes">
+            <h3 style={styles.sectionTitle}>Chef&apos;s notes</h3>
+            <p style={styles.instructions}>{recipe.chefNotes}</p>
+          </section>
+        )}
 
         {/* Source URL */}
         {recipe.sourceUrl && (
@@ -336,6 +356,13 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1.6,
     margin: 0,
     whiteSpace: 'pre-wrap',
+  },
+  instructionsList: {
+    margin: 0,
+    paddingLeft: '1.5rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.4rem',
   },
   sourceLink: {
     fontSize: '0.9375rem',

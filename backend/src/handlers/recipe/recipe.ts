@@ -23,9 +23,7 @@ const headers = {
 
 function getUserId(event: APIGatewayProxyEvent): string | null {
   return (
-    event.requestContext.authorizer?.claims?.sub ??
-    event.requestContext.authorizer?.sub ??
-    null
+    event.requestContext.authorizer?.claims?.sub ?? event.requestContext.authorizer?.sub ?? null
   );
 }
 
@@ -37,8 +35,9 @@ function response(statusCode: number, body: unknown): APIGatewayProxyResult {
 
 export interface RecipeIngredient {
   name: string;
-  quantity: number;
+  quantity: number | null;
   unit: string;
+  section?: string;
   inventoryItemId?: string;
 }
 
@@ -50,7 +49,7 @@ export interface InventoryItem {
 
 export interface IngredientStatus {
   name: string;
-  required: number;
+  required: number | null;
   unit: string;
   available: number;
   status: 'available' | 'partial' | 'missing';
@@ -149,9 +148,33 @@ export function scaleIngredients(
   ingredients: RecipeIngredient[],
   fromPortions: number,
   toPortions: number,
-): number[] {
+): Array<number | null> {
   const factor = toPortions / fromPortions;
-  return ingredients.map((ing) => Math.round(ing.quantity * factor * 100) / 100);
+  return ingredients.map((ing) =>
+    ing.quantity === null ? null : Math.round(ing.quantity * factor * 100) / 100,
+  );
+}
+
+/**
+ * Validates the instructions field. Accepts either a non-empty string or a
+ * non-empty array of non-empty strings (the array form is what new clients send).
+ * `undefined` is allowed so callers can treat instructions as optional.
+ */
+function validateInstructions(instructions: unknown): string | null {
+  if (instructions === undefined) return null;
+  if (typeof instructions === 'string') {
+    return instructions.trim() === '' ? 'instructions must not be empty' : null;
+  }
+  if (Array.isArray(instructions)) {
+    if (instructions.length === 0) return 'instructions must have at least one step';
+    for (const step of instructions) {
+      if (typeof step !== 'string' || step.trim() === '') {
+        return 'Each instruction step must be a non-empty string';
+      }
+    }
+    return null;
+  }
+  return 'instructions must be a string or an array of strings';
 }
 
 function validateIngredients(ingredients: unknown): string | null {
@@ -160,8 +183,18 @@ function validateIngredients(ingredients: unknown): string | null {
   }
   for (const ing of ingredients) {
     if (!ing || typeof ing !== 'object') return 'Each ingredient must be an object';
-    if (!ing.quantity || ing.quantity <= 0) return 'Each ingredient must have a positive quantity';
-    if (!ing.unit || String(ing.unit).trim() === '') return 'Each ingredient must have a unit';
+    const ingredient = ing as Record<string, unknown>;
+    if (!ingredient.unit || String(ingredient.unit).trim() === '') {
+      return 'Each ingredient must have a unit';
+    }
+    const unit = String(ingredient.unit).trim();
+    const quantity = ingredient.quantity;
+    const validHandfulQuantity = unit === 'handful' && quantity === null;
+    const validNumericQuantity =
+      typeof quantity === 'number' && Number.isFinite(quantity) && quantity > 0;
+    if (!validHandfulQuantity && !validNumericQuantity) {
+      return 'Each ingredient must have a positive quantity, except handful may be empty';
+    }
   }
   return null;
 }
@@ -178,11 +211,15 @@ export function computeAvailability(
       .reduce((sum, item) => sum + item.quantity, 0);
 
     const status: 'available' | 'partial' | 'missing' =
-      totalAvailable >= ing.quantity
-        ? 'available'
-        : totalAvailable > 0
-          ? 'partial'
-          : 'missing';
+      ing.quantity === null
+        ? totalAvailable > 0
+          ? 'available'
+          : 'missing'
+        : totalAvailable >= ing.quantity
+          ? 'available'
+          : totalAvailable > 0
+            ? 'partial'
+            : 'missing';
 
     return {
       name: ing.name,
@@ -219,41 +256,45 @@ async function autoCreateMissingIngredients(
     (inventoryResult.Items ?? []).map((item) => (item.name as string).toLowerCase()),
   );
 
-  console.log(`autoCreateMissingIngredients: found ${inventoryResult.Items?.length ?? 0} existing items, checking ${ingredients.length} ingredients`);
+  console.log(
+    `autoCreateMissingIngredients: found ${inventoryResult.Items?.length ?? 0} existing items, checking ${ingredients.length} ingredients`,
+  );
 
   const toCreate = ingredients.filter((ing) => !existingNames.has(ing.name.toLowerCase()));
-  console.log(`autoCreateMissingIngredients: creating ${toCreate.length} placeholder items:`, toCreate.map(i => i.name));
+  console.log(
+    `autoCreateMissingIngredients: creating ${toCreate.length} placeholder items:`,
+    toCreate.map((i) => i.name),
+  );
 
   const now = new Date().toISOString();
 
   await Promise.all(
-    toCreate
-      .map((ing) => {
-        const itemId = randomUUID();
-        const unit = resolveUnit(ing.unit);
-        const item = {
-          PK: `USER#${userId}`,
-          SK: `ITEM#${itemId}`,
-          entityType: 'InventoryItem',
-          itemId,
-          userId,
-          name: ing.name,
-          category: 'Uncategorized',
-          expirationDate: '2099-12-31',
-          location: 'unknown',
-          quantity: 0,
-          unit,
-          isLowStock: true,
-          createdAt: now,
-          updatedAt: now,
-          syncVersion: 1,
-          // Use category GSI key so items appear in the "Unknown" category view,
-          // even though isLowStock is true (quantity 0 = out of stock)
-          GSI1PK: `USER#${userId}#CAT#Unknown`,
-          GSI1SK: `ITEM#${itemId}`,
-        };
-        return docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
-      }),
+    toCreate.map((ing) => {
+      const itemId = randomUUID();
+      const unit = resolveUnit(ing.unit);
+      const item = {
+        PK: `USER#${userId}`,
+        SK: `ITEM#${itemId}`,
+        entityType: 'InventoryItem',
+        itemId,
+        userId,
+        name: ing.name,
+        category: 'Uncategorized',
+        expirationDate: '2099-12-31',
+        location: 'unknown',
+        quantity: 0,
+        unit,
+        isLowStock: true,
+        createdAt: now,
+        updatedAt: now,
+        syncVersion: 1,
+        // Use category GSI key so items appear in the "Unknown" category view,
+        // even though isLowStock is true (quantity 0 = out of stock)
+        GSI1PK: `USER#${userId}#CAT#Unknown`,
+        GSI1SK: `ITEM#${itemId}`,
+      };
+      return docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
+    }),
   );
 }
 
@@ -274,10 +315,7 @@ async function listRecipes(userId: string): Promise<APIGatewayProxyResult> {
   return response(200, { recipes: result.Items ?? [] });
 }
 
-async function createRecipe(
-  userId: string,
-  body: string | null,
-): Promise<APIGatewayProxyResult> {
+async function createRecipe(userId: string, body: string | null): Promise<APIGatewayProxyResult> {
   if (!body) {
     return response(400, { error: 'VALIDATION_ERROR', message: 'Missing request body' });
   }
@@ -306,12 +344,23 @@ async function createRecipe(
     });
   }
 
+  const instructionsError = validateInstructions(parsed.instructions);
+  if (instructionsError) {
+    return response(400, {
+      error: 'VALIDATION_ERROR',
+      message: instructionsError,
+      details: [{ field: 'instructions', message: instructionsError }],
+    });
+  }
+
   const invalidTimeField = validateTimeFields(parsed);
   if (invalidTimeField) {
     return response(400, {
       error: 'VALIDATION_ERROR',
       message: `${invalidTimeField} must be a non-negative integer`,
-      details: [{ field: invalidTimeField, message: `${invalidTimeField} must be a non-negative integer` }],
+      details: [
+        { field: invalidTimeField, message: `${invalidTimeField} must be a non-negative integer` },
+      ],
     });
   }
 
@@ -363,6 +412,9 @@ async function createRecipe(
 
   if (parsed.sourceUrl !== undefined && parsed.sourceUrl !== null) {
     recipe.sourceUrl = parsed.sourceUrl;
+  }
+  if (parsed.chefNotes !== undefined && parsed.chefNotes !== null) {
+    recipe.chefNotes = parsed.chefNotes;
   }
 
   if (parsed.prepTime !== undefined) recipe.prepTime = parsed.prepTime as number;
@@ -440,12 +492,26 @@ async function updateRecipe(
     }
   }
 
+  // Validate instructions if provided
+  if (parsed.instructions !== undefined) {
+    const instructionsError = validateInstructions(parsed.instructions);
+    if (instructionsError) {
+      return response(400, {
+        error: 'VALIDATION_ERROR',
+        message: instructionsError,
+        details: [{ field: 'instructions', message: instructionsError }],
+      });
+    }
+  }
+
   const invalidTimeField = validateTimeFields(parsed);
   if (invalidTimeField) {
     return response(400, {
       error: 'VALIDATION_ERROR',
       message: `${invalidTimeField} must be a non-negative integer`,
-      details: [{ field: invalidTimeField, message: `${invalidTimeField} must be a non-negative integer` }],
+      details: [
+        { field: invalidTimeField, message: `${invalidTimeField} must be a non-negative integer` },
+      ],
     });
   }
 
@@ -482,6 +548,7 @@ async function updateRecipe(
     prepTime: 'prepTime',
     cookTime: 'cookTime',
     portions: 'portions',
+    chefNotes: 'chefNotes',
   };
 
   for (const [field, dbField] of Object.entries(updatableFields)) {
@@ -504,9 +571,9 @@ async function updateRecipe(
     updateParts.push(`${alias} = ${valAlias}`);
   }
 
-  // Handle explicit null values for prepTime/cookTime — use REMOVE to delete the attribute
+  // Handle explicit null values for optional fields — use REMOVE to delete the attribute.
   const removeParts: string[] = [];
-  for (const field of ['prepTime', 'cookTime'] as const) {
+  for (const field of ['prepTime', 'cookTime', 'chefNotes'] as const) {
     if (parsed[field] === null) {
       const alias = `#f_${field}`;
       expressionAttrNames[alias] = field;
@@ -576,10 +643,7 @@ async function listRecipeTags(userId: string): Promise<APIGatewayProxyResult> {
   return response(200, { tags: uniqueTags });
 }
 
-async function deleteRecipe(
-  userId: string,
-  recipeId: string,
-): Promise<APIGatewayProxyResult> {
+async function deleteRecipe(userId: string, recipeId: string): Promise<APIGatewayProxyResult> {
   // Verify recipe exists
   const existing = await docClient.send(
     new GetCommand({

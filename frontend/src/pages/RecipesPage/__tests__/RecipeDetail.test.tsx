@@ -9,19 +9,29 @@ import type { RecipeWithAvailability } from '../../../api/recipes/recipes';
 jest.mock('../../../api/recipes/recipes');
 jest.mock('../IngredientAvailability', () => ({
   __esModule: true,
-  default: () => <div data-testid="ingredient-availability" />,
+  default: ({ ingredients }: { ingredients: Array<{ quantity: number | null }> }) => (
+    <div data-testid="ingredient-availability">
+      {ingredients.map((ingredient, index) => (
+        <span key={index}>{ingredient.quantity}</span>
+      ))}
+    </div>
+  ),
 }));
 
 // Restore the real computeTotalTime and scaleIngredients since they are pure functions
-const { computeTotalTime: realComputeTotalTime, scaleIngredients: realScaleIngredients } = jest.requireActual('../../../api/recipes/recipes');
+const { computeTotalTime: realComputeTotalTime, scaleIngredients: realScaleIngredients } =
+  jest.requireActual('../../../api/recipes/recipes');
 const recipesApiModule = jest.requireMock('../../../api/recipes/recipes');
 recipesApiModule.computeTotalTime = realComputeTotalTime;
 recipesApiModule.scaleIngredients = realScaleIngredients;
 
-const mockFetchRecipeWithAvailability = recipesApi.fetchRecipeWithAvailability as jest.MockedFunction<
-  typeof recipesApi.fetchRecipeWithAvailability
+const mockFetchRecipeWithAvailability =
+  recipesApi.fetchRecipeWithAvailability as jest.MockedFunction<
+    typeof recipesApi.fetchRecipeWithAvailability
+  >;
+const mockDeleteRecipe = recipesApi.deleteRecipe as jest.MockedFunction<
+  typeof recipesApi.deleteRecipe
 >;
-const mockDeleteRecipe = recipesApi.deleteRecipe as jest.MockedFunction<typeof recipesApi.deleteRecipe>;
 
 const sampleData: RecipeWithAvailability = {
   recipe: {
@@ -63,6 +73,23 @@ describe('RecipeDetail', () => {
     render(<RecipeDetail {...defaultProps} />);
     await waitFor(() => expect(screen.getByText('Pasta Carbonara')).toBeInTheDocument());
     expect(screen.getByText('Boil pasta. Mix eggs and cheese. Combine.')).toBeInTheDocument();
+  });
+
+  it('renders numbered instruction steps and chef notes', async () => {
+    mockFetchRecipeWithAvailability.mockResolvedValue({
+      ...sampleData,
+      recipe: {
+        ...sampleData.recipe,
+        instructions: ['Chop herbs', 'Mix sauce'],
+        chefNotes: 'Taste before serving.',
+      },
+    });
+    render(<RecipeDetail {...defaultProps} />);
+    await waitFor(() => screen.getByText('Chop herbs'));
+    expect(screen.getByText('Mix sauce')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /chef's notes/i })).toHaveTextContent(
+      'Taste before serving.',
+    );
   });
 
   it('renders source URL link with target="_blank" rel="noopener noreferrer" when sourceUrl is present', async () => {
