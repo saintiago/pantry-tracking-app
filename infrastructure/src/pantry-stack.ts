@@ -255,6 +255,32 @@ export class PantryStack extends cdk.Stack {
     recipeIdResource.addMethod('PUT', recipeIntegration, authMethodOptions);
     recipeIdResource.addMethod('DELETE', recipeIntegration, authMethodOptions);
 
+    // ─── Meal Plan Lambda ───────────────────────────────────────────
+    const mealPlanLambda = new NodejsFunction(this, 'MealPlanLambda', {
+      functionName: 'PantryMealPlanFunction',
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'handler',
+      entry: path.join(__dirname, '../../backend/src/handlers/meal-plan/meal-plan.ts'),
+      environment: {
+        TABLE_NAME: this.table.tableName,
+      },
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 256,
+    });
+
+    this.table.grantReadWriteData(mealPlanLambda);
+
+    // API Gateway: /meal-plans routes (authenticated)
+    const mealPlansResource = this.api.root.addResource('meal-plans');
+    const mealPlanIntegration = new apigateway.LambdaIntegration(mealPlanLambda);
+
+    mealPlansResource.addMethod('GET', mealPlanIntegration, authMethodOptions);
+    mealPlansResource.addMethod('POST', mealPlanIntegration, authMethodOptions);
+
+    const mealPlanIdResource = mealPlansResource.addResource('{planId}');
+    mealPlanIdResource.addMethod('PUT', mealPlanIntegration, authMethodOptions);
+    mealPlanIdResource.addMethod('DELETE', mealPlanIntegration, authMethodOptions);
+
     // ─── CloudFront Distribution ─────────────────────────────────────
     const originAccessIdentity = new cloudfront.OriginAccessIdentity(
       this,
