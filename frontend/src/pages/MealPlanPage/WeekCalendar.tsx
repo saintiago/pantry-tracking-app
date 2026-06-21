@@ -1,6 +1,6 @@
 import React from 'react';
 import DayColumn from './DayColumn';
-import { groupByDate } from './weekUtils';
+import { getMonthYearLabel, groupByDate } from './weekUtils';
 import type { Assignment } from './weekUtils';
 
 interface WeekCalendarProps {
@@ -29,8 +29,13 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({
   // When there's an error, pass empty arrays to all DayColumns (Req 1.9)
   const grouped = error ? groupByDate([], weekDates) : groupByDate(assignments, weekDates);
 
+  const monthYearLabel = getMonthYearLabel(weekDates);
+
   return (
     <div style={styles.container}>
+      {/* Month/year label for the visible week */}
+      <h2 style={styles.monthLabel}>{monthYearLabel}</h2>
+
       {/* Navigation controls — disabled while loading (Req 3.1, 3.5) */}
       <div style={styles.nav}>
         <button
@@ -93,6 +98,13 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     gap: '0.75rem',
     width: '100%',
+  },
+  monthLabel: {
+    margin: 0,
+    textAlign: 'center',
+    fontSize: '1rem',
+    fontWeight: 600,
+    color: '#374151',
   },
   nav: {
     display: 'flex',

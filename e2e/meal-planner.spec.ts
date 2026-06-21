@@ -39,6 +39,31 @@ function getDayNumber(isoDate: string): number {
   return Number(isoDate.split('-')[2]);
 }
 
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+/** Mirrors frontend getMonthYearLabel for the visible week (start … start+6). */
+function getMonthYearLabel(start: string): string {
+  const end = addDaysIso(start, 6);
+  const [fy, fm] = start.split('-').map(Number);
+  const [ly, lm] = end.split('-').map(Number);
+  if (fy === ly && fm === lm) return `${MONTH_NAMES[fm - 1]} ${fy}`;
+  if (fy === ly) return `${MONTH_NAMES[fm - 1]} – ${MONTH_NAMES[lm - 1]} ${ly}`;
+  return `${MONTH_NAMES[fm - 1]} ${fy} – ${MONTH_NAMES[lm - 1]} ${ly}`;
+}
+
 // ─── Mock data ───────────────────────────────────────────────────────────────
 
 interface MockMealPlan {
@@ -235,6 +260,12 @@ test.describe('Meal Planner', () => {
   test('day columns show numeric dates matching the current week (Req 1.1)', async ({ page }) => {
     await expect(page.getByText(String(getDayNumber(weekStart))).first()).toBeVisible();
     await expect(page.getByText(String(getDayNumber(weekEnd))).first()).toBeVisible();
+  });
+
+  test('shows the month/year label for the visible week', async ({ page }) => {
+    await expect(
+      page.getByRole('heading', { name: getMonthYearLabel(weekStart) }),
+    ).toBeVisible();
   });
 
   test('renders seeded meal plan cards for the current week (Req 1.1)', async ({ page }) => {

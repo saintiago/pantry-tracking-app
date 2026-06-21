@@ -6,6 +6,21 @@ const MEAL_TYPE_ORDER: Record<string, number> = {
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
 /**
  * Returns the ISO date string (YYYY-MM-DD) of the Monday of the week
  * containing the given reference Date.
@@ -61,6 +76,30 @@ export function getDayLabel(isoDate: string): string {
 export function getDayNumber(isoDate: string): number {
   const [, , day] = isoDate.split('-').map(Number);
   return day;
+}
+
+/**
+ * Returns a human-readable month/year label spanning the given week dates.
+ * - Single month:        "March 2024"
+ * - Spans two months:    "March – April 2024"
+ * - Spans two years:     "December 2024 – January 2025"
+ * Returns an empty string when given no dates.
+ */
+export function getMonthYearLabel(weekDates: string[]): string {
+  if (weekDates.length === 0) return '';
+  const [firstYear, firstMonth] = weekDates[0].split('-').map(Number);
+  const [lastYear, lastMonth] = weekDates[weekDates.length - 1].split('-').map(Number);
+
+  const firstMonthName = MONTH_NAMES[firstMonth - 1];
+  const lastMonthName = MONTH_NAMES[lastMonth - 1];
+
+  if (firstYear === lastYear && firstMonth === lastMonth) {
+    return `${firstMonthName} ${firstYear}`;
+  }
+  if (firstYear === lastYear) {
+    return `${firstMonthName} – ${lastMonthName} ${lastYear}`;
+  }
+  return `${firstMonthName} ${firstYear} – ${lastMonthName} ${lastYear}`;
 }
 
 export interface Assignment {

@@ -58,6 +58,12 @@ describe('WeekCalendar — rendering', () => {
     });
   });
 
+  it('renders the month/year label for the visible week', () => {
+    // weekStart 2025-06-02 → all 7 days fall in June 2025
+    renderCalendar();
+    expect(screen.getByRole('heading', { name: 'June 2025' })).toBeInTheDocument();
+  });
+
   it('renders recipe cards for assignments', () => {
     const assignments = [makeAssignment({ recipeName: 'Pancakes', mealType: 'breakfast' })];
     renderCalendar({ assignments });
