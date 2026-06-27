@@ -1,7 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import type { StorageLocation } from '../../api/locations';
+import type { StorageLocation } from '../../api/locations/locations';
 import { getUnitLabel } from '../../types/units';
 import { formatQuantity } from '../../utils/quantity';
+import { useHoverState, useInteractionFeedback } from '../../hooks/useInventoryAnimations';
+import Tooltip from '../Tooltip/Tooltip';
 
 export interface InventoryItem {
   itemId: string;
@@ -86,7 +88,7 @@ export const InAppNotification: React.FC<InAppNotificationProps> = ({
 }) => {
   if (!visible) return null;
   return (
-    <div style={styles.notification} role="alert">
+    <div style={styles.notification} role="alert" className="inv-fade-slide-in">
       <span>{message}</span>
       <button onClick={onDismiss} style={styles.notificationClose} aria-label="Dismiss notification">
         ✕
@@ -109,6 +111,7 @@ export const QuickFilterInput: React.FC<QuickFilterInputProps> = ({ value, onCha
     onChange={(e) => onChange(e.target.value)}
     placeholder="Search by name…"
     aria-label="Filter by product name"
+    className="inv-input"
     style={styles.filterInput}
   />
 );
@@ -130,6 +133,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
     value={value}
     onChange={(e) => onChange(e.target.value)}
     aria-label="Filter by category"
+    className="inv-select"
     style={styles.filterSelect}
   >
     <option value="All">All Categories</option>
@@ -154,6 +158,7 @@ export const LocationFilter: React.FC<LocationFilterProps> = ({ locations, value
     value={value}
     onChange={(e) => onChange(e.target.value)}
     aria-label="Filter by location"
+    className="inv-select"
     style={styles.filterSelect}
   >
     <option value="All">All Locations</option>
@@ -173,22 +178,38 @@ interface CategoryCardProps {
 }
 
 export const CategoryCard: React.FC<CategoryCardProps> = ({ summary, onClick }) => {
+  const { isHovered, hoverProps } = useHoverState();
+  const { feedbackClass, triggerSuccess } = useInteractionFeedback();
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
+      triggerSuccess();
       onClick();
     }
+  };
+
+  const handleClick = () => {
+    triggerSuccess();
+    onClick();
   };
 
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={onClick}
+      onClick={handleClick}
       onKeyDown={handleKeyDown}
       aria-label={`${summary.category}, ${summary.itemCount} items, ${formatQuantityByUnit(summary.quantityByUnit)}`}
-      style={styles.categoryCard}
+      className={feedbackClass}
+      style={{
+        ...styles.categoryCard,
+        boxShadow: isHovered ? 'var(--inv-shadow-md)' : 'var(--inv-shadow-sm)',
+        transform: isHovered ? 'scale(1.025)' : 'scale(1)',
+        transition: 'transform 0.2s var(--inv-spring, cubic-bezier(0.34,1.56,0.64,1)), box-shadow 0.2s ease',
+      }}
       data-testid={`category-card-${summary.category}`}
+      {...hoverProps}
     >
       <div style={styles.categoryCardHeader}>
         <span style={styles.categoryCardName}>{summary.category}</span>
@@ -214,21 +235,37 @@ interface BackButtonProps {
 }
 
 export const BackButton: React.FC<BackButtonProps> = ({ onClick }) => {
+  const { isHovered, hoverProps } = useHoverState();
+  const { feedbackClass, triggerSuccess } = useInteractionFeedback();
+
+  const handleClick = () => {
+    triggerSuccess();
+    onClick();
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      onClick();
+      handleClick();
     }
   };
 
   return (
     <button
-      onClick={onClick}
+      onClick={handleClick}
       onKeyDown={handleKeyDown}
       aria-label="Back to categories"
-      style={styles.backButton}
+      className={feedbackClass}
+      style={{
+        ...styles.backButton,
+        backgroundColor: isHovered ? 'var(--inv-lavender)' : 'var(--inv-lavender-light)',
+        color: isHovered ? '#ffffff' : '#6b50a0',
+        transform: isHovered ? 'scale(1.02)' : 'scale(1)',
+        transition: 'transform 0.18s var(--inv-spring, cubic-bezier(0.34,1.56,0.64,1)), background-color 0.15s ease, color 0.15s ease',
+      }}
+      {...hoverProps}
     >
-      ← Back to categories
+      ‹ Back
     </button>
   );
 };
@@ -251,72 +288,94 @@ export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
   onClick,
 }) => {
   const isClickable = !removeMode && !!onClick;
+  const { isHovered: isCardHovered, hoverProps: cardHoverProps } = useHoverState();
+  const { isHovered: isRemoveHovered, hoverProps: removeHoverProps } = useHoverState();
+  const { feedbackClass, triggerSuccess } = useInteractionFeedback();
+
+  const handleClick = () => {
+    if (isClickable) {
+      triggerSuccess();
+      onClick?.();
+    }
+  };
 
   return (
-  <div
-    style={{
-      ...styles.card,
-      ...(removeMode ? styles.cardRemoveMode : {}),
-      ...(isClickable ? { cursor: 'pointer' } : {}),
-    }}
-    data-testid={`item-card-${item.itemId}`}
-    onClick={isClickable ? onClick : undefined}
-    onKeyDown={
-      isClickable
-        ? (e: React.KeyboardEvent) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              onClick();
+    <div
+      style={{
+        ...styles.card,
+        ...(removeMode ? styles.cardRemoveMode : {}),
+        ...(isClickable ? { cursor: 'pointer' } : {}),
+        boxShadow: isCardHovered && isClickable ? 'var(--inv-shadow-md)' : 'var(--inv-shadow-sm)',
+        transform: isCardHovered && isClickable ? 'scale(1.015)' : 'scale(1)',
+        transition: 'transform 0.2s var(--inv-spring, cubic-bezier(0.34,1.56,0.64,1)), box-shadow 0.2s ease',
+      }}
+      className={feedbackClass}
+      data-testid={`item-card-${item.itemId}`}
+      onClick={handleClick}
+      onKeyDown={
+        isClickable
+          ? (e: React.KeyboardEvent) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleClick();
+              }
             }
-          }
-        : undefined
-    }
-    role={isClickable ? 'button' : undefined}
-    tabIndex={isClickable ? 0 : undefined}
-  >
-    {/* Thumbnail area */}
-    <div style={styles.thumbnail} aria-label="Item picture">
-      {item.pictureUrl ? (
-        <img src={item.pictureUrl} alt={item.name} style={styles.thumbnailImg} />
-      ) : (
-        <span style={styles.thumbnailPlaceholder} aria-hidden="true">
-          📦
-        </span>
+          : undefined
+      }
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      {...(isClickable ? cardHoverProps : {})}
+    >
+      {/* Thumbnail area */}
+      <div style={styles.thumbnail} aria-label="Item picture">
+        {item.pictureUrl ? (
+          <img src={item.pictureUrl} alt={item.name} style={styles.thumbnailImg} />
+        ) : (
+          <span style={styles.thumbnailPlaceholder} aria-hidden="true">
+            📦
+          </span>
+        )}
+      </div>
+
+      <div style={styles.cardBody}>
+        <div style={styles.cardHeader}>
+          <span style={styles.itemName}>{item.name}</span>
+          {item.isLowStock && <LowStockBadge />}
+        </div>
+
+        <div style={styles.cardMeta}>
+          <span style={styles.categoryBadge}>{item.category}</span>
+          <span style={styles.locationBadge}>{locationName}</span>
+        </div>
+
+        <div style={styles.cardDetails}>
+          <span>
+            {formatQuantity(item.quantity)} {getUnitLabel(item.unit, item.quantity)}
+          </span>
+          <span style={styles.expiration}>Exp: {item.expirationDate}</span>
+        </div>
+      </div>
+
+      {removeMode && onRemove && (
+        <Tooltip content={`Remove ${item.name}`}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove(item.itemId);
+            }}
+            style={{
+              ...styles.removeItemButton,
+              backgroundColor: isRemoveHovered ? 'var(--inv-primary-bg)' : 'transparent',
+              transition: 'background-color 0.15s ease',
+            }}
+            aria-label={`Remove ${item.name}`}
+            {...removeHoverProps}
+          >
+            ✕
+          </button>
+        </Tooltip>
       )}
     </div>
-
-    <div style={styles.cardBody}>
-      <div style={styles.cardHeader}>
-        <span style={styles.itemName}>{item.name}</span>
-        {item.isLowStock && <LowStockBadge />}
-      </div>
-
-      <div style={styles.cardMeta}>
-        <span style={styles.categoryBadge}>{item.category}</span>
-        <span style={styles.locationBadge}>{locationName}</span>
-      </div>
-
-      <div style={styles.cardDetails}>
-        <span>
-          {formatQuantity(item.quantity)} {getUnitLabel(item.unit, item.quantity)}
-        </span>
-        <span style={styles.expiration}>Exp: {item.expirationDate}</span>
-      </div>
-    </div>
-
-    {removeMode && onRemove && (
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onRemove(item.itemId);
-        }}
-        style={styles.removeItemButton}
-        aria-label={`Remove ${item.name}`}
-      >
-        ✕
-      </button>
-    )}
-  </div>
   );
 };
 
@@ -343,6 +402,7 @@ const InventoryList: React.FC<InventoryListProps> = ({
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [viewMode, setViewMode] = useState<'category-summary' | 'item-list'>('category-summary');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const { feedbackClass: toggleFeedbackClass, triggerSuccess: triggerToggleSuccess } = useInteractionFeedback();
 
   const categories = useMemo(() => {
     const unique = Array.from(new Set(items.map((i) => i.category)));
@@ -421,17 +481,23 @@ const InventoryList: React.FC<InventoryListProps> = ({
 
       {/* Low-stock toggle */}
       <div style={styles.toggleRow}>
-        <button
-          onClick={() => setShowLowStockOnly((prev) => !prev)}
-          style={{
-            ...styles.lowStockToggle,
-            ...(showLowStockOnly ? styles.lowStockToggleActive : {}),
-          }}
-          aria-pressed={showLowStockOnly}
-          aria-label="Show low stock items only"
-        >
-          ⚠️ Low Stock
-        </button>
+        <Tooltip content="Show low-stock items only">
+          <button
+            onClick={() => {
+              setShowLowStockOnly((prev) => !prev);
+              triggerToggleSuccess();
+            }}
+            className={toggleFeedbackClass}
+            style={{
+              ...styles.lowStockToggle,
+              ...(showLowStockOnly ? styles.lowStockToggleActive : {}),
+            }}
+            aria-pressed={showLowStockOnly}
+            aria-label="Show low stock items only"
+          >
+            ⚠️ Low Stock
+          </button>
+        </Tooltip>
       </div>
 
       {/* Category summary view */}
@@ -497,22 +563,27 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: 44,
     padding: '0.5rem 0.75rem',
     fontSize: '1rem',
-    border: '1px solid #d1d5db',
-    borderRadius: 6,
+    border: '1.5px solid var(--inv-border)',
+    borderRadius: 'var(--inv-radius-sm)' as unknown as number,
     outline: 'none',
     width: '100%',
     boxSizing: 'border-box' as const,
+    backgroundColor: 'var(--inv-warm-white)',
+    color: 'var(--inv-text)',
   },
   filterSelect: {
     minHeight: 44,
     padding: '0.5rem 0.75rem',
     fontSize: '1rem',
-    border: '1px solid #d1d5db',
-    borderRadius: 6,
+    border: '1.5px solid var(--inv-border)',
+    borderRadius: 'var(--inv-radius-sm)' as unknown as number,
     outline: 'none',
     width: '100%',
     boxSizing: 'border-box' as const,
-    backgroundColor: '#ffffff',
+    backgroundColor: 'var(--inv-warm-white)',
+    color: 'var(--inv-text)',
+    appearance: 'none' as const,
+    cursor: 'pointer',
   },
   toggleRow: {
     marginBottom: '0.75rem',
@@ -523,48 +594,48 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.5rem 1rem',
     fontSize: '0.875rem',
     fontWeight: 600,
-    color: '#92400e',
-    backgroundColor: '#fef3c7',
+    color: '#b87040',
+    backgroundColor: 'var(--inv-amber-light)',
     borderWidth: 1,
     borderStyle: 'solid',
-    borderColor: '#fbbf24',
-    borderRadius: 20,
+    borderColor: '#f0c4a0',
+    borderRadius: 'var(--inv-radius-full)' as unknown as number,
     cursor: 'pointer',
   },
   lowStockToggleActive: {
-    backgroundColor: '#f59e0b',
+    backgroundColor: 'var(--inv-amber)',
     color: '#ffffff',
-    borderColor: '#d97706',
+    borderColor: '#d4905c',
   },
   emptyText: {
     textAlign: 'center' as const,
-    color: '#6b7280',
+    color: 'var(--inv-text-muted)',
     padding: '2rem 0',
   },
   itemsList: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.5rem',
+    gap: '0.625rem',
   },
   card: {
     display: 'flex',
     alignItems: 'flex-start',
     gap: '0.75rem',
     padding: '0.75rem',
-    border: '1px solid #e5e7eb',
-    borderRadius: 10,
-    backgroundColor: '#ffffff',
+    border: '1.5px solid var(--inv-border)',
+    borderRadius: 'var(--inv-radius-md)' as unknown as number,
+    backgroundColor: 'var(--inv-warm-white)',
   },
   cardRemoveMode: {
-    borderColor: '#fca5a5',
-    backgroundColor: '#fef2f2',
+    borderColor: 'var(--inv-primary)',
+    backgroundColor: 'var(--inv-primary-bg)',
   },
   thumbnail: {
     width: 48,
     height: 48,
     minWidth: 48,
-    borderRadius: 6,
-    backgroundColor: '#f3f4f6',
+    borderRadius: 'var(--inv-radius-xs)' as unknown as number,
+    backgroundColor: '#f5ede8',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -594,6 +665,7 @@ const styles: Record<string, React.CSSProperties> = {
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap' as const,
+    color: 'var(--inv-text)',
   },
   cardMeta: {
     display: 'flex',
@@ -604,33 +676,33 @@ const styles: Record<string, React.CSSProperties> = {
   categoryBadge: {
     fontSize: '0.75rem',
     padding: '2px 8px',
-    borderRadius: 12,
-    backgroundColor: '#e0e7ff',
-    color: '#3730a3',
+    borderRadius: 'var(--inv-radius-full)' as unknown as number,
+    backgroundColor: 'var(--inv-category-bg)',
+    color: 'var(--inv-category-text)',
   },
   locationBadge: {
     fontSize: '0.75rem',
     padding: '2px 8px',
-    borderRadius: 12,
-    backgroundColor: '#d1fae5',
-    color: '#065f46',
+    borderRadius: 'var(--inv-radius-full)' as unknown as number,
+    backgroundColor: 'var(--inv-sage-light)',
+    color: '#3a7a50',
   },
   cardDetails: {
     display: 'flex',
     gap: '1rem',
     fontSize: '0.8125rem',
-    color: '#4b5563',
+    color: 'var(--inv-text-muted)',
   },
   expiration: {
-    color: '#6b7280',
+    color: 'var(--inv-text-muted)',
   },
   lowStockBadge: {
     fontSize: '0.6875rem',
     fontWeight: 700,
     padding: '2px 6px',
-    borderRadius: 10,
-    backgroundColor: '#fef3c7',
-    color: '#92400e',
+    borderRadius: 'var(--inv-radius-full)' as unknown as number,
+    backgroundColor: 'var(--inv-primary-bg)',
+    color: 'var(--inv-primary-dark)',
     whiteSpace: 'nowrap' as const,
   },
   removeItemButton: {
@@ -640,10 +712,9 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     fontSize: '1.125rem',
-    color: '#dc2626',
-    backgroundColor: 'transparent',
-    border: '1px solid #fca5a5',
-    borderRadius: 8,
+    color: 'var(--inv-primary-dark)',
+    border: '1px solid var(--inv-primary)',
+    borderRadius: 'var(--inv-radius-xs)' as unknown as number,
     cursor: 'pointer',
   },
   notification: {
@@ -651,9 +722,9 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: '0.75rem 1rem',
-    backgroundColor: '#fef3c7',
-    border: '1px solid #fbbf24',
-    borderRadius: 8,
+    backgroundColor: 'var(--inv-lavender-light)',
+    border: '1px solid #c4b5d4',
+    borderRadius: 'var(--inv-radius-md)' as unknown as number,
     marginBottom: '0.75rem',
   },
   notificationClose: {
@@ -666,14 +737,14 @@ const styles: Record<string, React.CSSProperties> = {
     border: 'none',
     fontSize: '1rem',
     cursor: 'pointer',
-    color: '#92400e',
+    color: 'var(--inv-lavender)',
   },
   categoryCard: {
     minHeight: 44,
     padding: '0.875rem 1rem',
-    border: '1px solid #e5e7eb',
-    borderRadius: 10,
-    backgroundColor: '#ffffff',
+    border: '1.5px solid var(--inv-border)',
+    borderRadius: 'var(--inv-radius-md)' as unknown as number,
+    backgroundColor: 'var(--inv-warm-white)',
     cursor: 'pointer',
     userSelect: 'none' as const,
   },
@@ -686,39 +757,39 @@ const styles: Record<string, React.CSSProperties> = {
   categoryCardName: {
     fontWeight: 600,
     fontSize: '1rem',
+    color: 'var(--inv-text)',
   },
   categoryLowStockBadge: {
     fontSize: '0.75rem',
     fontWeight: 600,
     padding: '2px 8px',
-    borderRadius: 12,
-    backgroundColor: '#fef3c7',
-    color: '#92400e',
+    borderRadius: 'var(--inv-radius-full)' as unknown as number,
+    backgroundColor: 'var(--inv-amber-light)',
+    color: '#b87040',
   },
   categoryCardStats: {
     display: 'flex',
     gap: '0.375rem',
     fontSize: '0.875rem',
-    color: '#6b7280',
+    color: 'var(--inv-text-muted)',
   },
   categoryCardDot: {
-    color: '#d1d5db',
+    color: 'var(--inv-border)',
   },
   categoryGrid: {
     display: 'flex',
     flexDirection: 'column' as const,
-    gap: '0.5rem',
+    gap: '0.625rem',
   },
   backButton: {
     minHeight: 44,
     minWidth: 44,
-    padding: '0.5rem 1rem',
+    padding: '0.5rem 1.25rem',
     fontSize: '0.9375rem',
-    fontWeight: 500,
-    color: '#374151',
-    backgroundColor: '#f3f4f6',
-    border: '1px solid #e5e7eb',
-    borderRadius: 8,
+    fontWeight: 600,
+    border: 'none',
+    borderRadius: 'var(--inv-radius-md)' as unknown as number,
+    boxShadow: 'var(--inv-shadow-sm)',
     cursor: 'pointer',
     marginBottom: '0.75rem',
     display: 'inline-flex',

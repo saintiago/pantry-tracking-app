@@ -24,22 +24,39 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ activePage, onNavigate, children }) => {
+  const isInventory = activePage === 'inventory';
+  const activeColor = isInventory ? '#d4829a' : '#4a90d9';
+
   return (
     <div className="layout" style={styles.layout}>
       {/* Header */}
-      <header style={styles.header}>
+      <header style={{
+        ...styles.header,
+        backgroundColor: isInventory ? '#fffaf8' : '#ffffff',
+        borderBottom: `1px solid ${isInventory ? '#f0ddd5' : '#e5e7eb'}`,
+      }}>
         <div style={styles.titleGroup}>
-          <h1 style={styles.title}>Pantry Tracking App</h1>
+          <h1 style={{
+            ...styles.title,
+            color: isInventory ? '#4a3f3a' : '#1a1a1a',
+          }}>Pantry Tracking App</h1>
           <span style={styles.version}>v{APP_VERSION}</span>
         </div>
         <OnlineIndicator />
       </header>
 
       {/* Main content */}
-      <main style={styles.main}>{children}</main>
+      <main style={{
+        ...styles.main,
+        backgroundColor: isInventory ? '#fdf6f0' : undefined,
+      }}>{children}</main>
 
       {/* Bottom navigation */}
-      <nav style={styles.nav} aria-label="Main navigation">
+      <nav style={{
+        ...styles.nav,
+        backgroundColor: isInventory ? '#fffaf8' : '#ffffff',
+        borderTop: `1px solid ${isInventory ? '#f0ddd5' : '#e5e7eb'}`,
+      }} aria-label="Main navigation">
         {NAV_ITEMS.map((item) => {
           const isActive = activePage === item.id;
           return (
@@ -49,8 +66,8 @@ const Layout: React.FC<LayoutProps> = ({ activePage, onNavigate, children }) => 
               aria-current={isActive ? 'page' : undefined}
               style={{
                 ...styles.navButton,
-                color: isActive ? '#4a90d9' : '#6b7280',
-                borderTop: isActive ? '2px solid #4a90d9' : '2px solid transparent',
+                color: isActive ? activeColor : '#6b7280',
+                borderTop: isActive ? `2px solid ${activeColor}` : '2px solid transparent',
               }}
             >
               <span style={styles.navIcon} aria-hidden="true">

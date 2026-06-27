@@ -1,0 +1,118 @@
+/* ── Inventory Pilot Theme ──────────────────────────────────────────
+   Imported only by InventoryPage.tsx. Custom properties are prefixed
+   --inv- to namespace them; they don't affect any other page.
+   ────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Brand */
+  --inv-primary:         #d4829a;
+  --inv-primary-light:   #f5c6d5;
+  --inv-primary-dark:    #b5607a;
+  --inv-primary-bg:      #fdeef3;
+
+  /* Lavender */
+  --inv-lavender:        #a89bc4;
+  --inv-lavender-light:  #ede8f5;
+
+  /* Sage */
+  --inv-sage:            #7eb890;
+  --inv-sage-light:      #d4e8d8;
+
+  /* Amber */
+  --inv-amber:           #e8a87c;
+  --inv-amber-light:     #fdf0e4;
+
+  /* Surface */
+  --inv-cream:           #fdf6f0;
+  --inv-warm-white:      #fffaf8;
+  --inv-border:          #f0ddd5;
+
+  /* Text */
+  --inv-text:            #4a3f3a;
+  --inv-text-muted:      #9c8880;
+
+  /* Badges */
+  --inv-category-bg:     #ede8f5;
+  --inv-category-text:   #6b50a0;
+
+  /* Border radii */
+  --inv-radius-xs:   10px;
+  --inv-radius-sm:   14px;
+  --inv-radius-md:   18px;
+  --inv-radius-lg:   22px;
+  --inv-radius-full: 9999px;
+
+  /* Shadows */
+  --inv-shadow-sm:    0 2px 8px rgba(180, 110, 130, 0.10);
+  --inv-shadow-md:    0 4px 16px rgba(180, 110, 130, 0.18);
+  --inv-shadow-hover: 0 6px 22px rgba(180, 110, 130, 0.24);
+
+  /* Easing */
+  --inv-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --inv-smooth: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* ── Keyframes ──────────────────────────────────────────────────── */
+
+@keyframes inv-shake {
+  0%, 100% { transform: translateX(0); }
+  15%       { transform: translateX(-7px); }
+  30%       { transform: translateX(6px); }
+  45%       { transform: translateX(-4px); }
+  60%       { transform: translateX(3px); }
+  75%       { transform: translateX(-2px); }
+}
+
+@keyframes inv-bounce {
+  0%   { transform: scale(1); }
+  28%  { transform: scale(1.13); }
+  58%  { transform: scale(0.93); }
+  78%  { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+@keyframes inv-fade-slide-in {
+  from { opacity: 0; transform: translateY(-10px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes inv-pulse-error {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 130, 154, 0.5); }
+  50%       { box-shadow: 0 0 0 7px rgba(212, 130, 154, 0); }
+}
+
+/* ── Utility animation classes ──────────────────────────────────── */
+
+.inv-shake {
+  animation: inv-shake 420ms var(--inv-smooth) both;
+}
+
+.inv-bounce {
+  animation: inv-bounce 480ms var(--inv-spring) both;
+}
+
+.inv-fade-slide-in {
+  animation: inv-fade-slide-in 280ms var(--inv-smooth) both;
+}
+
+.inv-pulse-error {
+  animation: inv-pulse-error 700ms ease 2 both;
+}
+
+/* ── Focus rings (applied via className="inv-input" / "inv-select") */
+
+.inv-input:focus,
+.inv-select:focus {
+  outline: none;
+  border-color: var(--inv-primary) !important;
+  box-shadow: 0 0 0 3px rgba(212, 130, 154, 0.22);
+}
+
+/* ── Custom select arrow (replaces native arrow when appearance:none) */
+
+.inv-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239c8880' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px !important;
+}
