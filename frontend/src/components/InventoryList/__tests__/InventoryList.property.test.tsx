@@ -184,6 +184,16 @@ describe('Property 7: Combined Filter Correctness', () => {
                 view.queryByText('No items match the current filters.'),
               ).not.toBeInTheDocument();
 
+              // Items are rendered inside collapsible Grouped_Rows that are
+              // collapsed by default; expand every group so each child item
+              // card is visible for the assertions below.
+              const toggles = container.querySelectorAll(
+                '[role="button"][aria-expanded="false"]',
+              );
+              for (const toggle of Array.from(toggles)) {
+                await user.click(toggle);
+              }
+
               // Each expected item should be visible
               for (const item of expected) {
                 expect(view.getByTestId(`item-card-${item.itemId}`)).toBeInTheDocument();

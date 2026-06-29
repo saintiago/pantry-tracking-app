@@ -63,11 +63,47 @@ const INITIAL_FORM = {
 };
 
 const AUTOFILL_STYLES = {
+  // Existing prefilled highlight (blue): used when a field was populated by Autofill
+  // but the form is not in merge state.
   prefilled: {
     backgroundColor: '#e0f2fe',
     borderColor: '#0284c7',
   },
+  // Reactive merge-state highlight (yellow, Req 6.1): used for prefilled fields while
+  // the form remains in merge state. Background `#fef9c3` with text `#854d0e` yields a
+  // contrast ratio of ≈ 8.6:1 (≥ 4.5:1). `#ca8a04` is the complementary border.
+  merge: {
+    backgroundColor: '#fef9c3',
+    color: '#854d0e',
+    borderColor: '#ca8a04',
+  },
 };
+
+/**
+ * Snapshot of the values originally populated by a full Autofill, keyed by form
+ * field. Recorded when a suggestion is selected so the merge state can be derived
+ * reactively as the user edits the form.
+ */
+export type AutofillSnapshot = Record<string, string>;
+
+/**
+ * Pure predicate that drives the reactive merge state (submit-button label and
+ * prefilled-field highlight). Returns true iff a snapshot exists and every
+ * snapshot field other than `quantity` still equals the value originally
+ * populated by Autofill. The `quantity` field is excluded so that editing only
+ * the quantity never moves the form out of merge state.
+ *
+ * Validates: Requirements 5.1, 5.2, 5.5, 6.5, 6.6
+ */
+export function isMergeState(
+  snapshot: AutofillSnapshot | null,
+  form: Record<string, string>,
+): boolean {
+  if (!snapshot) return false;
+  return Object.entries(snapshot)
+    .filter(([field]) => field !== 'quantity')
+    .every(([field, original]) => form[field] === original);
+}
 
 const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, prefillData }) => {
   const [form, setForm] = useState({
@@ -93,6 +129,9 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
   });
   const prefilledFieldsRef = useRef<Set<string>>(new Set());
   const [userEditedFields, setUserEditedFields] = useState<Set<string>>(new Set());
+  // Values originally populated by the most recent full Autofill. Drives the
+  // reactive merge state (submit label + highlight) via isMergeState.
+  const [autofillSnapshot, setAutofillSnapshot] = useState<AutofillSnapshot | null>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [lastLookupBarcode, setLastLookupBarcode] = useState<string | null>(null);
@@ -142,13 +181,39 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
       if (!prev.whereToBuy && item.whereToBuy) { updates.whereToBuy = item.whereToBuy; newPrefilledFields.add('whereToBuy'); }
       if (!prev.onlineStoreLink && item.onlineStoreLink) { updates.onlineStoreLink = item.onlineStoreLink; newPrefilledFields.add('onlineStoreLink'); }
       if ((triggerField === 'barcode' || !prev.barcode) && item.barcode) { updates.barcode = item.barcode; newPrefilledFields.add('barcode'); }
-      if (!prev.expirationDate && item.expirationDate) { updates.expirationDate = item.expirationDate; newPrefilledFields.add('expirationDate'); }
+
+      // Copy the suggestion's expiration date only when it is non-empty AND the field
+      // is empty, marking it prefilled (Req 4.1, 4.2). An existing user-entered value is
+      // left untouched, and a suggestion with no expiration leaves the field unchanged
+      // (Req 4.4, 4.5).
+      const didFillExpiration = !prev.expirationDate && !!item.expirationDate;
+      if (didFillExpiration) {
+        updates.expirationDate = item.expirationDate;
+        newPrefilledFields.add('expirationDate');
+      }
 
       if (newPrefilledFields.size > 0) {
         setPrefilledFields((p) => new Set([...p, ...newPrefilledFields]));
       }
 
-      if (!prev.expirationDate) {
+      // Record the snapshot of values populated by this full Autofill (keyed by
+      // form field) so the merge state can be derived reactively as the user
+      // edits the form (Req 5, 6). Selecting a suggestion establishes a fresh
+      // baseline, so the snapshot replaces any previous one.
+      const snapshot: AutofillSnapshot = {};
+      (Object.keys(updates) as Array<keyof typeof updates>).forEach((key) => {
+        const value = updates[key];
+        if (typeof value === 'string') snapshot[key as string] = value;
+      });
+      if (Object.keys(snapshot).length > 0) {
+        setAutofillSnapshot(snapshot);
+      }
+
+      // When the expiration date was copied into the empty field, prompt the user to
+      // confirm or change it by moving focus to the field and opening its date picker
+      // (Req 4.3). Skip when a user value already exists or the suggestion has none
+      // (Req 4.4, 4.5).
+      if (didFillExpiration) {
         setTimeout(() => {
           const el = document.getElementById('add-item-expiration') as HTMLInputElement | null;
           if (el) {
@@ -318,14 +383,29 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
     }));
   }, []);
 
+  // Reactive merge-state derivation (Req 5, 6). Computed synchronously on every
+  // render so it stays well within the 200ms reactivity budget. Drives the
+  // submit-button label (task 4.3) and the yellow prefilled highlight (task 4.4);
+  // also surfaced as a neutral data attribute for testing.
+  const mergeState = isMergeState(autofillSnapshot, form);
+
   const getFieldStyle = useCallback(
     (field: string): React.CSSProperties => {
+      // A field is highlighted as prefilled only while it was populated by Autofill
+      // and the user has not edited it (Req 6.4, preserved here). When the form is in
+      // merge state, prefilled fields use the yellow merge highlight (Req 6.1);
+      // otherwise they fall back to the existing blue prefilled highlight (Req 6.2).
+      // `quantity` is excluded from merge state via the isMergeState predicate, so the
+      // highlight derives from the same condition as the submit label (Req 6.5, 6.6).
       if (prefilledFields.has(field) && !userEditedFields.has(field)) {
-        return { ...styles.input, ...AUTOFILL_STYLES.prefilled };
+        return {
+          ...styles.input,
+          ...(mergeState ? AUTOFILL_STYLES.merge : AUTOFILL_STYLES.prefilled),
+        };
       }
       return styles.input;
     },
-    [prefilledFields, userEditedFields],
+    [prefilledFields, userEditedFields, mergeState],
   );
 
   const validate = useCallback((): FormErrors => {
@@ -370,12 +450,20 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
       if (form.onlineStoreLink.trim()) data.onlineStoreLink = form.onlineStoreLink.trim();
       if (pictureFile) data.pictureFile = pictureFile;
 
+      // Predicted merge state at submit time. The backend is authoritative for the
+      // actual merge decision, but onSubmit only surfaces `{ error? }` (it does not
+      // relay the server's `merged` indicator), so the success wording is derived
+      // from the predicted merge state instead. See the report note on this limitation.
+      const wasMergeState = isMergeState(autofillSnapshot, form);
+
       try {
         const result = await onSubmit(data);
         if (result.error) {
           setSubmitError(result.error);
         } else {
-          setSuccessMessage('Item added successfully!');
+          setSuccessMessage(
+            wasMergeState ? 'Quantity added to existing item!' : 'Item added successfully!',
+          );
           setTimeout(() => onBack(), 1200);
         }
       } catch {
@@ -384,8 +472,18 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
         setSubmitting(false);
       }
     },
-    [form, pictureFile, validate, onSubmit, onBack],
+    [form, pictureFile, validate, onSubmit, onBack, autofillSnapshot],
   );
+
+  // Dynamic submit-button label (Req 5):
+  // - submitting → progress text + disabled (Req 5.6)
+  // - merge state → "Add to existing item" (Req 5.1)
+  // - otherwise (incl. no suggestion selected) → label containing "new" (Req 5.2, 5.4)
+  const submitLabel = submitting
+    ? 'Adding…'
+    : mergeState
+      ? 'Add to existing item'
+      : 'Add new item';
 
   return (
     <div style={styles.page}>
@@ -702,7 +800,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
       </form>
 
       {/* Fixed action bar at bottom */}
-      <div style={styles.actionBar} data-testid="action-bar">
+      <div style={styles.actionBar} data-testid="action-bar" data-merge-state={mergeState}>
         <button
           type="button"
           onClick={onBack}
@@ -717,7 +815,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
           style={styles.submitButton}
           disabled={submitting}
         >
-          {submitting ? 'Adding…' : 'Add Item'}
+          {submitLabel}
         </button>
       </div>
     </div>

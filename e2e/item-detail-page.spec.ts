@@ -88,14 +88,34 @@ async function loginAndGoToInventory(page: Page) {
   await page.waitForSelector('h2:has-text("Inventory")', { timeout: 10000 });
 }
 
-// Drill into a category then click an item by name
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Drill into a category, expand the item's grouped row, then click the child
+// item card that navigates to the detail page.
 async function clickInventoryItem(page: Page, category: string, itemName: string) {
   // Click the category card to expand it
   const categoryCard = page.getByTestId(`category-card-${category}`);
   await expect(categoryCard).toBeVisible({ timeout: 5000 });
   await categoryCard.click();
-  // Now click the item
-  await page.getByText(itemName).first().click();
+
+  // Grouped rows are collapsed by default, so the navigating child item card is
+  // not rendered yet. Expand the grouped row whose accessible name begins with
+  // the item name (single-item groups in these fixtures, so the group header
+  // name equals the item name).
+  const groupedRow = page
+    .getByRole('button', { name: new RegExp('^' + escapeRegExp(itemName) + ',') })
+    .first();
+  await expect(groupedRow).toBeVisible({ timeout: 5000 });
+  await groupedRow.click();
+
+  // Now click the child item card (rendered only while expanded). It is the
+  // element that calls onItemClick → navigates to ItemDetailPage. These are
+  // single-item groups, so there is exactly one child card.
+  const itemCard = page.locator('[data-testid^="item-card-"]').first();
+  await expect(itemCard).toBeVisible({ timeout: 5000 });
+  await itemCard.click();
 }
 
 test.describe('ItemDetailPage', () => {

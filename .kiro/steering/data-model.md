@@ -272,6 +272,7 @@ interface ListInventoryResponse {
 // Mutation response (POST/PUT)
 interface MutationResponse {
   item: InventoryItem;
+  merged: boolean; // true when POST /inventory merged into an existing item; false on create
   lowStockTransition?: boolean;
   notification?: { type: string; message: string; itemId: string };
 }
@@ -299,6 +300,25 @@ interface BarcodeLookupResponse {
   product?: ProductInfo;
 }
 ```
+
+#### POST /inventory merge-on-add semantics
+
+`POST /inventory` is **merge-aware** and is the source of truth for the merge decision. Before creating a new row, the Inventory handler searches the requesting user's existing `ITEM#` rows for a **merge match** — an item equal to the submitted item across every comparable field. If a match is found, the submitted quantity is summed into that existing item instead of creating a duplicate row.
+
+- **Comparable fields** (the set used to decide a match; `quantity` and picture are excluded):
+  `name`, `category`, `expirationDate`, `location`, `unit`, `barcode`, `brand`, `whereToBuy`, `onlineStoreLink`.
+- **Equality rules per field:**
+  - String fields (`name`, `category`, `barcode`, `brand`, `whereToBuy`, `onlineStoreLink`): compared after trimming surrounding whitespace and lower-casing (case-insensitive).
+  - `expirationDate`: exact match on the trimmed ISO string.
+  - `location`: exact match on the location identifier (trimmed).
+  - `unit`: compared by canonical key via `resolveUnit()`, so legacy and modern unit values that map to the same key are treated as equal.
+  - Optional string fields: treated as equal only when absent/empty on **both** items; present-and-non-empty on one but absent/empty on the other is **not** equal.
+- **Match selection:** when more than one existing item qualifies, the match with the earliest `createdAt` is chosen, tie-broken by the lexicographically smallest `itemId`. Only that item is modified; other matches are left unchanged.
+- **Merge operation:** the matched item's `quantity` is set to the exact arithmetic sum of its existing quantity and the submitted quantity (fractional values preserved, no rounding/truncation); `isLowStock` is recomputed (true iff a `threshold` is defined and the resulting quantity `<= threshold`); `updatedAt` is refreshed; and `syncVersion` is incremented by exactly 1.
+- **Optimistic locking:** the merge `UpdateCommand` is guarded by `ConditionExpression: 'syncVersion = :expectedVersion'`. On a conflict the handler re-queries, re-selects the match, and retries up to **3 total attempts**. If the match disappears after a conflict, it falls through to creating a new item. If all attempts are exhausted, no write is committed and the route returns `409 CONFLICT`.
+- **HTTP status convention:** `200` with `{ item, merged: true, lowStockTransition? }` on a merge (the `lowStockTransition` indicator is included only when `isLowStock` changed, and reflects the new value); `201` with `{ item, merged: false }` on a create.
+
+Grouping of items in the category view (items sharing name + category + unit) is a purely client-side UI construct and does **not** affect this API contract — no rows are created, merged, or modified by grouping.
 
 ### Storage Locations
 

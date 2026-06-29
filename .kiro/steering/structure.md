@@ -52,6 +52,7 @@ pantry-tracking-app/
 - Feature-specific frontend modules get their own folder (e.g., `frontend/src/auth/`)
 - API client modules go in `frontend/src/api/<feature>/` as `<feature>.ts` with `__tests__/<feature>.test.ts`
 - Backend handlers go in `backend/src/handlers/` (one file per Lambda)
+- Handler-adjacent pure functions may be extracted into a sibling module next to the handler (e.g. `backend/src/handlers/inventory/merge.ts`) so they can be unit- and property-tested in isolation without AWS SDK calls; the handler stays in `<feature>.ts` and imports them
 - Tests go in `__tests__/` sibling directories next to the source they test
   - Unit tests use `.test.ts` / `.test.tsx` suffix
   - Property-based tests use `.property.test.ts` / `.property.test.tsx` suffix

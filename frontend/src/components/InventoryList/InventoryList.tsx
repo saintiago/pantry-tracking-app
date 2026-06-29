@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import type { StorageLocation } from '../../api/locations/locations';
-import { getUnitLabel } from '../../types/units';
+import { getUnitLabel, resolveUnit } from '../../types/units';
 import { formatQuantity } from '../../utils/quantity';
 import { useHoverState, useInteractionFeedback } from '../../hooks/useInventoryAnimations';
 import Tooltip from '../Tooltip/Tooltip';
@@ -51,7 +51,8 @@ export function groupItemsByCategory(items: InventoryItem[]): CategorySummary[] 
     if (existing) {
       existing.itemCount += 1;
       existing.totalQuantity += item.quantity;
-      existing.quantityByUnit[item.unit] = (existing.quantityByUnit[item.unit] ?? 0) + item.quantity;
+      existing.quantityByUnit[item.unit] =
+        (existing.quantityByUnit[item.unit] ?? 0) + item.quantity;
       if (item.isLowStock) existing.lowStockCount += 1;
     } else {
       map.set(item.category, {
@@ -65,6 +66,105 @@ export function groupItemsByCategory(items: InventoryItem[]): CategorySummary[] 
   }
 
   return Array.from(map.values()).sort((a, b) => a.category.localeCompare(b.category));
+}
+
+/* ── GroupedRow type and groupItemsByGroupingKey ────────────────── */
+
+/**
+ * A client-side-only parent row in the category view representing all items
+ * that share a Grouping_Key (name + category + unit). Never persisted or sent
+ * to any API; derived purely from the provided InventoryItem list.
+ */
+export interface GroupedRow {
+  groupingKey: string; // canonical composite key
+  name: string; // display name (first child's original name)
+  unit: string; // canonical unit key
+  category: string; // display category (first child's original category)
+  childItems: InventoryItem[]; // sorted by expirationDate, then createdAt, then itemId
+  totalQuantity: number;
+  childCount: number;
+  hasLowStock: boolean;
+}
+
+/**
+ * Normalizes a name for grouping: trims leading/trailing whitespace, collapses
+ * internal whitespace runs to a single space, and lowercases.
+ */
+export function normalizeGroupName(name: string): string {
+  return name.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+/**
+ * Normalizes a category for grouping: trims and lowercases so case-only
+ * differences group together.
+ */
+function normalizeGroupCategory(category: string): string {
+  return category.trim().toLowerCase();
+}
+
+/**
+ * Groups items into Grouped_Rows keyed by (normalized name, normalized
+ * category, canonical unit key). Within each group, child items are sorted by
+ * expirationDate asc, then createdAt asc, then itemId asc. Groups are ordered
+ * by normalized name asc, tie-broken by canonical unit key asc.
+ *
+ * Pure UI construct: no database records are created or modified.
+ */
+export function groupItemsByGroupingKey(items: InventoryItem[]): GroupedRow[] {
+  const map = new Map<string, GroupedRow>();
+
+  for (const item of items) {
+    const canonicalUnit = resolveUnit(item.unit);
+    const groupingKey = `${normalizeGroupName(item.name)}|${normalizeGroupCategory(
+      item.category,
+    )}|${canonicalUnit}`;
+
+    const existing = map.get(groupingKey);
+    if (existing) {
+      existing.childItems.push(item);
+      existing.totalQuantity += item.quantity;
+      existing.childCount += 1;
+      if (item.isLowStock) existing.hasLowStock = true;
+    } else {
+      map.set(groupingKey, {
+        groupingKey,
+        name: item.name,
+        unit: canonicalUnit,
+        category: item.category,
+        childItems: [item],
+        totalQuantity: item.quantity,
+        childCount: 1,
+        hasLowStock: item.isLowStock,
+      });
+    }
+  }
+
+  const groups = Array.from(map.values());
+
+  // Sort child items within each group: expirationDate asc, createdAt asc, itemId asc.
+  for (const group of groups) {
+    group.childItems.sort((a, b) => {
+      if (a.expirationDate !== b.expirationDate) {
+        return a.expirationDate < b.expirationDate ? -1 : 1;
+      }
+      if (a.createdAt !== b.createdAt) {
+        return a.createdAt < b.createdAt ? -1 : 1;
+      }
+      if (a.itemId !== b.itemId) {
+        return a.itemId < b.itemId ? -1 : 1;
+      }
+      return 0;
+    });
+  }
+
+  // Order groups by normalized name asc, tie-broken by canonical unit key asc.
+  groups.sort((a, b) => {
+    const nameCompare = normalizeGroupName(a.name).localeCompare(normalizeGroupName(b.name));
+    if (nameCompare !== 0) return nameCompare;
+    return a.unit.localeCompare(b.unit);
+  });
+
+  return groups;
 }
 
 /* ── Sub-components ─────────────────────────────────────────────── */
@@ -90,7 +190,11 @@ export const InAppNotification: React.FC<InAppNotificationProps> = ({
   return (
     <div style={styles.notification} role="alert" className="inv-fade-slide-in">
       <span>{message}</span>
-      <button onClick={onDismiss} style={styles.notificationClose} aria-label="Dismiss notification">
+      <button
+        onClick={onDismiss}
+        style={styles.notificationClose}
+        aria-label="Dismiss notification"
+      >
         ✕
       </button>
     </div>
@@ -206,7 +310,8 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ summary, onClick }) 
         ...styles.categoryCard,
         boxShadow: isHovered ? 'var(--inv-shadow-md)' : 'var(--inv-shadow-sm)',
         transform: isHovered ? 'scale(1.025)' : 'scale(1)',
-        transition: 'transform 0.2s var(--inv-spring, cubic-bezier(0.34,1.56,0.64,1)), box-shadow 0.2s ease',
+        transition:
+          'transform 0.2s var(--inv-spring, cubic-bezier(0.34,1.56,0.64,1)), box-shadow 0.2s ease',
       }}
       data-testid={`category-card-${summary.category}`}
       {...hoverProps}
@@ -214,7 +319,10 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ summary, onClick }) 
       <div style={styles.categoryCardHeader}>
         <span style={styles.categoryCardName}>{summary.category}</span>
         {summary.lowStockCount > 0 && (
-          <span style={styles.categoryLowStockBadge} aria-label={`${summary.lowStockCount} low stock`}>
+          <span
+            style={styles.categoryLowStockBadge}
+            aria-label={`${summary.lowStockCount} low stock`}
+          >
             ⚠️ {summary.lowStockCount} low stock
           </span>
         )}
@@ -261,7 +369,8 @@ export const BackButton: React.FC<BackButtonProps> = ({ onClick }) => {
         backgroundColor: isHovered ? 'var(--inv-lavender)' : 'var(--inv-lavender-light)',
         color: isHovered ? '#ffffff' : '#6b50a0',
         transform: isHovered ? 'scale(1.02)' : 'scale(1)',
-        transition: 'transform 0.18s var(--inv-spring, cubic-bezier(0.34,1.56,0.64,1)), background-color 0.15s ease, color 0.15s ease',
+        transition:
+          'transform 0.18s var(--inv-spring, cubic-bezier(0.34,1.56,0.64,1)), background-color 0.15s ease, color 0.15s ease',
       }}
       {...hoverProps}
     >
@@ -307,7 +416,8 @@ export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
         ...(isClickable ? { cursor: 'pointer' } : {}),
         boxShadow: isCardHovered && isClickable ? 'var(--inv-shadow-md)' : 'var(--inv-shadow-sm)',
         transform: isCardHovered && isClickable ? 'scale(1.015)' : 'scale(1)',
-        transition: 'transform 0.2s var(--inv-spring, cubic-bezier(0.34,1.56,0.64,1)), box-shadow 0.2s ease',
+        transition:
+          'transform 0.2s var(--inv-spring, cubic-bezier(0.34,1.56,0.64,1)), box-shadow 0.2s ease',
       }}
       className={feedbackClass}
       data-testid={`item-card-${item.itemId}`}
@@ -379,6 +489,127 @@ export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
   );
 };
 
+/* ── GroupedRowView ─────────────────────────────────────────────── */
+
+export interface GroupedRowProps {
+  group: GroupedRow;
+  expanded: boolean;
+  onToggle: () => void;
+  locationMap: Record<string, string>;
+  removeMode: boolean;
+  onRemoveItem?: (itemId: string) => void;
+  onItemClick?: (item: InventoryItem) => void;
+}
+
+/**
+ * Renders a single Grouped_Row: a collapsible parent row summarizing all child
+ * items that share a Grouping_Key. The parent row behaves as a toggle button
+ * (pointer + Enter/Space keyboard activation) and exposes its expanded state
+ * and child association to assistive technologies via aria-expanded /
+ * aria-controls. Child items are rendered (reusing InventoryItemCard) only
+ * while expanded, inside the aria-controls region, with indentation, connector
+ * lines, and a distinct background to set them apart from top-level rows.
+ *
+ * Note: the component is named GroupedRowView to avoid colliding with the
+ * exported GroupedRow view-model interface defined above.
+ */
+export const GroupedRowView: React.FC<GroupedRowProps> = ({
+  group,
+  expanded,
+  onToggle,
+  locationMap,
+  removeMode,
+  onRemoveItem,
+  onItemClick,
+}) => {
+  const reactId = React.useId();
+  const childRegionId = `grouped-row-children-${reactId}`;
+  const { isHovered, hoverProps } = useHoverState();
+  const { feedbackClass, triggerSuccess } = useInteractionFeedback();
+
+  const handleToggle = () => {
+    triggerSuccess();
+    onToggle();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Enter/Space toggle identically to pointer activation; preventDefault on
+    // Space suppresses the default page-scroll behavior.
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleToggle();
+    }
+  };
+
+  const unitLabel = getUnitLabel(group.unit, group.totalQuantity);
+  const quantityText = `${formatQuantity(group.totalQuantity)} ${unitLabel}`;
+  const countText = `${group.childCount} ${group.childCount === 1 ? 'item' : 'items'}`;
+
+  return (
+    <div style={styles.groupedRowWrapper} data-testid={`grouped-row-wrapper-${group.groupingKey}`}>
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        aria-controls={childRegionId}
+        onClick={handleToggle}
+        onKeyDown={handleKeyDown}
+        aria-label={`${group.name}, ${countText}, ${quantityText}${
+          group.hasLowStock ? ', contains low stock' : ''
+        }, ${expanded ? 'expanded' : 'collapsed'}`}
+        className={feedbackClass}
+        style={{
+          ...styles.groupedRow,
+          boxShadow: isHovered ? 'var(--inv-shadow-md)' : 'var(--inv-shadow-sm)',
+          transform: isHovered ? 'scale(1.01)' : 'scale(1)',
+          transition:
+            'transform 0.2s var(--inv-spring, cubic-bezier(0.34,1.56,0.64,1)), box-shadow 0.2s ease',
+        }}
+        data-testid={`grouped-row-${group.groupingKey}`}
+        {...hoverProps}
+      >
+        <span style={styles.groupedRowChevron} aria-hidden="true">
+          {expanded ? '▾' : '▸'}
+        </span>
+        <div style={styles.groupedRowBody}>
+          <div style={styles.groupedRowHeader}>
+            <span style={styles.groupedRowName}>{group.name}</span>
+            {group.hasLowStock && <LowStockBadge />}
+          </div>
+          <div style={styles.groupedRowStats}>
+            <span>{quantityText}</span>
+            <span style={styles.categoryCardDot}>·</span>
+            <span>{countText}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Child region referenced by aria-controls. Rendered (empty) even when
+          collapsed so the aria-controls target id always resolves. */}
+      <div id={childRegionId} role="region" aria-label={`${group.name} items`}>
+        {expanded && (
+          <div style={styles.groupedChildren}>
+            {group.childItems.map((item) => (
+              <div key={item.itemId} style={styles.groupedChildRow}>
+                <span style={styles.groupedChildConnector} aria-hidden="true" />
+                <div style={styles.groupedChildCard}>
+                  <InventoryItemCard
+                    item={item}
+                    locationName={locationMap[item.location] ?? item.location}
+                    removeMode={removeMode}
+                    onRemove={onRemoveItem}
+                    onClick={() => onItemClick?.(item)}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 /* ── InventoryList (main component) ─────────────────────────────── */
 
 export interface InventoryListProps {
@@ -402,7 +633,14 @@ const InventoryList: React.FC<InventoryListProps> = ({
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [viewMode, setViewMode] = useState<'category-summary' | 'item-list'>('category-summary');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const { feedbackClass: toggleFeedbackClass, triggerSuccess: triggerToggleSuccess } = useInteractionFeedback();
+  // Expand/collapse state for grouped rows, keyed by groupingKey. A key present
+  // in the set means that group is expanded; absent means collapsed (the
+  // default). Because the set is keyed by groupingKey, expansion state is
+  // naturally preserved across recomputation when a key remains present, and
+  // stale keys (groups that disappear) simply become irrelevant.
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const { feedbackClass: toggleFeedbackClass, triggerSuccess: triggerToggleSuccess } =
+    useInteractionFeedback();
 
   const categories = useMemo(() => {
     const unique = Array.from(new Set(items.map((i) => i.category)));
@@ -448,15 +686,31 @@ const InventoryList: React.FC<InventoryListProps> = ({
     }
   }, [filteredItems, viewMode, selectedCategory]);
 
-  const categorySummaries = useMemo(
-    () => groupItemsByCategory(filteredItems),
-    [filteredItems],
-  );
+  const categorySummaries = useMemo(() => groupItemsByCategory(filteredItems), [filteredItems]);
 
   const categoryFilteredItems = useMemo(() => {
     if (viewMode !== 'item-list' || selectedCategory === null) return filteredItems;
     return filteredItems.filter((i) => i.category === selectedCategory);
   }, [filteredItems, viewMode, selectedCategory]);
+
+  // Recompute grouped rows whenever the displayed (post-filter) items change so
+  // every displayed item stays represented in exactly one group.
+  const groupedRows = useMemo(
+    () => groupItemsByGroupingKey(categoryFilteredItems),
+    [categoryFilteredItems],
+  );
+
+  const handleToggleGroup = (groupingKey: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupingKey)) {
+        next.delete(groupingKey);
+      } else {
+        next.add(groupingKey);
+      }
+      return next;
+    });
+  };
 
   const handleCategoryCardClick = (category: string) => {
     setSelectedCategory(category);
@@ -474,7 +728,11 @@ const InventoryList: React.FC<InventoryListProps> = ({
       <div style={styles.filtersRow}>
         <QuickFilterInput value={textFilter} onChange={setTextFilter} />
         {viewMode === 'item-list' && (
-          <CategorySelector categories={categories} value={categoryFilter} onChange={setCategoryFilter} />
+          <CategorySelector
+            categories={categories}
+            value={categoryFilter}
+            onChange={setCategoryFilter}
+          />
         )}
         <LocationFilter locations={locations} value={locationFilter} onChange={setLocationFilter} />
       </div>
@@ -523,18 +781,20 @@ const InventoryList: React.FC<InventoryListProps> = ({
       {viewMode === 'item-list' && (
         <>
           <BackButton onClick={handleBackClick} />
-          {categoryFilteredItems.length === 0 ? (
+          {groupedRows.length === 0 ? (
             <p style={styles.emptyText}>No items match the current filters.</p>
           ) : (
             <div style={styles.itemsList}>
-              {categoryFilteredItems.map((item) => (
-                <InventoryItemCard
-                  key={item.itemId}
-                  item={item}
-                  locationName={locationMap[item.location] ?? item.location}
+              {groupedRows.map((group) => (
+                <GroupedRowView
+                  key={group.groupingKey}
+                  group={group}
+                  expanded={expandedGroups.has(group.groupingKey)}
+                  onToggle={() => handleToggleGroup(group.groupingKey)}
+                  locationMap={locationMap}
                   removeMode={removeMode}
-                  onRemove={onRemoveItem}
-                  onClick={() => onItemClick?.(item)}
+                  onRemoveItem={onRemoveItem}
+                  onItemClick={onItemClick}
                 />
               ))}
             </div>
@@ -794,5 +1054,80 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: '0.75rem',
     display: 'inline-flex',
     alignItems: 'center',
+  },
+  groupedRowWrapper: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+  },
+  groupedRow: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '0.5rem',
+    minHeight: 44,
+    padding: '0.875rem 1rem',
+    border: '1.5px solid var(--inv-border)',
+    borderRadius: 'var(--inv-radius-md)' as unknown as number,
+    backgroundColor: 'var(--inv-warm-white)',
+    cursor: 'pointer',
+    userSelect: 'none' as const,
+  },
+  groupedRowChevron: {
+    fontSize: '0.875rem',
+    lineHeight: '1.4rem',
+    color: 'var(--inv-text-muted)',
+    minWidth: 16,
+  },
+  groupedRowBody: {
+    flex: 1,
+    minWidth: 0,
+  },
+  groupedRowHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    marginBottom: '0.25rem',
+  },
+  groupedRowName: {
+    fontWeight: 600,
+    fontSize: '1rem',
+    color: 'var(--inv-text)',
+  },
+  groupedRowStats: {
+    display: 'flex',
+    gap: '0.375rem',
+    fontSize: '0.875rem',
+    color: 'var(--inv-text-muted)',
+  },
+  groupedChildren: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '0.5rem',
+    // Indentation (≥ 16px) relative to the parent grouped row, plus a vertical
+    // connector line and a distinct background to set child items apart.
+    marginLeft: 12,
+    paddingLeft: 20,
+    paddingTop: '0.5rem',
+    paddingBottom: '0.5rem',
+    borderLeft: '2px solid var(--inv-border)',
+    backgroundColor: 'var(--inv-surface-alt, #f7f2ee)',
+    borderBottomLeftRadius: 'var(--inv-radius-md)' as unknown as number,
+    borderBottomRightRadius: 'var(--inv-radius-md)' as unknown as number,
+  },
+  groupedChildRow: {
+    display: 'flex',
+    alignItems: 'center',
+    position: 'relative' as const,
+  },
+  groupedChildConnector: {
+    width: 12,
+    minWidth: 12,
+    height: 2,
+    backgroundColor: 'var(--inv-border)',
+    marginRight: 4,
+    flexShrink: 0,
+  },
+  groupedChildCard: {
+    flex: 1,
+    minWidth: 0,
   },
 };

@@ -122,6 +122,7 @@ describe('Inventory Lambda handler', () => {
 
   describe('POST /inventory', () => {
     it('creates an inventory item with required fields', async () => {
+      mockSend.mockResolvedValueOnce({ Items: [] }); // no merge match
       mockSend.mockResolvedValueOnce({}); // put succeeds
 
       const result = await handler(
@@ -145,6 +146,7 @@ describe('Inventory Lambda handler', () => {
     });
 
     it('creates item with optional fields', async () => {
+      mockSend.mockResolvedValueOnce({ Items: [] }); // no merge match
       mockSend.mockResolvedValueOnce({});
 
       const result = await handler(
@@ -173,6 +175,7 @@ describe('Inventory Lambda handler', () => {
     });
 
     it('sets GSI1PK for category queries', async () => {
+      mockSend.mockResolvedValueOnce({ Items: [] }); // no merge match
       mockSend.mockResolvedValueOnce({});
 
       const result = await handler(
@@ -188,6 +191,7 @@ describe('Inventory Lambda handler', () => {
     });
 
     it('calculates isLowStock correctly when quantity <= threshold', async () => {
+      mockSend.mockResolvedValueOnce({ Items: [] }); // no merge match
       mockSend.mockResolvedValueOnce({});
 
       const result = await handler(
@@ -202,6 +206,7 @@ describe('Inventory Lambda handler', () => {
     });
 
     it('calculates isLowStock correctly when quantity equals threshold', async () => {
+      mockSend.mockResolvedValueOnce({ Items: [] }); // no merge match
       mockSend.mockResolvedValueOnce({});
 
       const result = await handler(
@@ -216,6 +221,7 @@ describe('Inventory Lambda handler', () => {
     });
 
     it('sets isLowStock false when no threshold is set', async () => {
+      mockSend.mockResolvedValueOnce({ Items: [] }); // no merge match
       mockSend.mockResolvedValueOnce({});
 
       const result = await handler(
@@ -586,6 +592,7 @@ describe('Inventory Lambda handler', () => {
 
   describe('POST /inventory - low-stock GSI1', () => {
     it('sets GSI1PK to LOWSTOCK when item is low-stock on create', async () => {
+      mockSend.mockResolvedValueOnce({ Items: [] }); // no merge match
       mockSend.mockResolvedValueOnce({});
 
       const result = await handler(
@@ -602,6 +609,7 @@ describe('Inventory Lambda handler', () => {
     });
 
     it('sets GSI1PK to category when item is not low-stock on create', async () => {
+      mockSend.mockResolvedValueOnce({ Items: [] }); // no merge match
       mockSend.mockResolvedValueOnce({});
 
       const result = await handler(
@@ -2038,6 +2046,232 @@ describe('Inventory Lambda handler', () => {
       );
 
       expect(result.statusCode).toBe(400);
+    });
+  });
+
+  describe('POST /inventory - merge on add', () => {
+    // An existing row whose Comparable_Fields all equal the `validItem` POST body
+    // (name, category, expirationDate, location/locationId, unit; optional string
+    // fields absent on both), so it qualifies as a Merge_Match.
+    const matchingExistingItem = {
+      PK: 'USER#user-123',
+      SK: 'ITEM#item-existing',
+      entityType: 'InventoryItem',
+      itemId: 'item-existing',
+      userId: 'user-123',
+      name: 'Milk',
+      category: 'Dairy',
+      expirationDate: '2025-02-01',
+      location: 'loc-1',
+      unit: 'Liter',
+      quantity: 3,
+      isLowStock: false,
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+      syncVersion: 4,
+    };
+
+    // All UpdateCommand invocations recorded by the shared mock (including the
+    // ones that rejected with a conditional-check failure). The lib-dynamodb mock
+    // tags each command with `_type` so we can distinguish Query/Put/Update.
+    function updateCommandCalls(): Array<Record<string, unknown>> {
+      return mockSend.mock.calls
+        .map((call) => call[0] as Record<string, unknown>)
+        .filter((cmd) => cmd && cmd._type === 'Update');
+    }
+
+    function putCommandCalls(): Array<Record<string, unknown>> {
+      return mockSend.mock.calls
+        .map((call) => call[0] as Record<string, unknown>)
+        .filter((cmd) => cmd && cmd._type === 'Put');
+    }
+
+    it('creates a new item with merged:false and HTTP 201 when no match exists (Req 1.8)', async () => {
+      mockSend.mockResolvedValueOnce({ Items: [] }); // query: no merge match
+      mockSend.mockResolvedValueOnce({}); // put succeeds
+
+      const result = await handler(
+        makeEvent({ httpMethod: 'POST', body: JSON.stringify(validItem) }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(201);
+      expect(body.merged).toBe(false);
+      expect(body.item).toBeDefined();
+      expect(body.item.name).toBe('Milk');
+      expect(body.item.quantity).toBe(2);
+      // Creation path issues a Put and never an Update.
+      expect(putCommandCalls()).toHaveLength(1);
+      expect(updateCommandCalls()).toHaveLength(0);
+    });
+
+    it('merges into an existing match with merged:true and HTTP 200 (Req 1.7)', async () => {
+      mockSend.mockResolvedValueOnce({ Items: [matchingExistingItem] }); // query: one match
+      mockSend.mockResolvedValueOnce({
+        Attributes: {
+          ...matchingExistingItem,
+          quantity: 5,
+          syncVersion: 5,
+          updatedAt: '2025-06-01T00:00:00.000Z',
+        },
+      }); // update succeeds
+
+      const result = await handler(
+        makeEvent({ httpMethod: 'POST', body: JSON.stringify(validItem) }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.merged).toBe(true);
+      // The response carries the updated existing item, not a newly created one.
+      expect(body.item.itemId).toBe('item-existing');
+      expect(body.item.quantity).toBe(5);
+      expect(body.item.syncVersion).toBe(5);
+
+      // No new item was created on the merge path.
+      expect(putCommandCalls()).toHaveLength(0);
+
+      const updateCalls = updateCommandCalls();
+      expect(updateCalls).toHaveLength(1);
+      const update = updateCalls[0];
+      // Guarded by optimistic locking on the observed syncVersion.
+      expect(update.ConditionExpression).toBe('syncVersion = :expectedVersion');
+      const values = update.ExpressionAttributeValues as Record<string, unknown>;
+      expect(values[':expectedVersion']).toBe(4);
+      // Quantity summed: 3 (existing) + 2 (submitted) = 5.
+      expect(values[':quantity']).toBe(5);
+      // Targets the matched item.
+      expect((update.Key as Record<string, unknown>).SK).toBe('ITEM#item-existing');
+    });
+
+    it('retries once on ConditionalCheckFailedException then applies the merge (Req 1.9)', async () => {
+      mockSend.mockResolvedValueOnce({ Items: [matchingExistingItem] }); // attempt 1: query
+      mockSend.mockRejectedValueOnce({ name: 'ConditionalCheckFailedException' }); // attempt 1: update fails
+      mockSend.mockResolvedValueOnce({ Items: [matchingExistingItem] }); // attempt 2: re-query
+      mockSend.mockResolvedValueOnce({
+        Attributes: { ...matchingExistingItem, quantity: 5, syncVersion: 5 },
+      }); // attempt 2: update succeeds
+
+      const result = await handler(
+        makeEvent({ httpMethod: 'POST', body: JSON.stringify(validItem) }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.merged).toBe(true);
+      expect(body.item.quantity).toBe(5);
+      // One failed update + one successful update.
+      expect(updateCommandCalls()).toHaveLength(2);
+    });
+
+    it('retries twice on ConditionalCheckFailedException then applies the merge (Req 1.9)', async () => {
+      mockSend.mockResolvedValueOnce({ Items: [matchingExistingItem] }); // attempt 1: query
+      mockSend.mockRejectedValueOnce({ name: 'ConditionalCheckFailedException' }); // attempt 1: update fails
+      mockSend.mockResolvedValueOnce({ Items: [matchingExistingItem] }); // attempt 2: re-query
+      mockSend.mockRejectedValueOnce({ name: 'ConditionalCheckFailedException' }); // attempt 2: update fails
+      mockSend.mockResolvedValueOnce({ Items: [matchingExistingItem] }); // attempt 3: re-query
+      mockSend.mockResolvedValueOnce({
+        Attributes: { ...matchingExistingItem, quantity: 5, syncVersion: 5 },
+      }); // attempt 3: update succeeds
+
+      const result = await handler(
+        makeEvent({ httpMethod: 'POST', body: JSON.stringify(validItem) }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.merged).toBe(true);
+      expect(body.item.quantity).toBe(5);
+      // Two failed updates + one successful update.
+      expect(updateCommandCalls()).toHaveLength(3);
+    });
+
+    it('returns 409 CONFLICT with no mutation after three failed attempts (Req 1.9)', async () => {
+      // Every attempt re-queries and then fails the conditional update.
+      mockSend.mockResolvedValueOnce({ Items: [matchingExistingItem] }); // attempt 1: query
+      mockSend.mockRejectedValueOnce({ name: 'ConditionalCheckFailedException' }); // attempt 1: update fails
+      mockSend.mockResolvedValueOnce({ Items: [matchingExistingItem] }); // attempt 2: re-query
+      mockSend.mockRejectedValueOnce({ name: 'ConditionalCheckFailedException' }); // attempt 2: update fails
+      mockSend.mockResolvedValueOnce({ Items: [matchingExistingItem] }); // attempt 3: re-query
+      mockSend.mockRejectedValueOnce({ name: 'ConditionalCheckFailedException' }); // attempt 3: update fails
+
+      const result = await handler(
+        makeEvent({ httpMethod: 'POST', body: JSON.stringify(validItem) }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(409);
+      expect(body.error).toBe('CONFLICT');
+      // Inventory left unchanged: no successful mutation surfaced and no item created.
+      expect(body.item).toBeUndefined();
+      expect(body.merged).toBeUndefined();
+      expect(putCommandCalls()).toHaveLength(0);
+      // All three attempts were made.
+      expect(updateCommandCalls()).toHaveLength(3);
+    });
+
+    it('modifies only the earliest-createdAt match when multiple matches exist (Req 1.6)', async () => {
+      const olderMatch = {
+        ...matchingExistingItem,
+        SK: 'ITEM#item-old',
+        itemId: 'item-old',
+        createdAt: '2025-01-01T00:00:00.000Z',
+        syncVersion: 2,
+        quantity: 3,
+      };
+      const newerMatch = {
+        ...matchingExistingItem,
+        SK: 'ITEM#item-new',
+        itemId: 'item-new',
+        createdAt: '2025-03-01T00:00:00.000Z',
+        syncVersion: 9,
+        quantity: 1,
+      };
+      // Returned out of createdAt order to confirm selection is order-independent.
+      mockSend.mockResolvedValueOnce({ Items: [newerMatch, olderMatch] });
+      mockSend.mockResolvedValueOnce({
+        Attributes: { ...olderMatch, quantity: 5, syncVersion: 3 },
+      });
+
+      const result = await handler(
+        makeEvent({ httpMethod: 'POST', body: JSON.stringify(validItem) }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.merged).toBe(true);
+
+      const updateCalls = updateCommandCalls();
+      // Exactly one item is modified; the other match is left untouched.
+      expect(updateCalls).toHaveLength(1);
+      const update = updateCalls[0];
+      expect((update.Key as Record<string, unknown>).SK).toBe('ITEM#item-old');
+      const values = update.ExpressionAttributeValues as Record<string, unknown>;
+      // Targets the earliest-createdAt match's observed version.
+      expect(values[':expectedVersion']).toBe(2);
+    });
+
+    it('refreshes updatedAt and increments syncVersion on merge (Req 3.5)', async () => {
+      mockSend.mockResolvedValueOnce({ Items: [matchingExistingItem] });
+      mockSend.mockResolvedValueOnce({
+        Attributes: { ...matchingExistingItem, quantity: 5, syncVersion: 5 },
+      });
+
+      await handler(makeEvent({ httpMethod: 'POST', body: JSON.stringify(validItem) }));
+
+      const update = updateCommandCalls()[0];
+      const names = update.ExpressionAttributeNames as Record<string, string>;
+      const values = update.ExpressionAttributeValues as Record<string, unknown>;
+
+      // updatedAt is set to a fresh timestamp value.
+      expect(update.UpdateExpression).toContain('#updatedAt = :now');
+      expect(names['#updatedAt']).toBe('updatedAt');
+      expect(typeof values[':now']).toBe('string');
+      expect(values[':now']).not.toBe('');
+
+      // syncVersion incremented by exactly 1.
+      expect(update.UpdateExpression).toContain('syncVersion = syncVersion + :inc');
+      expect(values[':inc']).toBe(1);
     });
   });
 });

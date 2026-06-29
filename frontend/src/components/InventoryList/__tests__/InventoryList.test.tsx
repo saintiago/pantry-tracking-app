@@ -43,6 +43,16 @@ async function drillIntoCategory(user: ReturnType<typeof userEvent.setup>, categ
   await user.click(card);
 }
 
+/**
+ * Helper: expand a grouped row by its product name. In the item-list view items
+ * are grouped into collapsible Grouped_Rows; child item cards (with quantity,
+ * unit, expiration, badges, and remove buttons) only render while expanded.
+ */
+async function expandGroup(user: ReturnType<typeof userEvent.setup>, name: string) {
+  const row = screen.getByRole('button', { name: new RegExp(`^${name},`) });
+  await user.click(row);
+}
+
 describe('InventoryList', () => {
   it('renders category cards by default (not individual items)', () => {
     render(<InventoryList items={sampleItems} locations={locations} removeMode={false} />);
@@ -136,6 +146,7 @@ describe('InventoryList', () => {
     );
 
     await drillIntoCategory(user, 'Dairy');
+    await expandGroup(user, 'Milk');
     const removeBtn = screen.getByLabelText('Remove Milk');
     expect(removeBtn).toBeInTheDocument();
   });
@@ -153,6 +164,7 @@ describe('InventoryList', () => {
     );
 
     await drillIntoCategory(user, 'Dairy');
+    await expandGroup(user, 'Milk');
     await user.click(screen.getByLabelText('Remove Milk'));
     expect(onRemove).toHaveBeenCalledWith('1');
   });
@@ -172,6 +184,7 @@ describe('InventoryList', () => {
     render(<InventoryList items={[sampleItems[0]]} locations={locations} removeMode={false} />);
 
     await drillIntoCategory(user, 'Dairy');
+    await expandGroup(user, 'Milk');
     // "Fridge" appears in both the location filter dropdown and the card badge
     const fridgeElements = screen.getAllByText('Fridge');
     expect(fridgeElements.length).toBeGreaterThanOrEqual(2); // dropdown option + card badge
@@ -182,6 +195,7 @@ describe('InventoryList', () => {
     render(<InventoryList items={[sampleItems[0]]} locations={locations} removeMode={false} />);
 
     await drillIntoCategory(user, 'Dairy');
+    // The grouped row summary displays the total quantity and unit while collapsed.
     expect(screen.getByText('2 liters')).toBeInTheDocument();
   });
 
@@ -190,6 +204,7 @@ describe('InventoryList', () => {
     render(<InventoryList items={[sampleItems[0]]} locations={locations} removeMode={false} />);
 
     await drillIntoCategory(user, 'Dairy');
+    await expandGroup(user, 'Milk');
     expect(screen.getByText('Exp: 2025-03-01')).toBeInTheDocument();
   });
 
@@ -198,6 +213,7 @@ describe('InventoryList', () => {
     render(<InventoryList items={[sampleItems[0]]} locations={locations} removeMode={false} />);
 
     await drillIntoCategory(user, 'Dairy');
+    await expandGroup(user, 'Milk');
     // "Dairy" appears in both the category filter dropdown and the card badge
     const dairyElements = screen.getAllByText('Dairy');
     expect(dairyElements.length).toBeGreaterThanOrEqual(2); // dropdown option + card badge
@@ -332,6 +348,8 @@ describe('InventoryList — category view interactions', () => {
     );
 
     await user.click(screen.getByTestId('category-card-Dairy'));
+    await expandGroup(user, 'Milk');
+    await expandGroup(user, 'Cheese');
     expect(screen.getByLabelText('Remove Milk')).toBeInTheDocument();
     expect(screen.getByLabelText('Remove Cheese')).toBeInTheDocument();
   });

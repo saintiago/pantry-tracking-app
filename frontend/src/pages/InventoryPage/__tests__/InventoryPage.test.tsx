@@ -514,6 +514,10 @@ describe('Inventory integration', () => {
     // Drill into Dairy to see items with remove buttons
     await user.click(screen.getByTestId('category-card-Dairy'));
 
+    // Items now render inside collapsed grouped rows; expand the Milk group so
+    // its child item (and its remove control) becomes visible.
+    await user.click(screen.getByRole('button', { name: /^Milk,/ }));
+
     // Click remove on the item
     await user.click(screen.getByLabelText('Remove Milk'));
 

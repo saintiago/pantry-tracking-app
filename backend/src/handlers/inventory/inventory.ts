@@ -10,8 +10,45 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import { randomUUID } from 'crypto';
 import { VALID_UNITS, LEGACY_UNIT_MAP } from '../../types/units';
+import {
+  applyMerge,
+  comparableFieldsEqual,
+  selectMergeMatch,
+  toComparableFields,
+} from './merge';
 
 const ACCEPTED_UNITS = new Set([...VALID_UNITS, ...Object.keys(LEGACY_UNIT_MAP)]);
+
+/** Maximum number of optimistic-locking attempts for a Merge_Operation (Requirement 1.9). */
+const MAX_MERGE_ATTEMPTS = 3;
+
+/**
+ * Minimal projection of an existing inventory row needed to evaluate and apply a
+ * merge. Carries an index signature so the comparable-field projection can read
+ * the remaining fields directly off the DynamoDB record.
+ */
+interface ExistingInventoryItem {
+  itemId: string;
+  createdAt: string;
+  category: string;
+  quantity: number;
+  threshold?: number;
+  isLowStock: boolean;
+  syncVersion: number;
+  [key: string]: unknown;
+}
+
+/**
+ * Mutation response for POST/PUT inventory routes. `merged` indicates whether an
+ * add request resulted in a Merge_Operation (true) or a new item creation
+ * (false). See `.kiro/steering/data-model.md`.
+ */
+interface MutationResponse {
+  item: unknown;
+  merged: boolean;
+  lowStockTransition?: boolean;
+  notification?: { type: string; message: string; itemId: string };
+}
 
 const TABLE_NAME = process.env.TABLE_NAME ?? 'PantryApp';
 const STORAGE_BUCKET = process.env.STORAGE_BUCKET ?? '';
@@ -150,9 +187,125 @@ async function addInventoryItem(
     });
   }
 
+  const quantity = parsed.quantity as number;
+  const submittedComparable = toComparableFields(parsed);
+
+  // Detect and apply a Merge_Operation under optimistic locking, retrying on a
+  // concurrent modification. The user's inventory is re-queried at the start of
+  // every attempt so the match selection always reflects the latest state
+  // (Requirements 1.1, 1.6, 1.9).
+  for (let attempt = 1; attempt <= MAX_MERGE_ATTEMPTS; attempt++) {
+    const queryResult = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+        ExpressionAttributeValues: {
+          ':pk': `USER#${userId}`,
+          ':skPrefix': 'ITEM#',
+        },
+      }),
+    );
+
+    const existingItems = (queryResult.Items ?? []) as ExistingInventoryItem[];
+    const matches = existingItems.filter((existing) =>
+      comparableFieldsEqual(submittedComparable, toComparableFields(existing)),
+    );
+    const match = selectMergeMatch(matches);
+
+    // No Merge_Match: create a new item (Requirement 1.5, 1.8). A match that
+    // disappeared after a conflict also falls through here on a later attempt.
+    if (!match) {
+      return await createInventoryItem(userId, parsed, quantity);
+    }
+
+    // Merge_Operation: sum quantity, recompute low-stock, bump syncVersion under
+    // an optimistic-locking guard (Requirements 1.4, 3.1, 3.2, 3.5).
+    const { quantity: newQuantity, isLowStock, lowStockTransition } = applyMerge(match, quantity);
+    const now = new Date().toISOString();
+    const gsi1pk = isLowStock
+      ? `USER#${userId}#LOWSTOCK`
+      : `USER#${userId}#CAT#${match.category}`;
+
+    try {
+      const updateResult = await docClient.send(
+        new UpdateCommand({
+          TableName: TABLE_NAME,
+          Key: { PK: `USER#${userId}`, SK: `ITEM#${match.itemId}` },
+          UpdateExpression:
+            'SET #quantity = :quantity, #isLowStock = :isLowStock, #updatedAt = :now, ' +
+            '#gsi1pk = :gsi1pk, #gsi1sk = :gsi1sk, syncVersion = syncVersion + :inc',
+          ConditionExpression: 'syncVersion = :expectedVersion',
+          ExpressionAttributeNames: {
+            '#quantity': 'quantity',
+            '#isLowStock': 'isLowStock',
+            '#updatedAt': 'updatedAt',
+            '#gsi1pk': 'GSI1PK',
+            '#gsi1sk': 'GSI1SK',
+          },
+          ExpressionAttributeValues: {
+            ':quantity': newQuantity,
+            ':isLowStock': isLowStock,
+            ':now': now,
+            ':gsi1pk': gsi1pk,
+            ':gsi1sk': `ITEM#${match.itemId}`,
+            ':inc': 1,
+            ':expectedVersion': match.syncVersion,
+          },
+          ReturnValues: 'ALL_NEW',
+        }),
+      );
+
+      const responseBody: MutationResponse = {
+        item: updateResult.Attributes,
+        merged: true,
+      };
+
+      // Report the transition only when isLowStock changed, reflecting the new
+      // value (Requirements 3.3, 3.4).
+      if (lowStockTransition) {
+        responseBody.lowStockTransition = isLowStock;
+        if (isLowStock) {
+          responseBody.notification = {
+            type: 'LOW_STOCK',
+            message: `${
+              (updateResult.Attributes?.name as string | undefined) ?? 'Item'
+            } is running low on stock`,
+            itemId: match.itemId,
+          };
+        }
+      }
+
+      return response(200, responseBody);
+    } catch (err: unknown) {
+      // A concurrent modification invalidated the observed syncVersion; re-query,
+      // re-select, and retry on the next loop iteration (Requirement 1.9).
+      if ((err as { name?: string }).name === 'ConditionalCheckFailedException') {
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  // All attempts exhausted by repeated conflicts: leave inventory unchanged
+  // (Requirement 1.9).
+  return response(409, {
+    error: 'CONFLICT',
+    message: 'Could not merge item due to concurrent modifications. Please retry.',
+  });
+}
+
+/**
+ * Creates a new inventory item and returns a 201 mutation response flagged as a
+ * creation (`merged: false`). Builds the GSI1 key from the low-stock state
+ * (LOWSTOCK vs CAT key) consistent with `updateInventoryItem`.
+ */
+async function createInventoryItem(
+  userId: string,
+  parsed: Record<string, unknown>,
+  quantity: number,
+): Promise<APIGatewayProxyResult> {
   const now = new Date().toISOString();
   const itemId = randomUUID();
-  const quantity = parsed.quantity as number;
   const threshold = parsed.threshold as number | undefined;
   const isLowStock = threshold !== undefined && quantity <= threshold;
   const category = parsed.category as string;
@@ -198,7 +351,8 @@ async function addInventoryItem(
 
   await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
 
-  return response(201, { item });
+  const responseBody: MutationResponse = { item, merged: false };
+  return response(201, responseBody);
 }
 
 async function updateInventoryItem(

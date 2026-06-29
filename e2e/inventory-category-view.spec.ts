@@ -89,6 +89,109 @@ async function login(page: Page) {
   await page.waitForSelector('h2:has-text("Inventory")', { timeout: 10000 });
 }
 
+/**
+ * Grouping fixture: a Dairy category containing three mergeable "Milk" children
+ * (identical name/category/unit `l`, distinct itemId/expirationDate) with one
+ * low-stock child, so a real multi-child Grouped_Row is produced. The grouping
+ * key for these is `milk|dairy|l` (normalizeGroupName('Milk') = "milk",
+ * trimmed-lower category = "dairy", resolveUnit('l') = "l"). A separate Snacks
+ * category is kept so the category-summary view still has multiple cards.
+ */
+const groupedMockInventoryItems = [
+  {
+    itemId: 'milk-1',
+    name: 'Milk',
+    category: 'Dairy',
+    expirationDate: '2025-11-15',
+    location: 'loc-2',
+    quantity: 2,
+    unit: 'l',
+    isLowStock: false,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+  },
+  {
+    itemId: 'milk-2',
+    name: 'Milk',
+    category: 'Dairy',
+    expirationDate: '2025-12-01',
+    location: 'loc-2',
+    quantity: 1,
+    unit: 'l',
+    isLowStock: true,
+    threshold: 2,
+    createdAt: '2024-01-02T00:00:00Z',
+    updatedAt: '2024-01-02T00:00:00Z',
+  },
+  {
+    itemId: 'milk-3',
+    name: 'Milk',
+    category: 'Dairy',
+    expirationDate: '2026-01-01',
+    location: 'loc-1',
+    quantity: 3,
+    unit: 'l',
+    isLowStock: false,
+    createdAt: '2024-01-03T00:00:00Z',
+    updatedAt: '2024-01-03T00:00:00Z',
+  },
+  {
+    itemId: 'snack-1',
+    name: 'Chips',
+    category: 'Snacks',
+    expirationDate: '2025-10-01',
+    location: 'loc-1',
+    quantity: 5,
+    unit: 'piece',
+    isLowStock: false,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+  },
+];
+
+// Canonical grouping key + scoped testid for the Milk group above.
+const MILK_GROUP_KEY = 'milk|dairy|l';
+
+/**
+ * Overrides the GET /inventory mock (registered last, so it takes precedence
+ * over the beforeEach handler) with the grouping fixture, then reloads and
+ * re-authenticates so the fresh fetch picks up the new data. Used only by the
+ * grouping tests so the existing category-summary assertions stay valid.
+ */
+async function loadGroupedInventory(page: Page) {
+  await page.route('**/inventory', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ items: groupedMockInventoryItems }),
+      });
+    } else {
+      await route.fallback();
+    }
+  });
+  // The item detail view's name autocomplete issues a search request; mock it
+  // so navigating into a child item doesn't hit the dev server.
+  await page.route('**/inventory/search**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ field: 'name', query: '', resultType: 'items', items: [], count: 0 }),
+    });
+  });
+
+  await page.reload();
+  await login(page);
+}
+
+// Drill into the Dairy category and return the scoped grouped-row locator.
+async function openDairyMilkGroup(page: Page) {
+  await page.getByTestId('category-card-Dairy').click();
+  const groupedRow = page.getByTestId(`grouped-row-${MILK_GROUP_KEY}`);
+  await expect(groupedRow).toBeVisible({ timeout: 5000 });
+  return groupedRow;
+}
+
 test.describe('Inventory Category View', () => {
   test.beforeEach(async ({ page }) => {
     await setupMockAPI(page);
@@ -170,5 +273,92 @@ test.describe('Inventory Category View', () => {
     // Only Milk visible, Cheese filtered out
     await expect(page.getByText('Milk')).toBeVisible();
     await expect(page.getByText('Cheese')).not.toBeVisible();
+  });
+
+  /* ── Grouping in the item-list view ──────────────────────────── */
+
+  test('grouped row renders total quantity, child count and a low-stock badge, collapsed by default', async ({ page }) => {
+    await loadGroupedInventory(page);
+    const groupedRow = await openDairyMilkGroup(page);
+
+    // Summary: 3 children, total 6 liters (2 + 1 + 3).
+    await expect(groupedRow).toContainText('3 items');
+    await expect(groupedRow).toContainText('6 liters');
+
+    // Low-stock badge present because milk-2 is low stock.
+    await expect(groupedRow.getByText('Low Stock', { exact: true })).toBeVisible();
+
+    // Collapsed by default: aria-expanded false and no child cards rendered.
+    await expect(groupedRow).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.getByTestId('item-card-milk-1')).not.toBeVisible();
+    await expect(page.getByTestId('item-card-milk-2')).not.toBeVisible();
+    await expect(page.getByTestId('item-card-milk-3')).not.toBeVisible();
+  });
+
+  test('clicking the grouped row expands to reveal child items, then collapses again', async ({ page }) => {
+    await loadGroupedInventory(page);
+    const groupedRow = await openDairyMilkGroup(page);
+
+    // Expand
+    await groupedRow.click();
+    await expect(groupedRow).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.getByTestId('item-card-milk-1')).toBeVisible();
+    await expect(page.getByTestId('item-card-milk-2')).toBeVisible();
+    await expect(page.getByTestId('item-card-milk-3')).toBeVisible();
+
+    // Collapse
+    await groupedRow.click();
+    await expect(groupedRow).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.getByTestId('item-card-milk-1')).not.toBeVisible();
+    await expect(page.getByTestId('item-card-milk-3')).not.toBeVisible();
+  });
+
+  test('Enter key toggles the grouped row identically to pointer activation', async ({ page }) => {
+    await loadGroupedInventory(page);
+    const groupedRow = await openDairyMilkGroup(page);
+
+    await groupedRow.focus();
+
+    // Enter expands
+    await page.keyboard.press('Enter');
+    await expect(groupedRow).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.getByTestId('item-card-milk-2')).toBeVisible();
+
+    // Enter collapses
+    await page.keyboard.press('Enter');
+    await expect(groupedRow).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.getByTestId('item-card-milk-2')).not.toBeVisible();
+  });
+
+  test('Space key toggles the grouped row identically to pointer activation', async ({ page }) => {
+    await loadGroupedInventory(page);
+    const groupedRow = await openDairyMilkGroup(page);
+
+    await groupedRow.focus();
+
+    // Space expands
+    await page.keyboard.press(' ');
+    await expect(groupedRow).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.getByTestId('item-card-milk-2')).toBeVisible();
+
+    // Space collapses
+    await page.keyboard.press(' ');
+    await expect(groupedRow).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.getByTestId('item-card-milk-2')).not.toBeVisible();
+  });
+
+  test('activating a child item opens the item detail view', async ({ page }) => {
+    await loadGroupedInventory(page);
+    const groupedRow = await openDairyMilkGroup(page);
+
+    // Expand, then activate the low-stock child.
+    await groupedRow.click();
+    const childCard = page.getByTestId('item-card-milk-2');
+    await expect(childCard).toBeVisible();
+    await childCard.click();
+
+    // Item detail view opens (heading shows the item name).
+    await expect(page.getByRole('heading', { name: 'Milk' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByLabel('Product Name')).toHaveValue('Milk');
   });
 });
