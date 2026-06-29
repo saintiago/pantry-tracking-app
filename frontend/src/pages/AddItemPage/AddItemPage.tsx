@@ -142,6 +142,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
       if (!prev.whereToBuy && item.whereToBuy) { updates.whereToBuy = item.whereToBuy; newPrefilledFields.add('whereToBuy'); }
       if (!prev.onlineStoreLink && item.onlineStoreLink) { updates.onlineStoreLink = item.onlineStoreLink; newPrefilledFields.add('onlineStoreLink'); }
       if ((triggerField === 'barcode' || !prev.barcode) && item.barcode) { updates.barcode = item.barcode; newPrefilledFields.add('barcode'); }
+      if (!prev.expirationDate && item.expirationDate) { updates.expirationDate = item.expirationDate; newPrefilledFields.add('expirationDate'); }
 
       if (newPrefilledFields.size > 0) {
         setPrefilledFields((p) => new Set([...p, ...newPrefilledFields]));

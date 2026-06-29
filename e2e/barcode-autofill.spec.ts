@@ -35,6 +35,7 @@ const mockInventoryItems = [
     location: 'loc-1',
     whereToBuy: 'Whole Foods',
     onlineStoreLink: 'https://example.com/milk',
+    expirationDate: '2027-03-15',
   },
   {
     itemId: 'item-2',
@@ -337,7 +338,7 @@ test.describe('Barcode Autofill Feature', () => {
     await expect(page.getByLabel('Online Store Link')).toHaveValue('https://example.com/milk');
   });
 
-  test('expiration date field is focused after autofill', async ({ page }) => {
+  test('expiration date field is focused and set to the suggestion date after autofill', async ({ page }) => {
     await openAddItemPage(page);
 
     await page.getByLabel('Barcode').fill('012');
@@ -346,6 +347,8 @@ test.describe('Barcode Autofill Feature', () => {
 
     // Wait for the setTimeout in performFullAutofill
     await page.waitForTimeout(200);
+
+    await expect(page.getByLabel('Expiration Date')).toHaveValue('2027-03-15');
 
     const focused = await page.getByLabel('Expiration Date').evaluate(
       (el) => document.activeElement === el,
