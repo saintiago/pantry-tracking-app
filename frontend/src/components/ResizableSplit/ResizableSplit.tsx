@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 interface ResizableSplitProps {
   /** Content rendered in the top panel */
@@ -21,6 +21,11 @@ const HANDLE_HEIGHT = 44;
  * Uses the Pointer Events API for unified mouse + touch handling.
  * Live dragging updates the DOM directly via refs for 60 fps smoothness;
  * React state is only updated on pointer-up to persist the final ratio.
+ *
+ * pointermove/pointerup use native DOM listeners on the handle element
+ * (not React synthetic events) because React's event delegation can fail
+ * to dispatch captured pointer events to the correct fiber after
+ * setPointerCapture, especially on touch devices.
  */
 const ResizableSplit: React.FC<ResizableSplitProps> = ({
   top,
@@ -35,36 +40,60 @@ const ResizableSplit: React.FC<ResizableSplitProps> = ({
   const handleRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
   const ratioRef = useRef(defaultRatio);
+  // Stable refs for min/max so native listeners can read current values
+  const minRatioRef = useRef(minRatio);
+  const maxRatioRef = useRef(maxRatio);
+  minRatioRef.current = minRatio;
+  maxRatioRef.current = maxRatio;
+
+  // Attach native pointermove/pointerup listeners on the handle element.
+  // These must be native (not React synthetic) because React's root-level
+  // event delegation does not reliably dispatch captured pointer events.
+  useEffect(() => {
+    const handle = handleRef.current;
+    if (!handle) return;
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!draggingRef.current || !containerRef.current || !topPanelRef.current) return;
+
+      const rect = containerRef.current.getBoundingClientRect();
+      const rawRatio = (e.clientY - rect.top) / rect.height;
+      const clamped = Math.max(minRatioRef.current, Math.min(maxRatioRef.current, rawRatio));
+
+      // Direct DOM update for smooth 60 fps — no React re-render during drag
+      topPanelRef.current.style.flex = String(clamped);
+      ratioRef.current = clamped;
+    };
+
+    const onPointerUp = (e: PointerEvent) => {
+      draggingRef.current = false;
+      handle.releasePointerCapture(e.pointerId);
+      // Persist final ratio to React state
+      setRatio(ratioRef.current);
+    };
+
+    handle.addEventListener('pointermove', onPointerMove);
+    handle.addEventListener('pointerup', onPointerUp);
+    handle.addEventListener('pointercancel', onPointerUp);
+
+    return () => {
+      handle.removeEventListener('pointermove', onPointerMove);
+      handle.removeEventListener('pointerup', onPointerUp);
+      handle.removeEventListener('pointercancel', onPointerUp);
+    };
+  }, []); // stable — min/max read from refs
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      e.preventDefault();
+      // Do NOT call e.preventDefault() — touchAction: 'none' on the
+      // handle already tells the browser not to start scroll/zoom gestures.
+      // preventDefault() on pointerdown can suppress subsequent
+      // pointermove events on some mobile browsers.
       draggingRef.current = true;
-      // Capture on the handle itself, not e.target (which may be a child span).
-      // This ensures the element with onPointerMove/onPointerUp receives captured events.
       handleRef.current?.setPointerCapture(e.pointerId);
     },
     [],
   );
-
-  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (!draggingRef.current || !containerRef.current || !topPanelRef.current) return;
-
-    const rect = containerRef.current.getBoundingClientRect();
-    const rawRatio = (e.clientY - rect.top) / rect.height;
-    const clamped = Math.max(minRatio, Math.min(maxRatio, rawRatio));
-
-    // Direct DOM update for smooth 60 fps — no React re-render during drag
-    topPanelRef.current.style.flex = String(clamped);
-    ratioRef.current = clamped;
-  }, [minRatio, maxRatio]);
-
-  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    draggingRef.current = false;
-    handleRef.current?.releasePointerCapture(e.pointerId);
-    // Persist final ratio to React state
-    setRatio(ratioRef.current);
-  }, []);
 
   return (
     <div
@@ -84,9 +113,6 @@ const ResizableSplit: React.FC<ResizableSplitProps> = ({
         ref={handleRef}
         style={styles.handle}
         onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
         data-testid="resizable-split-handle"
         role="separator"
         aria-orientation="horizontal"
@@ -147,6 +173,7 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     alignItems: 'center',
     gap: 3,
+    pointerEvents: 'none',
   },
   gripLine: {
     display: 'block',
@@ -154,5 +181,6 @@ const styles: Record<string, React.CSSProperties> = {
     height: 3,
     borderRadius: 2,
     backgroundColor: '#d1d5db',
+    pointerEvents: 'none',
   },
 };
