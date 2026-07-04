@@ -32,7 +32,7 @@ frontend/src/
 - **Routing**: State-based via `PageId` in `App.tsx` + `Layout`. No react-router. New pages = new `PageId` + `<Name>Page.tsx`
 - **No modals for forms** — use dedicated full pages (see `AddItemPage`, `ItemDetailPage`)
 - **Tests**: `__tests__/` sibling dirs. Unit = `.test.tsx`, property-based = `.property.test.tsx`, E2E = `e2e/*.spec.ts`
-- **Commits/push/deploy**: Never without explicit user instruction per message
+- **Commits/push/deploy**: NEVER without explicit user instruction per message — this applies to ALL changes including documentation, CLAUDE.md edits, and session learnings. If you have something worth committing, mention it to the user and let them decide.
 
 ## Design tokens (current — being redesigned)
 - Primary: `#4a90d9` (blue) | Text: `#1a1a1a` | BG: `#f5f5f5` | Card: `#ffffff`
@@ -73,9 +73,3 @@ Redesigning the UI: warm pastel aesthetic (blush/lavender/sage), game-like inter
 - **Never `--no-verify` commits** — the pre-commit hook runs lint + `test:unit` + `test:e2e`. Fix root causes instead of skipping hooks.
 - **When removing a feature from test files**: restore the original with `git show HEAD:path > path`, then use the Edit tool for targeted removals. PowerShell bulk edits are a fast path to encoding corruption.
 - **Property test files can mix concerns** — `inventory.property.test.ts` had both core inventory properties AND merge-specific properties in the same file. Don't delete the whole file; read first, then strip only the relevant sections.
-
-## Feature boundaries
-- **Merge-on-add** (now removed) and **inventory list grouping** (active) were shipped together in commit `adcac55` but are independent:
-  - Merge: backend `merge.ts` + `addInventoryItem` loop + frontend `AddItemPage` merge-state prediction (yellow highlight, dynamic label)
-  - Grouping: frontend-only `groupItemsByGroupingKey` in `InventoryList.tsx` (expand/collapse by name+category+unit)
-  - Removing one does not require removing the other.
