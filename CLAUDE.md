@@ -66,3 +66,16 @@ npm run test:e2e               # Playwright headless
 
 ## Active design initiative
 Redesigning the UI: warm pastel aesthetic (blush/lavender/sage), game-like interaction feedback (shake on error, bounce on success, hover scale+shadow on desktop, form field pulse on validation error). Piloting on Inventory page first.
+
+## Tool & workflow gotchas
+- **Never use PowerShell for text file manipulation** — `Set-Content -Encoding utf8` adds a BOM that corrupts source files. Use Bash (`head`, `tail`, `sed`, `git show`, `git checkout`) for bulk operations and the Edit tool for surgical changes.
+- **Prefer Bash over PowerShell** for all shell commands. PowerShell on this machine is Windows PowerShell 5.1 (no `&&`, no `||`, different encoding behavior).
+- **Never `--no-verify` commits** — the pre-commit hook runs lint + `test:unit` + `test:e2e`. Fix root causes instead of skipping hooks.
+- **When removing a feature from test files**: restore the original with `git show HEAD:path > path`, then use the Edit tool for targeted removals. PowerShell bulk edits are a fast path to encoding corruption.
+- **Property test files can mix concerns** — `inventory.property.test.ts` had both core inventory properties AND merge-specific properties in the same file. Don't delete the whole file; read first, then strip only the relevant sections.
+
+## Feature boundaries
+- **Merge-on-add** (now removed) and **inventory list grouping** (active) were shipped together in commit `adcac55` but are independent:
+  - Merge: backend `merge.ts` + `addInventoryItem` loop + frontend `AddItemPage` merge-state prediction (yellow highlight, dynamic label)
+  - Grouping: frontend-only `groupItemsByGroupingKey` in `InventoryList.tsx` (expand/collapse by name+category+unit)
+  - Removing one does not require removing the other.
