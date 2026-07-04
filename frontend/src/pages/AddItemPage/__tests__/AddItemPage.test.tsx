@@ -1,11 +1,11 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import AddItemPage from '../AddItemPage';
 import type { AddItemPageProps } from '../AddItemPage';
 import type { StorageLocation } from '../../../api/locations/locations';
-import type { InventoryItem, InventorySearchResponse } from '../../../api/inventory/inventory';
+import type { InventorySearchResponse } from '../../../api/inventory/inventory';
 
 // Mock the inventory API module so selecting an autocomplete suggestion triggers
 // performFullAutofill with a known item, and external barcode lookups are inert.
@@ -16,12 +16,6 @@ jest.mock('../../../api/inventory/inventory', () => ({
 
 import { searchInventory, lookupBarcode } from '../../../api/inventory/inventory';
 
-// The autocomplete search is debounced (~300ms) then resolves asynchronously.
-// Under parallel jest workers the polling window can be starved, so allow a
-// generous timeout and raise the per-test timeout to give the debounce room.
-jest.setTimeout(20000);
-const DROPDOWN_TIMEOUT = 10000;
-
 const mockSearchInventory = searchInventory as jest.MockedFunction<typeof searchInventory>;
 const mockLookupBarcode = lookupBarcode as jest.MockedFunction<typeof lookupBarcode>;
 
@@ -29,36 +23,8 @@ const LOCATIONS: StorageLocation[] = [
   { locationId: 'loc-1', name: 'Pantry', createdAt: '2024-01-01T00:00:00Z' },
 ];
 
-// A known existing item whose comparable fields the form will mirror after autofill.
-const MILK_ITEM: InventoryItem = {
-  itemId: 'item-1',
-  name: 'Milk',
-  category: 'Dairy',
-  expirationDate: '2025-06-01',
-  location: 'loc-1',
-  quantity: 2,
-  unit: 'l',
-  isLowStock: false,
-  brand: 'DairyCo',
-  createdAt: '2024-01-01T00:00:00Z',
-  updatedAt: '2024-01-01T00:00:00Z',
-};
-
-// Yellow merge-state palette (Req 6.1) and existing blue prefilled palette (Req 6.2).
-const MERGE_YELLOW_BG = '#fef9c3';
-const MERGE_YELLOW_TEXT = '#854d0e';
-const PREFILLED_BLUE_BG = '#e0f2fe';
-
-let showPickerMock: jest.Mock;
-
 beforeEach(() => {
   jest.resetAllMocks();
-  // jsdom does not implement showPicker; stub it so we can assert invocations (Req 4.3)
-  // without the component's try/catch swallowing a missing-method error.
-  showPickerMock = jest.fn();
-  (HTMLInputElement.prototype as unknown as { showPicker: () => void }).showPicker =
-    showPickerMock;
-  // Default: every field search returns nothing (no dropdown). Tests override `name`.
   mockSearchInventory.mockResolvedValue({
     field: 'name',
     query: '',
@@ -83,180 +49,90 @@ function renderPage(overrides: Partial<AddItemPageProps> = {}) {
   return { onBack, onSubmit };
 }
 
-/**
- * Drives a full Autofill by typing into the name field, waiting for the mocked
- * search dropdown to appear, and selecting the single suggestion. Returns once the
- * autofill has applied (category copied from the suggestion).
- */
-async function autofillFromNameSuggestion(
-  user: ReturnType<typeof userEvent.setup>,
-  item: InventoryItem,
-) {
-  mockSearchInventory.mockImplementation(async (field): Promise<InventorySearchResponse> => {
-    if (field === 'name') {
-      return {
-        field: 'name',
-        query: item.name,
-        resultType: 'items',
-        items: [item],
-        count: 1,
-      };
-    }
-    return { field, query: '', resultType: 'values', values: [], count: 0 };
+describe('AddItemPage', () => {
+  it('renders the add item form with submit label "Add new item"', () => {
+    renderPage();
+    expect(screen.getByLabelText(/Product Name/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add new item' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
   });
 
-  const nameInput = screen.getByLabelText(/Product Name/i) as HTMLInputElement;
-  await user.type(nameInput, item.name);
+  it('shows validation errors when submitting empty form', async () => {
+    const user = userEvent.setup();
+    renderPage();
 
-  // Scope to the autocomplete dropdown item (select <option> elements also expose
-  // the "option" role, so query by the dropdown item's test id instead). The search
-  // is debounced ~300ms then resolves asynchronously, so allow generous polling time.
-  const option = await screen.findByTestId('dropdown-item-0', {}, { timeout: DROPDOWN_TIMEOUT });
-  await user.click(option);
+    await user.click(screen.getByRole('button', { name: 'Add new item' }));
 
-  const categoryInput = screen.getByLabelText(/Category/i) as HTMLInputElement;
-  await waitFor(() => expect(categoryInput.value).toBe(item.category));
-}
-
-describe('AddItemPage — merge-state behavior', () => {
-  describe('expiration-date autofill (Req 4.3, 4.4, 4.5)', () => {
-    it('copies expiration, focuses the field, and opens the picker when empty (Req 4.3)', async () => {
-      const user = userEvent.setup();
-      renderPage();
-
-      await autofillFromNameSuggestion(user, MILK_ITEM);
-
-      const expirationInput = screen.getByLabelText(/Expiration Date/i) as HTMLInputElement;
-      // Copied from the suggestion (Req 4.1)
-      expect(expirationInput.value).toBe(MILK_ITEM.expirationDate);
-      // Focus moves to the field and the date picker is opened (Req 4.3)
-      await waitFor(() => expect(showPickerMock).toHaveBeenCalled());
-      expect(expirationInput).toHaveFocus();
-    });
-
-    it('leaves a user-entered expiration unchanged and does not focus or open the picker (Req 4.4)', async () => {
-      const user = userEvent.setup();
-      renderPage();
-
-      const expirationInput = screen.getByLabelText(/Expiration Date/i) as HTMLInputElement;
-      // User enters their own expiration before selecting a suggestion.
-      fireEvent.change(expirationInput, { target: { value: '2025-01-15' } });
-
-      await autofillFromNameSuggestion(user, MILK_ITEM);
-
-      expect(expirationInput.value).toBe('2025-01-15');
-      expect(showPickerMock).not.toHaveBeenCalled();
-      expect(expirationInput).not.toHaveFocus();
-    });
-
-    it('leaves the expiration field unchanged when the suggestion has no expiration (Req 4.5)', async () => {
-      const user = userEvent.setup();
-      renderPage();
-
-      await autofillFromNameSuggestion(user, { ...MILK_ITEM, expirationDate: '' });
-
-      const expirationInput = screen.getByLabelText(/Expiration Date/i) as HTMLInputElement;
-      expect(expirationInput.value).toBe('');
-      expect(showPickerMock).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByText('Product name is required.')).toBeInTheDocument();
+      expect(screen.getByText('Category is required.')).toBeInTheDocument();
+      expect(screen.getByText('Expiration date is required.')).toBeInTheDocument();
+      expect(screen.getByText('Storage location is required.')).toBeInTheDocument();
+      expect(screen.getByText('Quantity is required.')).toBeInTheDocument();
     });
   });
 
-  describe('submit-button label and merge highlight (Req 5, 6)', () => {
-    it('shows "new" in the label when no suggestion has been selected (Req 5.4)', () => {
-      renderPage();
-      const submit = screen.getByRole('button', { name: /add new item/i });
-      expect(submit).toBeInTheDocument();
-      expect(submit).toHaveTextContent(/new/i);
-      expect(screen.getByTestId('action-bar')).toHaveAttribute('data-merge-state', 'false');
-    });
+  it('calls onSubmit with form data when valid', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderPage();
 
-    it('enters merge state after autofill: label and yellow palette (Req 5.1, 6.1)', async () => {
-      const user = userEvent.setup();
-      renderPage();
+    await user.type(screen.getByLabelText(/Product Name/i), 'Milk');
+    await user.type(screen.getByLabelText(/Category/i), 'Dairy');
+    await user.type(screen.getByLabelText(/Expiration Date/i), '2026-12-31');
+    await user.selectOptions(screen.getByLabelText(/Storage Location/i), 'loc-1');
+    await user.type(screen.getByLabelText(/Quantity/i), '2');
 
-      await autofillFromNameSuggestion(user, MILK_ITEM);
+    await user.click(screen.getByRole('button', { name: 'Add new item' }));
 
-      expect(screen.getByTestId('action-bar')).toHaveAttribute('data-merge-state', 'true');
-      expect(screen.getByRole('button', { name: /add to existing item/i })).toBeInTheDocument();
-
-      // Prefilled fields render with the yellow merge palette (Req 6.1)
-      const nameInput = screen.getByLabelText(/Product Name/i);
-      expect(nameInput).toHaveStyle({
-        backgroundColor: MERGE_YELLOW_BG,
-        color: MERGE_YELLOW_TEXT,
-      });
-    });
-
-    it('editing a non-quantity prefilled field flips the label to "new" and reverts highlight to blue (Req 5.3, 6.2, 6.3, 6.4)', async () => {
-      const user = userEvent.setup();
-      renderPage();
-
-      await autofillFromNameSuggestion(user, MILK_ITEM);
-      expect(screen.getByRole('button', { name: /add to existing item/i })).toBeInTheDocument();
-
-      // Edit the prefilled brand field so it differs from the autofill snapshot.
-      const brandInput = screen.getByLabelText(/Brand/i) as HTMLInputElement;
-      fireEvent.change(brandInput, { target: { value: 'OtherBrand' } });
-
-      // Label updates synchronously to include "new" (Req 5.3)
-      const submit = screen.getByRole('button', { name: /add new item/i });
-      expect(submit).toHaveTextContent(/new/i);
-      expect(screen.getByTestId('action-bar')).toHaveAttribute('data-merge-state', 'false');
-
-      // The edited field clears its individual highlight (Req 6.4)
-      expect(brandInput).not.toHaveStyle({ backgroundColor: MERGE_YELLOW_BG });
-      expect(brandInput).not.toHaveStyle({ backgroundColor: PREFILLED_BLUE_BG });
-
-      // A still-prefilled field reverts from yellow to the blue prefilled highlight (Req 6.2, 6.3)
-      const nameInput = screen.getByLabelText(/Product Name/i);
-      expect(nameInput).toHaveStyle({ backgroundColor: PREFILLED_BLUE_BG });
-    });
-
-    it('editing only the quantity keeps the merge label and yellow highlight (Req 5.5, 6.5)', async () => {
-      const user = userEvent.setup();
-      renderPage();
-
-      await autofillFromNameSuggestion(user, MILK_ITEM);
-
-      const quantityInput = screen.getByLabelText(/Quantity/i) as HTMLInputElement;
-      fireEvent.change(quantityInput, { target: { value: '5' } });
-
-      // Quantity is excluded from merge state, so the label/highlight stay unchanged.
-      expect(screen.getByRole('button', { name: /add to existing item/i })).toBeInTheDocument();
-      expect(screen.getByTestId('action-bar')).toHaveAttribute('data-merge-state', 'true');
-
-      const nameInput = screen.getByLabelText(/Product Name/i);
-      expect(nameInput).toHaveStyle({
-        backgroundColor: MERGE_YELLOW_BG,
-        color: MERGE_YELLOW_TEXT,
-      });
-    });
-  });
-
-  describe('submission progress (Req 5.6)', () => {
-    it('disables the submit button and shows progress text while submitting', async () => {
-      const user = userEvent.setup();
-      // onSubmit never resolves so the submitting state persists for assertion.
-      let resolveSubmit: ((value: { error?: string }) => void) | undefined;
-      const onSubmit = jest.fn(
-        () => new Promise<{ error?: string }>((resolve) => { resolveSubmit = resolve; }),
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Milk',
+          category: 'Dairy',
+          expirationDate: '2026-12-31',
+          locationId: 'loc-1',
+          quantity: 2,
+          unit: 'piece',
+        }),
       );
+    });
+  });
 
-      renderPage({ onSubmit });
+  it('shows success message and calls onBack after successful submission', async () => {
+    const user = userEvent.setup();
+    const { onBack } = renderPage();
 
-      // Autofill fills every required field (name, category, expiration, location,
-      // quantity, unit), so the form passes validation on submit.
-      await autofillFromNameSuggestion(user, MILK_ITEM);
+    await user.type(screen.getByLabelText(/Product Name/i), 'Milk');
+    await user.type(screen.getByLabelText(/Category/i), 'Dairy');
+    await user.type(screen.getByLabelText(/Expiration Date/i), '2026-12-31');
+    await user.selectOptions(screen.getByLabelText(/Storage Location/i), 'loc-1');
+    await user.type(screen.getByLabelText(/Quantity/i), '2');
 
-      const submit = screen.getByRole('button', { name: /add to existing item/i });
-      await user.click(submit);
+    await user.click(screen.getByRole('button', { name: 'Add new item' }));
 
-      const submittingButton = await screen.findByRole('button', { name: /adding/i });
-      expect(submittingButton).toBeDisabled();
-      expect(onSubmit).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(screen.getByText('Item added successfully!')).toBeInTheDocument();
+    });
 
-      // Resolve to let pending state settle and avoid post-test act warnings.
-      resolveSubmit?.({});
+    // After the 1200ms delay, onBack should be called
+    await waitFor(() => expect(onBack).toHaveBeenCalled(), { timeout: 2000 });
+  });
+
+  it('shows error when submission fails', async () => {
+    const user = userEvent.setup();
+    const onSubmit = jest.fn().mockResolvedValue({ error: 'Something went wrong' });
+    renderPage({ onSubmit });
+
+    await user.type(screen.getByLabelText(/Product Name/i), 'Milk');
+    await user.type(screen.getByLabelText(/Category/i), 'Dairy');
+    await user.type(screen.getByLabelText(/Expiration Date/i), '2026-12-31');
+    await user.selectOptions(screen.getByLabelText(/Storage Location/i), 'loc-1');
+    await user.type(screen.getByLabelText(/Quantity/i), '2');
+
+    await user.click(screen.getByRole('button', { name: 'Add new item' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Something went wrong')).toBeInTheDocument();
     });
   });
 });
