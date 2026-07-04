@@ -159,6 +159,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
+    overflow: 'hidden',
   },
   pageHeader: {
     display: 'flex',

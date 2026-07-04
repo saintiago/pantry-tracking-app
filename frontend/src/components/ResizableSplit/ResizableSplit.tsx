@@ -37,6 +37,7 @@ const ResizableSplit: React.FC<ResizableSplitProps> = ({
   const [ratio, setRatio] = useState(defaultRatio);
   const containerRef = useRef<HTMLDivElement>(null);
   const topPanelRef = useRef<HTMLDivElement>(null);
+  const bottomPanelRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
   const ratioRef = useRef(defaultRatio);
@@ -54,14 +55,16 @@ const ResizableSplit: React.FC<ResizableSplitProps> = ({
     if (!handle) return;
 
     const onPointerMove = (e: PointerEvent) => {
-      if (!draggingRef.current || !containerRef.current || !topPanelRef.current) return;
+      if (!draggingRef.current || !containerRef.current || !topPanelRef.current || !bottomPanelRef.current) return;
 
       const rect = containerRef.current.getBoundingClientRect();
       const rawRatio = (e.clientY - rect.top) / rect.height;
       const clamped = Math.max(minRatioRef.current, Math.min(maxRatioRef.current, rawRatio));
 
-      // Direct DOM update for smooth 60 fps — no React re-render during drag
+      // Direct DOM update for smooth 60 fps — no React re-render during drag.
+      // Both panels must be updated so flex proportions stay consistent.
       topPanelRef.current.style.flex = String(clamped);
+      bottomPanelRef.current.style.flex = String(1 - clamped);
       ratioRef.current = clamped;
     };
 
@@ -130,6 +133,7 @@ const ResizableSplit: React.FC<ResizableSplitProps> = ({
       </div>
 
       <div
+        ref={bottomPanelRef}
         style={{ ...styles.panel, flex: 1 - ratio }}
         data-testid="resizable-split-bottom"
       >
@@ -145,7 +149,8 @@ const styles: Record<string, React.CSSProperties> = {
   container: {
     display: 'flex',
     flexDirection: 'column',
-    height: '100%',
+    flex: 1,
+    minHeight: 0,
     overflow: 'hidden',
     userSelect: 'none',
   },
