@@ -27,6 +27,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ activePage, onNavigate, children, cookingSession, onReturnToCooking }) => {
   const isInventory = activePage === 'inventory';
+  const isCooking = activePage === 'cooking';
   const activeColor = isInventory ? '#d4829a' : '#4a90d9';
   const showCookingBanner = cookingSession != null && activePage !== 'cooking';
 
@@ -53,6 +54,7 @@ const Layout: React.FC<LayoutProps> = ({ activePage, onNavigate, children, cooki
         ...styles.main,
         backgroundColor: isInventory ? '#fdf6f0' : undefined,
         paddingBottom: showCookingBanner ? '6.75rem' : '5rem',
+        ...(isCooking ? { overflow: 'hidden', position: 'relative', padding: 0 } : {}),
       }}>{children}</main>
 
       {/* Return to Cooking banner */}

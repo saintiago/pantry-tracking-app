@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 
 interface ResizableSplitProps {
   /** Content rendered in the top panel */
@@ -22,10 +22,9 @@ const HANDLE_HEIGHT = 44;
  * Live dragging updates the DOM directly via refs for 60 fps smoothness;
  * React state is only updated on pointer-up to persist the final ratio.
  *
- * pointermove/pointerup use native DOM listeners on the handle element
- * (not React synthetic events) because React's event delegation can fail
- * to dispatch captured pointer events to the correct fiber after
- * setPointerCapture, especially on touch devices.
+ * pointermove/pointerup use document-level native listeners, added on
+ * pointerdown and removed on pointerup. This avoids setPointerCapture
+ * entirely, which is the most reliable pattern across browsers.
  */
 const ResizableSplit: React.FC<ResizableSplitProps> = ({
   top,
@@ -41,59 +40,42 @@ const ResizableSplit: React.FC<ResizableSplitProps> = ({
   const handleRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
   const ratioRef = useRef(defaultRatio);
-  // Stable refs for min/max so native listeners can read current values
+  // Stable refs for min/max so listeners can read current values
   const minRatioRef = useRef(minRatio);
   const maxRatioRef = useRef(maxRatio);
   minRatioRef.current = minRatio;
   maxRatioRef.current = maxRatio;
 
-  // Attach native pointermove/pointerup listeners on the handle element.
-  // These must be native (not React synthetic) because React's root-level
-  // event delegation does not reliably dispatch captured pointer events.
-  useEffect(() => {
-    const handle = handleRef.current;
-    if (!handle) return;
-
-    const onPointerMove = (e: PointerEvent) => {
-      if (!draggingRef.current || !containerRef.current || !topPanelRef.current || !bottomPanelRef.current) return;
-
-      const rect = containerRef.current.getBoundingClientRect();
-      const rawRatio = (e.clientY - rect.top) / rect.height;
-      const clamped = Math.max(minRatioRef.current, Math.min(maxRatioRef.current, rawRatio));
-
-      // Direct DOM update for smooth 60 fps — no React re-render during drag.
-      // Both panels must be updated so flex proportions stay consistent.
-      topPanelRef.current.style.flex = String(clamped);
-      bottomPanelRef.current.style.flex = String(1 - clamped);
-      ratioRef.current = clamped;
-    };
-
-    const onPointerUp = (e: PointerEvent) => {
-      draggingRef.current = false;
-      handle.releasePointerCapture(e.pointerId);
-      // Persist final ratio to React state
-      setRatio(ratioRef.current);
-    };
-
-    handle.addEventListener('pointermove', onPointerMove);
-    handle.addEventListener('pointerup', onPointerUp);
-    handle.addEventListener('pointercancel', onPointerUp);
-
-    return () => {
-      handle.removeEventListener('pointermove', onPointerMove);
-      handle.removeEventListener('pointerup', onPointerUp);
-      handle.removeEventListener('pointercancel', onPointerUp);
-    };
-  }, []); // stable — min/max read from refs
-
   const handlePointerDown = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      // Do NOT call e.preventDefault() — touchAction: 'none' on the
-      // handle already tells the browser not to start scroll/zoom gestures.
-      // preventDefault() on pointerdown can suppress subsequent
-      // pointermove events on some mobile browsers.
+    () => {
       draggingRef.current = true;
-      handleRef.current?.setPointerCapture(e.pointerId);
+
+      const onPointerMove = (e: PointerEvent) => {
+        if (!draggingRef.current || !containerRef.current || !topPanelRef.current || !bottomPanelRef.current) return;
+
+        const rect = containerRef.current.getBoundingClientRect();
+        const rawRatio = (e.clientY - rect.top) / rect.height;
+        const clamped = Math.max(minRatioRef.current, Math.min(maxRatioRef.current, rawRatio));
+
+        // Direct DOM update for smooth 60 fps — no React re-render during drag.
+        // Both panels must be updated so flex proportions stay consistent.
+        topPanelRef.current.style.flex = String(clamped);
+        bottomPanelRef.current.style.flex = String(1 - clamped);
+        ratioRef.current = clamped;
+      };
+
+      const onPointerUp = () => {
+        draggingRef.current = false;
+        document.removeEventListener('pointermove', onPointerMove);
+        document.removeEventListener('pointerup', onPointerUp);
+        document.removeEventListener('pointercancel', onPointerUp);
+        // Persist final ratio to React state
+        setRatio(ratioRef.current);
+      };
+
+      document.addEventListener('pointermove', onPointerMove);
+      document.addEventListener('pointerup', onPointerUp);
+      document.addEventListener('pointercancel', onPointerUp);
     },
     [],
   );
