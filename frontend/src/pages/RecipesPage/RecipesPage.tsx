@@ -6,6 +6,12 @@ import { fetchRecipeTags } from '../../api/recipes/recipes';
 import { fetchInventory } from '../../api/inventory/inventory';
 import { buildInventoryIndex } from '../../api/recipes/availability';
 import type { InventoryIndex } from '../../api/recipes/availability';
+import type { CookingSession } from '../CookingPage/CookingPage';
+
+interface RecipesPageProps {
+  activeCookingSession?: CookingSession | null;
+  onStartCooking?: (recipeId: string, recipeName: string) => void;
+}
 
 type RecipeView =
   | { mode: 'list' }
@@ -13,7 +19,10 @@ type RecipeView =
   | { mode: 'editor-new' }
   | { mode: 'editor-edit'; recipeId: string };
 
-const RecipesPage: React.FC = () => {
+const RecipesPage: React.FC<RecipesPageProps> = ({
+  activeCookingSession,
+  onStartCooking,
+}) => {
   const [view, setView] = useState<RecipeView>({ mode: 'list' });
   const [allTags, setAllTags] = useState<string[]>([]);
   const [tagsLoading, setTagsLoading] = useState(true);
@@ -67,6 +76,7 @@ const RecipesPage: React.FC = () => {
         tagsLoading={tagsLoading}
         inventoryIndex={inventoryIndex}
         inventoryLoading={inventoryLoading}
+        activeCookingSession={activeCookingSession}
       />
     );
   }
@@ -78,6 +88,8 @@ const RecipesPage: React.FC = () => {
         onEdit={() => setView({ mode: 'editor-edit', recipeId: view.recipeId })}
         onBack={() => setView({ mode: 'list' })}
         onDeleted={() => setView({ mode: 'list' })}
+        activeCookingSession={activeCookingSession}
+        onStartCooking={onStartCooking}
       />
     );
   }

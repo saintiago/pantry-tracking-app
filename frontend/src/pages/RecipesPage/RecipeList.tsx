@@ -8,6 +8,7 @@ import RecipeFilterPanel, {
 } from './RecipeFilterPanel';
 import { filterRecipes, validateMaxTimeInput, RecipeFilters } from '../../api/recipes/filter';
 import type { InventoryIndex } from '../../api/recipes/availability';
+import type { CookingSession } from '../CookingPage/CookingPage';
 
 interface RecipeListProps {
   onSelect: (recipeId: string) => void;
@@ -16,6 +17,7 @@ interface RecipeListProps {
   tagsLoading: boolean;
   inventoryIndex: InventoryIndex;
   inventoryLoading: boolean;
+  activeCookingSession?: CookingSession | null;
 }
 
 const RecipeList: React.FC<RecipeListProps> = ({
@@ -25,6 +27,7 @@ const RecipeList: React.FC<RecipeListProps> = ({
   tagsLoading,
   inventoryIndex,
   inventoryLoading,
+  activeCookingSession,
 }) => {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
@@ -168,7 +171,12 @@ const RecipeList: React.FC<RecipeListProps> = ({
                   aria-label={`View ${recipe.name}`}
                 >
                   <div style={styles.rowContent}>
-                    <span style={styles.recipeName}>{recipe.name}</span>
+                    <span style={styles.recipeName}>
+                      {recipe.name}
+                      {activeCookingSession?.recipeId === recipe.recipeId && (
+                        <span style={styles.cookingIndicator} aria-label="Currently cooking"> 🍳</span>
+                      )}
+                    </span>
                     {recipeTags.length > 0 && (
                       <div style={styles.tagChipRow}>
                         {recipeTags.map((tag) => (
@@ -315,6 +323,9 @@ const styles: Record<string, React.CSSProperties> = {
   },
   recipeName: {
     fontWeight: 500,
+  },
+  cookingIndicator: {
+    fontSize: '0.875rem',
   },
   tagChipRow: {
     display: 'flex',

@@ -8,15 +8,18 @@ import {
 import type { RecipeWithAvailability } from '../../api/recipes/recipes';
 import IngredientAvailability from './IngredientAvailability';
 import { resolveUnit } from '../../types/units';
+import type { CookingSession } from '../CookingPage/CookingPage';
 
 interface RecipeDetailProps {
   recipeId: string;
   onEdit: () => void;
   onBack: () => void;
   onDeleted: () => void;
+  activeCookingSession?: CookingSession | null;
+  onStartCooking?: (recipeId: string, recipeName: string) => void;
 }
 
-const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipeId, onEdit, onBack, onDeleted }) => {
+const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipeId, onEdit, onBack, onDeleted, activeCookingSession, onStartCooking }) => {
   const [data, setData] = useState<RecipeWithAvailability | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -129,6 +132,21 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipeId, onEdit, onBack, o
   const instructionSteps = Array.isArray(recipe.instructions)
     ? recipe.instructions
     : [recipe.instructions];
+
+  // Cook button state
+  const hasActiveSession = activeCookingSession != null;
+  const isSameRecipe = hasActiveSession && activeCookingSession!.recipeId === recipe.recipeId;
+  const isDifferentRecipe = hasActiveSession && activeCookingSession!.recipeId !== recipe.recipeId;
+
+  const cookButtonLabel = isSameRecipe
+    ? '🍳 Resume Cooking'
+    : '🍳 Cook';
+  const cookButtonDisabled = isDifferentRecipe;
+  const handleCook = () => {
+    if (onStartCooking) {
+      onStartCooking(recipe.recipeId, recipe.name);
+    }
+  };
 
   return (
     <div style={styles.page}>
@@ -265,6 +283,20 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipeId, onEdit, onBack, o
           data-testid="delete-button"
         >
           {deleting ? 'Deleting…' : 'Delete'}
+        </button>
+        <button
+          type="button"
+          onClick={handleCook}
+          style={{
+            ...styles.cookButton,
+            ...(cookButtonDisabled ? styles.cookButtonDisabled : {}),
+            ...(isSameRecipe ? styles.cookButtonResume : {}),
+          }}
+          disabled={deleting || cookButtonDisabled}
+          data-testid="cook-button"
+          title={isDifferentRecipe ? 'Finish your current cooking session before starting a new one' : undefined}
+        >
+          {cookButtonLabel}
         </button>
         <button
           type="button"
@@ -414,6 +446,27 @@ const styles: Record<string, React.CSSProperties> = {
   disabledButton: {
     opacity: 0.5,
     cursor: 'not-allowed',
+  },
+  cookButton: {
+    flex: 1,
+    minHeight: 44,
+    minWidth: 44,
+    padding: '0.625rem 0.5rem',
+    fontSize: '0.9375rem',
+    fontWeight: 700,
+    color: '#ffffff',
+    backgroundColor: '#d4829a',
+    border: 'none',
+    borderRadius: 8,
+    cursor: 'pointer',
+  },
+  cookButtonDisabled: {
+    backgroundColor: '#e5e7eb',
+    color: '#9ca3af',
+    cursor: 'not-allowed',
+  },
+  cookButtonResume: {
+    backgroundColor: '#7eb890',
   },
   timeSection: {
     display: 'flex',

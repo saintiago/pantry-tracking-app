@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { AuthProvider, useAuth } from './auth/AuthContext/AuthContext';
 import AuthScreen from './auth/AuthScreen/AuthScreen';
 import Layout, { PageId } from './components/Layout/Layout';
@@ -6,6 +6,8 @@ import InventoryPage from './pages/InventoryPage/InventoryPage';
 import AddItemPage from './pages/AddItemPage/AddItemPage';
 import ItemDetailPage from './pages/ItemDetailPage/ItemDetailPage';
 import RecipesPage from './pages/RecipesPage/RecipesPage';
+import CookingPage from './pages/CookingPage/CookingPage';
+import type { CookingSession } from './pages/CookingPage/CookingPage';
 import MealPlanPage from './pages/MealPlanPage/MealPlanPage';
 import ShoppingListPage from './pages/ShoppingListPage/ShoppingListPage';
 import type { AddItemData } from './pages/AddItemPage/AddItemPage';
@@ -29,7 +31,6 @@ interface ItemDetailPageState {
 }
 
 const mainPages: Partial<Record<PageId, React.FC>> = {
-  recipes: RecipesPage,
   'meal-plan': MealPlanPage,
   'shopping-list': ShoppingListPage,
 };
@@ -82,6 +83,21 @@ const AuthenticatedApp: React.FC = () => {
   const [inventoryKey, setInventoryKey] = useState(0);
   const [addItemPageProps, setAddItemPageProps] = useState<AddItemPageState | null>(null);
   const [itemDetailPageProps, setItemDetailPageProps] = useState<ItemDetailPageState | null>(null);
+  const [cookingSession, setCookingSession] = useState<CookingSession | null>(null);
+
+  const startCookingSession = useCallback((recipeId: string, recipeName: string) => {
+    setCookingSession({ recipeId, recipeName, currentStepIndex: 0 });
+    setActivePage('cooking');
+  }, []);
+
+  const updateCookingStep = useCallback((index: number) => {
+    setCookingSession((prev) => (prev ? { ...prev, currentStepIndex: index } : null));
+  }, []);
+
+  const finishCookingSession = useCallback(() => {
+    setCookingSession(null);
+    setActivePage('recipes');
+  }, []);
 
   const handleNavigate = (page: PageId) => {
     // Bump key when navigating back to inventory from another page — forces a fresh data fetch
@@ -146,13 +162,36 @@ const AuthenticatedApp: React.FC = () => {
         />
       );
     }
+    if (activePage === 'recipes') {
+      return (
+        <RecipesPage
+          activeCookingSession={cookingSession}
+          onStartCooking={startCookingSession}
+        />
+      );
+    }
+    if (activePage === 'cooking' && cookingSession) {
+      return (
+        <CookingPage
+          session={cookingSession}
+          onStepChange={updateCookingStep}
+          onFinish={finishCookingSession}
+          onExit={() => setActivePage('recipes')}
+        />
+      );
+    }
     const ActiveComponent = mainPages[activePage];
     if (!ActiveComponent) return null;
     return <ActiveComponent />;
   };
 
   return (
-    <Layout activePage={activePage} onNavigate={handleNavigate}>
+    <Layout
+      activePage={activePage}
+      onNavigate={handleNavigate}
+      cookingSession={cookingSession}
+      onReturnToCooking={() => setActivePage('cooking')}
+    >
       {renderPage()}
     </Layout>
   );

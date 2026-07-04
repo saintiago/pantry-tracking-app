@@ -2,7 +2,7 @@ import React from 'react';
 import OnlineIndicator from '../OnlineIndicator/OnlineIndicator';
 import { APP_VERSION } from '../../config';
 
-export type PageId = 'inventory' | 'recipes' | 'meal-plan' | 'shopping-list' | 'add-item' | 'item-detail';
+export type PageId = 'inventory' | 'recipes' | 'meal-plan' | 'shopping-list' | 'add-item' | 'item-detail' | 'cooking';
 
 interface NavItem {
   id: PageId;
@@ -21,11 +21,14 @@ interface LayoutProps {
   activePage: PageId;
   onNavigate: (page: PageId) => void;
   children: React.ReactNode;
+  cookingSession?: { recipeName: string } | null;
+  onReturnToCooking?: () => void;
 }
 
-const Layout: React.FC<LayoutProps> = ({ activePage, onNavigate, children }) => {
+const Layout: React.FC<LayoutProps> = ({ activePage, onNavigate, children, cookingSession, onReturnToCooking }) => {
   const isInventory = activePage === 'inventory';
   const activeColor = isInventory ? '#d4829a' : '#4a90d9';
+  const showCookingBanner = cookingSession != null && activePage !== 'cooking';
 
   return (
     <div className="layout" style={styles.layout}>
@@ -49,7 +52,28 @@ const Layout: React.FC<LayoutProps> = ({ activePage, onNavigate, children }) => 
       <main style={{
         ...styles.main,
         backgroundColor: isInventory ? '#fdf6f0' : undefined,
+        paddingBottom: showCookingBanner ? '6.75rem' : '5rem',
       }}>{children}</main>
+
+      {/* Return to Cooking banner */}
+      {showCookingBanner && (
+        <div style={styles.cookingBanner} data-testid="return-to-cooking-banner">
+          <div style={styles.cookingBannerInner}>
+            <span style={styles.cookingBannerIcon} aria-hidden="true">🍳</span>
+            <span style={styles.cookingBannerText}>
+              Cooking: &ldquo;{cookingSession!.recipeName}&rdquo;
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onReturnToCooking}
+            style={styles.cookingBannerButton}
+            aria-label="Return to cooking"
+          >
+            Return to Cooking
+          </button>
+        </div>
+      )}
 
       {/* Bottom navigation */}
       <nav style={{
@@ -155,6 +179,57 @@ const styles: Record<string, React.CSSProperties> = {
   navLabel: {
     fontSize: '0.6875rem',
     marginTop: 2,
+  },
+  cookingBanner: {
+    position: 'fixed',
+    bottom: 56, // sits right above the bottom nav
+    left: 0,
+    right: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '0.5rem 1rem',
+    backgroundColor: '#fdeef3',
+    borderTop: '1px solid #f5c6d5',
+    borderBottom: '1px solid #f5c6d5',
+    zIndex: 9,
+    maxWidth: 1920,
+    margin: '0 auto',
+    minHeight: 48,
+    boxSizing: 'border-box',
+  },
+  cookingBannerInner: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    minWidth: 0,
+    flex: 1,
+  },
+  cookingBannerIcon: {
+    fontSize: '1.25rem',
+    flexShrink: 0,
+  },
+  cookingBannerText: {
+    fontSize: '0.875rem',
+    fontWeight: 600,
+    color: '#b5607a',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  cookingBannerButton: {
+    minWidth: 44,
+    minHeight: 44,
+    padding: '0.5rem 0.75rem',
+    fontSize: '0.8125rem',
+    fontWeight: 700,
+    color: '#ffffff',
+    backgroundColor: '#d4829a',
+    border: 'none',
+    borderRadius: 8,
+    cursor: 'pointer',
+    flexShrink: 0,
+    marginLeft: '0.5rem',
   },
 };
 
