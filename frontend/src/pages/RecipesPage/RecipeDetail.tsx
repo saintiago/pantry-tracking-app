@@ -224,7 +224,7 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipeId, onEdit, onBack, o
           <ol style={styles.instructionsList}>
             {instructionSteps.filter(Boolean).map((step, index) => (
               <li key={index} style={styles.instructions}>
-                {step}
+                <strong>{index + 1}.</strong> {step}
               </li>
             ))}
           </ol>

@@ -110,7 +110,7 @@ const styles: Record<string, React.CSSProperties> = {
   row: {
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     gap: '0.75rem',
     padding: '0.35rem 0',
     borderBottom: '1px solid #f3f4f6',
