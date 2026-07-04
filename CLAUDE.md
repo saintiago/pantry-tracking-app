@@ -13,6 +13,15 @@ scripts/    deploy.sh (CDK + S3 sync + CF invalidation)
 .kiro/steering/  Authoritative specs: product, tech, structure, data-model, workflow, e2e-testing
 ```
 
+## Steering docs
+`.kiro/steering/` is the source of truth for architecture, tech stack, data model, and workflows. **Read the relevant steering doc before making decisions** — CLAUDE.md is a quick-ref summary, not exhaustive. Key files:
+- `tech.md` — tech stack, test framework (Jest), environments
+- `structure.md` — directory layout, config files
+- `data-model.md` — DynamoDB schema, entities, API routes
+- `workflow.md` — dev workflow, conventions
+- `e2e-testing.md` — Playwright patterns, auth mocking
+- `product.md` — product requirements
+
 ## Frontend structure
 ```
 frontend/src/
@@ -32,6 +41,7 @@ frontend/src/
 - **Routing**: State-based via `PageId` in `App.tsx` + `Layout`. No react-router. New pages = new `PageId` + `<Name>Page.tsx`
 - **No modals for forms** — use dedicated full pages (see `AddItemPage`, `ItemDetailPage`)
 - **Tests**: `__tests__/` sibling dirs. Unit = `.test.tsx`, property-based = `.property.test.tsx`, E2E = `e2e/*.spec.ts`
+- **Fix all issues, pre-existing or not**: don't skip a bug, test failure, or broken config just because it predates your change. If something is broken, fix it.
 - **Commits/push/deploy**: NEVER without explicit user instruction per message — this applies to ALL changes including documentation, CLAUDE.md edits, and session learnings. If you have something worth committing, mention it to the user and let them decide.
 
 ## Design tokens (current — being redesigned)

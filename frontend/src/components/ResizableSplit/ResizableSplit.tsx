@@ -32,6 +32,7 @@ const ResizableSplit: React.FC<ResizableSplitProps> = ({
   const [ratio, setRatio] = useState(defaultRatio);
   const containerRef = useRef<HTMLDivElement>(null);
   const topPanelRef = useRef<HTMLDivElement>(null);
+  const handleRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
   const ratioRef = useRef(defaultRatio);
 
@@ -39,7 +40,9 @@ const ResizableSplit: React.FC<ResizableSplitProps> = ({
     (e: React.PointerEvent<HTMLDivElement>) => {
       e.preventDefault();
       draggingRef.current = true;
-      (e.target as HTMLDivElement).setPointerCapture(e.pointerId);
+      // Capture on the handle itself, not e.target (which may be a child span).
+      // This ensures the element with onPointerMove/onPointerUp receives captured events.
+      handleRef.current?.setPointerCapture(e.pointerId);
     },
     [],
   );
@@ -58,7 +61,7 @@ const ResizableSplit: React.FC<ResizableSplitProps> = ({
 
   const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     draggingRef.current = false;
-    (e.target as HTMLDivElement).releasePointerCapture(e.pointerId);
+    handleRef.current?.releasePointerCapture(e.pointerId);
     // Persist final ratio to React state
     setRatio(ratioRef.current);
   }, []);
@@ -78,6 +81,7 @@ const ResizableSplit: React.FC<ResizableSplitProps> = ({
       </div>
 
       <div
+        ref={handleRef}
         style={styles.handle}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}

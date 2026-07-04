@@ -198,6 +198,35 @@ test.describe('Recipe Cooking Mode', () => {
     await expect(page.getByRole('separator', { name: 'Drag to resize panels' })).toBeVisible();
   });
 
+  test('dragging the resize handle changes panel sizes', async ({ page }) => {
+    await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await page.getByTestId('cook-button').click();
+    await expect(page.getByTestId('cooking-step-0')).toBeVisible({ timeout: 5000 });
+
+    const handle = page.getByRole('separator', { name: 'Drag to resize panels' });
+    await expect(handle).toBeVisible();
+
+    const topPanel = page.getByTestId('resizable-split-top');
+    const initialFlex = parseFloat(await topPanel.evaluate(el => el.style.flex));
+
+    // Drag handle down by 100px to enlarge the steps panel
+    const box = await handle.boundingBox();
+    if (!box) throw new Error('Handle bounding box not found');
+
+    const startX = box.x + box.width / 2;
+    const startY = box.y + box.height / 2;
+
+    await page.mouse.move(startX, startY);
+    await page.mouse.down();
+    await page.mouse.move(startX, startY + 100, { steps: 10 });
+    await page.mouse.up();
+
+    // Wait for React state update (ratio is persisted on pointer up)
+    const newFlex = parseFloat(await topPanel.evaluate(el => el.style.flex));
+    expect(newFlex).toBeGreaterThan(initialFlex);
+  });
+
   test('step navigation: Next advances, Previous goes back', async ({ page }) => {
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
     await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
