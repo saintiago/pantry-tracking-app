@@ -32,6 +32,11 @@ portion controls scale the display immediately without persisting recipe changes
    Display counts on cards and preserve them when reloading/navigating.
 5. Handle library loading/empty/error states and show an explicit success/error for
    bulk updates. Retrying an interrupted bulk operation safely sets the same count.
+6. Mouse dragging must work without first selecting a recipe and without relying
+   on native HTML drag events. Show a moving recipe label and highlight the target.
+   Preserve the exact recipe across library scrolling, scroll to offscreen dates
+   while dragging, and save once. Releasing outside a target or cancelling must
+   not create a meal or leave the recipe selected. Preserve touch list scrolling.
 
 ## Inventory (#6)
 

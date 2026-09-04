@@ -12,6 +12,7 @@ interface DayColumnProps {
   onDropRecipe?: (recipeId: string, date: string, mealType: Assignment['mealType']) => void;
   selectedRecipeId?: string;
   saving?: boolean;
+  dragTarget?: string;
 }
 
 const DayColumn: React.FC<DayColumnProps> = ({
@@ -23,6 +24,7 @@ const DayColumn: React.FC<DayColumnProps> = ({
   onDropRecipe,
   selectedRecipeId,
   saving,
+  dragTarget,
 }) => {
   const handleAddClick = () => {
     onAddClick(date);
@@ -41,22 +43,22 @@ const DayColumn: React.FC<DayColumnProps> = ({
             type="button"
             aria-label={`Plan ${mealType} on ${date}`}
             disabled={saving}
-            onDragOver={(event) => {
-              event.preventDefault();
-              event.dataTransfer.dropEffect = 'copy';
-            }}
-            onDrop={(event) => {
-              event.preventDefault();
-              const recipeId = event.dataTransfer.getData('application/x-pantry-recipe');
-              if (recipeId && !saving) onDropRecipe(recipeId, date, mealType);
-            }}
+            data-meal-date={date}
+            data-meal-type={mealType}
+            data-drag-over={dragTarget === `${date}/${mealType}` ? 'true' : undefined}
             onClick={() => {
               if (selectedRecipeId) onDropRecipe(selectedRecipeId, date, mealType);
             }}
             style={{
               ...styles.addButton,
               fontSize: '0.75rem',
-              backgroundColor: selectedRecipeId ? '#eef5ed' : '#faf8fc',
+              backgroundColor:
+                dragTarget === `${date}/${mealType}`
+                  ? '#d8ebd3'
+                  : selectedRecipeId
+                    ? '#eef5ed'
+                    : '#faf8fc',
+              outline: dragTarget === `${date}/${mealType}` ? '2px solid #4c7c43' : undefined,
             }}
           >
             {mealType}

@@ -12,6 +12,7 @@ import {
   type PlannableRecipe,
 } from '../../api/meal-plans/meal-plans';
 import type { Assignment } from './weekUtils';
+import { useRecipeDrag } from './useRecipeDrag';
 
 /**
  * Maps a MealPlan API object to the Assignment interface used by the calendar components.
@@ -254,8 +255,31 @@ const MealPlanPage: React.FC = () => {
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
+  const recipeDrag = useRecipeDrag(handleDropRecipe);
+
   return (
-    <div style={styles.page}>
+    <div style={styles.page} ref={recipeDrag.rootRef}>
+      {recipeDrag.drag && (
+        <div
+          data-testid="recipe-drag-preview"
+          aria-hidden="true"
+          style={{
+            position: 'fixed',
+            left: recipeDrag.drag.x + 12,
+            top: recipeDrag.drag.y + 12,
+            zIndex: 2000,
+            pointerEvents: 'none',
+            padding: '8px 12px',
+            borderRadius: 8,
+            backgroundColor: '#e9dff3',
+            border: '1px solid #8e6fb1',
+            maxWidth: 220,
+            boxShadow: '0 3px 12px #0002',
+          }}
+        >
+          {recipeDrag.drag.name}
+        </div>
+      )}
       <h1 style={styles.heading}>Meal Planner</h1>
       <form
         onSubmit={handleServings}
@@ -303,6 +327,8 @@ const MealPlanPage: React.FC = () => {
             padding: 12,
             backgroundColor: '#faf6f4',
             borderRadius: 12,
+            maxHeight: '50vh',
+            overflowY: 'auto',
           }}
         >
           <h2 style={{ marginTop: 0, fontSize: '1rem' }}>Recipes</h2>
@@ -331,18 +357,23 @@ const MealPlanPage: React.FC = () => {
                     <button
                       key={recipe.recipeId}
                       type="button"
-                      draggable={!saving}
+                      draggable={false}
                       disabled={saving}
                       aria-pressed={selectedRecipeId === recipe.recipeId}
-                      onDragStart={(event) => {
-                        event.dataTransfer.setData('application/x-pantry-recipe', recipe.recipeId);
-                        event.dataTransfer.effectAllowed = 'copy';
-                      }}
-                      onClick={() =>
+                      onDragStart={(event) => event.preventDefault()}
+                      onPointerDown={(event) =>
+                        recipeDrag.start(event, recipe.recipeId, recipe.name)
+                      }
+                      onPointerMove={recipeDrag.move}
+                      onPointerUp={recipeDrag.end}
+                      onPointerCancel={recipeDrag.cancel}
+                      onLostPointerCapture={recipeDrag.cancel}
+                      onClick={(event) => {
+                        if (event.detail > 0 && recipeDrag.consumeDragClick()) return;
                         setSelectedRecipeId((previous) =>
                           previous === recipe.recipeId ? '' : recipe.recipeId,
-                        )
-                      }
+                        );
+                      }}
                       style={{
                         display: 'block',
                         width: '100%',
@@ -353,6 +384,8 @@ const MealPlanPage: React.FC = () => {
                         borderRadius: 8,
                         backgroundColor: selectedRecipeId === recipe.recipeId ? '#e9dff3' : '#fff',
                         cursor: 'grab',
+                        touchAction: 'pan-y',
+                        userSelect: 'none',
                       }}
                     >
                       {recipe.name}
@@ -375,6 +408,7 @@ const MealPlanPage: React.FC = () => {
             onDropRecipe={handleDropRecipe}
             selectedRecipeId={selectedRecipeId}
             saving={saving}
+            dragTarget={recipeDrag.drag?.target}
           />
         </div>
       </div>

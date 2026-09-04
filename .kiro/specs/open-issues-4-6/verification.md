@@ -1,5 +1,9 @@
 # Verification — issues #4, #5 and #6
 
+This is the initial pre-release verification snapshot. For the subsequent deployment,
+live checks and Windows Chrome drag follow-up, see
+[the consolidated report for 4 September](today-report-2026-09-04.md).
+
 Verified locally on 2026-09-04. Existing inventory-group work was preserved and
 extended. No commit, push, migration, deployment or live data mutation was performed.
 

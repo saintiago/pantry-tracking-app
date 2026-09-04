@@ -16,6 +16,7 @@ interface WeekCalendarProps {
   onDropRecipe?: (recipeId: string, date: string, mealType: Assignment['mealType']) => void;
   selectedRecipeId?: string;
   saving?: boolean;
+  dragTarget?: string;
 }
 
 const WeekCalendar: React.FC<WeekCalendarProps> = ({
@@ -31,6 +32,7 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({
   onDropRecipe,
   selectedRecipeId,
   saving,
+  dragTarget,
 }) => {
   // When there's an error, pass empty arrays to all DayColumns (Req 1.9)
   const grouped = error ? groupByDate([], weekDates) : groupByDate(assignments, weekDates);
@@ -80,7 +82,7 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({
       )}
 
       {/* Seven DayColumns (Req 1.1) */}
-      <div style={styles.columns}>
+      <div style={styles.columns} data-meal-calendar>
         {weekDates.map((date) => (
           <DayColumn
             key={date}
@@ -92,6 +94,7 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({
             onDropRecipe={onDropRecipe}
             selectedRecipeId={selectedRecipeId}
             saving={saving || loading}
+            dragTarget={dragTarget}
           />
         ))}
       </div>

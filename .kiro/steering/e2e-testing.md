@@ -81,6 +81,12 @@ No `.env.test` file needed. All config is in `playwright.config.ts`.
   renumbering. It checks compact ingredient layout at desktop and mobile widths.
 - `meal-planner-improvements.spec.ts` checks categorized recipes, real drag/drop,
   keyboard and mobile selection, two-week navigation, bulk servings and retries.
+- `meal-planner-drag.spec.ts` checks mouse press/move/release independently of native
+  HTML dragging, destination feedback, exact recipe identity after library scrolling,
+  cancellation, and edge scrolling. Verify one saved meal, not only that a POST occurred.
+  To check installed Windows Chrome, run
+  `PLAYWRIGHT_CHANNEL=chrome npx playwright test e2e/meal-planner-drag.spec.ts`
+  in Bash. Omitting the variable keeps the bundled Chromium default.
 - `inventory-improvements.spec.ts` checks photo/expiration/shelf copying, persisted
   grouping, threshold units and errors, and Location Details editing/clearing.
 - `barcode-scanning.spec.ts` substitutes camera hardware with a canvas video stream
