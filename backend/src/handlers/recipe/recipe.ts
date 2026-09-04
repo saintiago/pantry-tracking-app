@@ -301,18 +301,24 @@ async function autoCreateMissingIngredients(
 // ─── Handlers ────────────────────────────────────────────────────────────────
 
 async function listRecipes(userId: string): Promise<APIGatewayProxyResult> {
-  const result = await docClient.send(
-    new QueryCommand({
+  return response(200, { recipes: await readRecipePages(userId) });
+}
+
+async function readRecipePages(userId: string, projection?: string): Promise<Record<string, unknown>[]> {
+  const items: Record<string, unknown>[] = [];
+  let cursor: Record<string, unknown> | undefined;
+  do {
+    const result = await docClient.send(new QueryCommand({
       TableName: TABLE_NAME,
       KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
-      ExpressionAttributeValues: {
-        ':pk': `USER#${userId}`,
-        ':skPrefix': 'RECIPE#',
-      },
-    }),
-  );
-
-  return response(200, { recipes: result.Items ?? [] });
+      ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':skPrefix': 'RECIPE#' },
+      ...(projection ? { ProjectionExpression: projection } : {}),
+      ...(cursor ? { ExclusiveStartKey: cursor } : {}),
+    }));
+    items.push(...(result.Items ?? []));
+    cursor = result.LastEvaluatedKey;
+  } while (cursor);
+  return items;
 }
 
 async function createRecipe(userId: string, body: string | null): Promise<APIGatewayProxyResult> {
@@ -614,20 +620,10 @@ async function updateRecipe(
 }
 
 async function listRecipeTags(userId: string): Promise<APIGatewayProxyResult> {
-  const result = await docClient.send(
-    new QueryCommand({
-      TableName: TABLE_NAME,
-      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
-      ExpressionAttributeValues: {
-        ':pk': `USER#${userId}`,
-        ':skPrefix': 'RECIPE#',
-      },
-      ProjectionExpression: 'tags',
-    }),
-  );
+  const items = await readRecipePages(userId, 'tags');
 
   const allTags: string[] = [];
-  for (const item of result.Items ?? []) {
+  for (const item of items) {
     if (Array.isArray(item.tags)) {
       for (const tag of item.tags) {
         if (typeof tag === 'string') {

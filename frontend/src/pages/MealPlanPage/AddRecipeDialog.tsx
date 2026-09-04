@@ -98,14 +98,13 @@ const AddRecipeDialog: React.FC<AddRecipeDialogProps> = ({ date, onAdd, onClose 
         mealType,
         recipeId: selectedRecipe.recipeId,
         recipeName: selectedRecipe.name,
+        ...(selectedRecipe.portions ? { servings: selectedRecipe.portions } : {}),
       });
       onAdd(result.mealPlan);
       onClose();
     } catch (err) {
       setSubmitError(
-        err instanceof Error
-          ? err.message
-          : 'Failed to save assignment. Please try again.',
+        err instanceof Error ? err.message : 'Failed to save assignment. Please try again.',
       );
       // Keep dialog open with retained selection (req 4.9, 4.10)
     } finally {
@@ -130,12 +129,7 @@ const AddRecipeDialog: React.FC<AddRecipeDialogProps> = ({ date, onAdd, onClose 
   return (
     <>
       {/* Backdrop */}
-      <div
-        role="presentation"
-        style={styles.backdrop}
-        onClick={onClose}
-        aria-hidden="true"
-      />
+      <div role="presentation" style={styles.backdrop} onClick={onClose} aria-hidden="true" />
 
       {/* Dialog */}
       <div

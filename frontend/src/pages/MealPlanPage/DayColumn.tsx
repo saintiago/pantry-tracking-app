@@ -9,6 +9,9 @@ interface DayColumnProps {
   removingPlanIds: Set<string>; // planIds currently being deleted
   onRemove: (planId: string) => void;
   onAddClick: (date: string) => void; // called when Add_Recipe_Button is clicked
+  onDropRecipe?: (recipeId: string, date: string, mealType: Assignment['mealType']) => void;
+  selectedRecipeId?: string;
+  saving?: boolean;
 }
 
 const DayColumn: React.FC<DayColumnProps> = ({
@@ -17,17 +20,48 @@ const DayColumn: React.FC<DayColumnProps> = ({
   removingPlanIds,
   onRemove,
   onAddClick,
+  onDropRecipe,
+  selectedRecipeId,
+  saving,
 }) => {
   const handleAddClick = () => {
     onAddClick(date);
   };
 
   return (
-    <div style={styles.column}>
+    <div style={styles.column} data-date={date}>
       <div style={styles.header}>
         <span style={styles.dayLabel}>{getDayLabel(date)}</span>
         <span style={styles.dayNumber}>{getDayNumber(date)}</span>
       </div>
+      {onDropRecipe &&
+        (['breakfast', 'lunch', 'dinner'] as const).map((mealType) => (
+          <button
+            key={mealType}
+            type="button"
+            aria-label={`Plan ${mealType} on ${date}`}
+            disabled={saving}
+            onDragOver={(event) => {
+              event.preventDefault();
+              event.dataTransfer.dropEffect = 'copy';
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              const recipeId = event.dataTransfer.getData('application/x-pantry-recipe');
+              if (recipeId && !saving) onDropRecipe(recipeId, date, mealType);
+            }}
+            onClick={() => {
+              if (selectedRecipeId) onDropRecipe(selectedRecipeId, date, mealType);
+            }}
+            style={{
+              ...styles.addButton,
+              fontSize: '0.75rem',
+              backgroundColor: selectedRecipeId ? '#eef5ed' : '#faf8fc',
+            }}
+          >
+            {mealType}
+          </button>
+        ))}
       <div style={styles.cards}>
         {assignments.map((assignment) => (
           <RecipeCard
@@ -38,7 +72,12 @@ const DayColumn: React.FC<DayColumnProps> = ({
           />
         ))}
       </div>
-      <button type="button" onClick={handleAddClick} aria-label="Add recipe" style={styles.addButton}>
+      <button
+        type="button"
+        onClick={handleAddClick}
+        aria-label="Add recipe"
+        style={styles.addButton}
+      >
         +
       </button>
     </div>

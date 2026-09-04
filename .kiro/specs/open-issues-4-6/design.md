@@ -1,0 +1,50 @@
+# Implementation design
+
+## Recipes
+
+Reuse the issue #4 implementation already in the repository. New edge-case tests
+exercise notes removal, step removal/renumbering, repeated saves after portions
+changes, handful-to-counted-unit validation and compact inline availability.
+
+## Planner
+
+`MealPlanPage` loads recipes independently from the calendar. Tag sections contain
+draggable buttons, which also act as keyboard/touch selectors. `DayColumn` provides
+three explicit meal targets. Requests insert cards only after successful persistence.
+The calendar receives two seven-date arrays and renders a seven-column grid with
+two rows. Navigation advances seven days. The library wraps above the calendar on
+narrow screens, with overflow contained in the calendar.
+
+Assignment `servings` is optional for old data and a positive integer when written.
+New library assignments use source recipe portions. `PUT /meal-plans` accepts a
+start date and servings count, reads all database pages under the authenticated
+user, and updates eligible assignments. Each update requires the row still to
+exist; concurrent deletions cannot recreate meals. A partial failure reports an
+error and the client invites retry; setting an absolute count is idempotent in value.
+Ordinary assignment updates preserve servings, including sort-key changes.
+
+## Inventory
+
+The existing persisted-group implementation stays in place. A group's threshold
+can carry its own compatible unit; pure conversion is used both when changing a
+threshold and when recalculating aggregates. Only compatible units are offered in
+the selector. This avoids silently treating one bottle as one kilogram.
+
+Inventory autocomplete reads all pages before ordering by creation time and
+deduplicating matches. The Add Item form copies a saved photo URL and optional
+location details alongside expiration and product metadata. Scanned barcodes also
+look up the latest household entry after opening the form. New lots automatically
+join the canonical group, retaining its threshold without copying a stale value.
+
+Scanner startup first obtains permission, releases its probe stream, enumerates
+physical devices and locks the selected device ID in Quagga. A session generation
+guards delayed startup callbacks, and a ref holds the latest detection callback so
+parent rerenders do not restart the scanner. EAN-13, EAN-8, UPC-A and UPC-E readers
+are enabled. Browser tests substitute only camera hardware, leaving decoding real.
+
+## Validation limits
+
+Playwright API fixtures prove UI requests and state transitions, while backend
+tests validate storage behavior. Camera simulation cannot establish performance on
+every physical phone/lens; deployment and physical-device checks remain separate
+from local implementation verification.

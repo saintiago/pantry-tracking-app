@@ -103,6 +103,7 @@ export function getMonthYearLabel(weekDates: string[]): string {
 }
 
 export interface Assignment {
+  servings?: number;
   planId: string;
   date: string;
   mealType: 'breakfast' | 'lunch' | 'dinner';

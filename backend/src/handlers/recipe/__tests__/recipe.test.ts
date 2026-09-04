@@ -57,6 +57,25 @@ describe('Recipe Lambda handler', () => {
     jest.clearAllMocks();
   });
 
+  it('returns all recipes across database pages for the planner library', async () => {
+    const cursor = { PK: 'USER#user-123', SK: 'RECIPE#first' };
+    mockSend.mockResolvedValueOnce({ Items: [{ recipeId: 'first' }], LastEvaluatedKey: cursor })
+      .mockResolvedValueOnce({ Items: [{ recipeId: 'second' }] });
+    const result = await handler(makeEvent());
+    expect(result.statusCode).toBe(200);
+    expect(JSON.parse(result.body).recipes).toEqual([{ recipeId: 'first' }, { recipeId: 'second' }]);
+    expect(mockSend.mock.calls[1][0].ExclusiveStartKey).toEqual(cursor);
+  });
+
+  it('returns categories from every database page', async () => {
+    const cursor = { PK: 'USER#user-123', SK: 'RECIPE#first' };
+    mockSend.mockResolvedValueOnce({ Items: [{ tags: ['dinner'] }], LastEvaluatedKey: cursor })
+      .mockResolvedValueOnce({ Items: [{ tags: ['breakfast', 'dinner'] }] });
+    const result = await handler(makeEvent({ pathParameters: { recipeId: 'tags' } }));
+    expect(result.statusCode).toBe(200);
+    expect(JSON.parse(result.body).tags).toEqual(['breakfast', 'dinner']);
+  });
+
   // ─── Auth ────────────────────────────────────────────────────────────────────
 
   it('returns 401 when userId is missing', async () => {

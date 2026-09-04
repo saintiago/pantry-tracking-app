@@ -27,23 +27,28 @@ const mockItem = {
   location: 'loc-1',
   quantity: 2,
   expirationDate: '2026-12-31',
-  isLowStock: false,
+  groupId: 'group-milk',
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   syncVersion: 1,
 };
 
-const mockLowStockItem = {
-  ...mockItem,
-  itemId: 'item-2',
-  SK: 'ITEM#item-2',
-  name: 'Almost Gone Eggs',
-  quantity: 1,
-  threshold: 2,
-  isLowStock: true,
-};
+const mockGroups = [
+  {
+    groupId: 'group-milk',
+    canonicalKey: 'organic milk|dairy|l',
+    name: 'Organic Milk',
+    category: 'Dairy',
+    unit: 'l',
+    totalQuantity: 2,
+    isLowStock: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    syncVersion: 1,
+  },
+];
 
-async function setupMockAPI(page: Page, items = [mockItem]) {
+async function setupMockAPI(page: Page, items = [mockItem], groups = mockGroups) {
   await page.route('**/auth/verify', async (route) => {
     await route.fulfill({
       status: 200,
@@ -65,7 +70,7 @@ async function setupMockAPI(page: Page, items = [mockItem]) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ items }),
+        body: JSON.stringify({ items, groups }),
       });
     }
   });
@@ -75,6 +80,14 @@ async function setupMockAPI(page: Page, items = [mockItem]) {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ field: 'name', query: '', resultType: 'items', items: [], count: 0 }),
+    });
+  });
+
+  await page.route('**/inventory/low-stock**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ groups: [] }),
     });
   });
 }
@@ -119,13 +132,17 @@ async function clickInventoryItem(page: Page, category: string, itemName: string
 }
 
 test.describe('ItemDetailPage', () => {
-  test('tapping an inventory item navigates to ItemDetailPage with fields pre-populated', async ({ page }) => {
+  test('tapping an inventory item navigates to ItemDetailPage with fields pre-populated', async ({
+    page,
+  }) => {
     await setupMockAPI(page);
     await loginAndGoToInventory(page);
 
     await clickInventoryItem(page, 'Dairy', 'Organic Milk');
 
-    await expect(page.getByRole('heading', { name: 'Organic Milk' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Organic Milk' })).toBeVisible({
+      timeout: 5000,
+    });
     // Should NOT be a dialog/overlay
     await expect(page.getByTestId('item-detail-overlay')).not.toBeVisible();
 
@@ -136,16 +153,6 @@ test.describe('ItemDetailPage', () => {
     await expect(page.getByLabel('Unit')).toHaveValue('l');
     await expect(page.getByLabel('Expiration Date')).toHaveValue('2026-12-31');
     await expect(page.getByLabel('Storage Location')).toHaveValue('loc-1');
-  });
-
-  test('shows low-stock badge when item.isLowStock is true', async ({ page }) => {
-    await setupMockAPI(page, [mockLowStockItem]);
-    await loginAndGoToInventory(page);
-
-    await clickInventoryItem(page, 'Dairy', 'Almost Gone Eggs');
-    await expect(page.getByRole('heading', { name: 'Almost Gone Eggs' })).toBeVisible({ timeout: 5000 });
-
-    await expect(page.getByText(/low stock/i)).toBeVisible();
   });
 
   test('edit fields and save updates the inventory list', async ({ page }) => {
@@ -165,7 +172,9 @@ test.describe('ItemDetailPage', () => {
     await loginAndGoToInventory(page);
 
     await clickInventoryItem(page, 'Dairy', 'Organic Milk');
-    await expect(page.getByRole('heading', { name: 'Organic Milk' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Organic Milk' })).toBeVisible({
+      timeout: 5000,
+    });
 
     await page.getByLabel('Product Name').fill('Updated Milk');
     await page.getByLabel('Quantity').fill('5');
@@ -190,7 +199,9 @@ test.describe('ItemDetailPage', () => {
     await loginAndGoToInventory(page);
 
     await clickInventoryItem(page, 'Dairy', 'Organic Milk');
-    await expect(page.getByRole('heading', { name: 'Organic Milk' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Organic Milk' })).toBeVisible({
+      timeout: 5000,
+    });
 
     await page.getByTestId('save-button').click();
 
@@ -205,7 +216,9 @@ test.describe('ItemDetailPage', () => {
     await loginAndGoToInventory(page);
 
     await clickInventoryItem(page, 'Dairy', 'Organic Milk');
-    await expect(page.getByRole('heading', { name: 'Organic Milk' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Organic Milk' })).toBeVisible({
+      timeout: 5000,
+    });
 
     await page.getByLabel('Product Name').fill('Should Not Save');
 
@@ -224,7 +237,9 @@ test.describe('ItemDetailPage', () => {
     await loginAndGoToInventory(page);
 
     await clickInventoryItem(page, 'Dairy', 'Organic Milk');
-    await expect(page.getByRole('heading', { name: 'Organic Milk' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Organic Milk' })).toBeVisible({
+      timeout: 5000,
+    });
 
     await page.getByRole('button', { name: 'Go back' }).click();
 
@@ -236,7 +251,9 @@ test.describe('ItemDetailPage', () => {
     await loginAndGoToInventory(page);
 
     await clickInventoryItem(page, 'Dairy', 'Organic Milk');
-    await expect(page.getByRole('heading', { name: 'Organic Milk' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Organic Milk' })).toBeVisible({
+      timeout: 5000,
+    });
 
     const nav = page.getByRole('navigation', { name: 'Main navigation' });
     await expect(nav).toBeVisible();
@@ -250,7 +267,9 @@ test.describe('ItemDetailPage', () => {
     await loginAndGoToInventory(page);
 
     await clickInventoryItem(page, 'Dairy', 'Organic Milk');
-    await expect(page.getByRole('heading', { name: 'Organic Milk' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Organic Milk' })).toBeVisible({
+      timeout: 5000,
+    });
 
     const actionBar = page.getByTestId('action-bar');
     await expect(actionBar).toBeVisible();

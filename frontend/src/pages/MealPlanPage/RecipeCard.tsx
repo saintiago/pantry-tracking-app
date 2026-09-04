@@ -23,6 +23,7 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ assignment, isRemoving, onRemov
       <div style={styles.content}>
         <span style={styles.mealType}>{MEAL_TYPE_LABELS[assignment.mealType]}</span>
         <span style={styles.recipeName}>{assignment.recipeName}</span>
+        {assignment.servings !== undefined && <span>{assignment.servings} servings</span>}
       </div>
       <button
         type="button"

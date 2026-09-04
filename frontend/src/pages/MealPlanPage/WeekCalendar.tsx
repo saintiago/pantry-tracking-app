@@ -13,6 +13,9 @@ interface WeekCalendarProps {
   onNextWeek: () => void; // Navigate to next week
   onAddClick: (date: string) => void;
   onRemove: (planId: string) => void;
+  onDropRecipe?: (recipeId: string, date: string, mealType: Assignment['mealType']) => void;
+  selectedRecipeId?: string;
+  saving?: boolean;
 }
 
 const WeekCalendar: React.FC<WeekCalendarProps> = ({
@@ -25,6 +28,9 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({
   onNextWeek,
   onAddClick,
   onRemove,
+  onDropRecipe,
+  selectedRecipeId,
+  saving,
 }) => {
   // When there's an error, pass empty arrays to all DayColumns (Req 1.9)
   const grouped = error ? groupByDate([], weekDates) : groupByDate(assignments, weekDates);
@@ -83,6 +89,9 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({
             removingPlanIds={removingPlanIds}
             onRemove={onRemove}
             onAddClick={onAddClick}
+            onDropRecipe={onDropRecipe}
+            selectedRecipeId={selectedRecipeId}
+            saving={saving || loading}
           />
         ))}
       </div>
@@ -146,8 +155,8 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1.5,
   },
   columns: {
-    display: 'flex',
-    flexDirection: 'row',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(7, minmax(115px, 1fr))',
     gap: '0.5rem',
     overflowX: 'auto',
     // Mobile-first: allow horizontal scroll on narrow screens

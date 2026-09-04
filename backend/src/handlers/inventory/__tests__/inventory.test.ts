@@ -56,7 +56,12 @@ describe('Inventory Lambda handler', () => {
 
   it('returns 401 when userId is missing', async () => {
     const result = await handler(
-      makeEvent({ requestContext: { authorizer: {}, requestId: 'req-1' } as unknown as APIGatewayProxyEvent['requestContext'] }),
+      makeEvent({
+        requestContext: {
+          authorizer: {},
+          requestId: 'req-1',
+        } as unknown as APIGatewayProxyEvent['requestContext'],
+      }),
     );
     expect(result.statusCode).toBe(401);
   });
@@ -67,12 +72,16 @@ describe('Inventory Lambda handler', () => {
   });
 
   describe('GET /inventory', () => {
-    it('returns inventory items', async () => {
+    it('returns inventory items and groups', async () => {
       const items = [
         { itemId: 'item-1', name: 'Milk', category: 'Dairy', quantity: 2 },
         { itemId: 'item-2', name: 'Bread', category: 'Bakery', quantity: 1 },
       ];
-      mockSend.mockResolvedValueOnce({ Items: items });
+      const groups = [
+        { groupId: 'abc123', name: 'Milk', totalQuantity: 2, isLowStock: false },
+      ];
+      mockSend.mockResolvedValueOnce({ Items: items }); // items query
+      mockSend.mockResolvedValueOnce({ Items: groups }); // groups query
 
       const result = await handler(makeEvent());
       const body = JSON.parse(result.body);
@@ -80,17 +89,21 @@ describe('Inventory Lambda handler', () => {
       expect(result.statusCode).toBe(200);
       expect(body.items).toHaveLength(2);
       expect(body.items[0].name).toBe('Milk');
+      expect(body.groups).toHaveLength(1);
+      expect(body.groups[0].name).toBe('Milk');
       expect(body.lastEvaluatedKey).toBeUndefined();
     });
 
     it('returns empty list when no items exist', async () => {
-      mockSend.mockResolvedValueOnce({ Items: [] });
+      mockSend.mockResolvedValueOnce({ Items: [] }); // items query
+      mockSend.mockResolvedValueOnce({ Items: [] }); // groups query
 
       const result = await handler(makeEvent());
       const body = JSON.parse(result.body);
 
       expect(result.statusCode).toBe(200);
       expect(body.items).toHaveLength(0);
+      expect(body.groups).toHaveLength(0);
     });
 
     it('returns lastEvaluatedKey for pagination', async () => {
@@ -99,6 +112,7 @@ describe('Inventory Lambda handler', () => {
         Items: [{ itemId: 'item-5', name: 'Eggs' }],
         LastEvaluatedKey: lastKey,
       });
+      mockSend.mockResolvedValueOnce({ Items: [] }); // groups query
 
       const result = await handler(makeEvent());
       const body = JSON.parse(result.body);
@@ -108,21 +122,25 @@ describe('Inventory Lambda handler', () => {
     });
 
     it('passes limit query parameter to DynamoDB', async () => {
-      mockSend.mockResolvedValueOnce({ Items: [] });
+      mockSend.mockResolvedValueOnce({ Items: [] }); // items query
+      mockSend.mockResolvedValueOnce({ Items: [] }); // groups query
 
-      await handler(
-        makeEvent({ queryStringParameters: { limit: '10' } }),
-      );
+      await handler(makeEvent({ queryStringParameters: { limit: '10' } }));
 
-      expect(mockSend).toHaveBeenCalledWith(
-        expect.objectContaining({ Limit: 10 }),
-      );
+      expect(mockSend).toHaveBeenCalledWith(expect.objectContaining({ Limit: 10 }));
     });
   });
 
   describe('POST /inventory', () => {
-    it('creates an inventory item with required fields', async () => {
-      mockSend.mockResolvedValueOnce({}); // put succeeds
+    it('creates an inventory item with groupId and creates a new group', async () => {
+      // call #1: getGroup → no existing group
+      mockSend.mockResolvedValueOnce({ Item: undefined });
+      // call #2: getGroup inside createGroup → no existing
+      mockSend.mockResolvedValueOnce({ Item: undefined });
+      // call #3: PutCommand for group creation
+      mockSend.mockResolvedValueOnce({});
+      // call #4: PutCommand for item creation
+      mockSend.mockResolvedValueOnce({});
 
       const result = await handler(
         makeEvent({
@@ -140,12 +158,63 @@ describe('Inventory Lambda handler', () => {
       expect(body.item.location).toBe('loc-1');
       expect(body.item.itemId).toBe('item-uuid-1234');
       expect(body.item.entityType).toBe('InventoryItem');
-      expect(body.item.isLowStock).toBe(false);
+      expect(body.item.groupId).toBeDefined();
+      expect(typeof body.item.groupId).toBe('string');
       expect(body.item.syncVersion).toBe(1);
+      // should NOT have legacy item-level fields
+      expect(body.item.isLowStock).toBeUndefined();
+      expect(body.item.threshold).toBeUndefined();
+      // group should be in response
+      expect(body.groups).toHaveLength(1);
+      expect(body.groups[0].groupId).toBe(body.item.groupId);
+      expect(body.groups[0].totalQuantity).toBe(2);
+      expect(body.groups[0].isLowStock).toBe(false);
+    });
+
+    it('creates item joining an existing group and adjusts its quantity', async () => {
+      const groupId = '972166f5862ccab9'; // defaultGroupId for Milk|Dairy|Liter
+      const existingGroup = {
+        PK: 'USER#user-123',
+        SK: `GROUP#${groupId}`,
+        groupId,
+        name: 'Milk',
+        category: 'Dairy',
+        unit: 'l',
+        totalQuantity: 5,
+        threshold: 3,
+        isLowStock: false,
+        syncVersion: 1,
+      };
+      // call #1: getGroup → existing group found
+      mockSend.mockResolvedValueOnce({ Item: existingGroup });
+      // call #2: PutCommand for item
+      mockSend.mockResolvedValueOnce({});
+      // call #3: getGroup inside adjustGroupQuantity
+      mockSend.mockResolvedValueOnce({ Item: { ...existingGroup, totalQuantity: 5, isLowStock: false } });
+      // call #4: UpdateCommand for group quantity adjustment
+      mockSend.mockResolvedValueOnce({
+        Attributes: { ...existingGroup, totalQuantity: 7, isLowStock: false, syncVersion: 2 },
+      });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'POST',
+          body: JSON.stringify(validItem),
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(201);
+      expect(body.item.groupId).toBe(groupId);
+      expect(body.groups).toHaveLength(1);
+      expect(body.groups[0].totalQuantity).toBe(7);
     });
 
     it('creates item with optional fields', async () => {
-      mockSend.mockResolvedValueOnce({});
+      mockSend.mockResolvedValueOnce({ Item: undefined }); // no existing group
+      mockSend.mockResolvedValueOnce({ Item: undefined }); // createGroup check
+      mockSend.mockResolvedValueOnce({}); // PutCommand group
+      mockSend.mockResolvedValueOnce({}); // PutCommand item
 
       const result = await handler(
         makeEvent({
@@ -157,7 +226,6 @@ describe('Inventory Lambda handler', () => {
             whereToBuy: 'Supermarket',
             onlineStoreLink: 'https://store.example.com/milk',
             pictureUrl: 'https://images.example.com/milk.jpg',
-            threshold: 1,
           }),
         }),
       );
@@ -169,11 +237,13 @@ describe('Inventory Lambda handler', () => {
       expect(body.item.whereToBuy).toBe('Supermarket');
       expect(body.item.onlineStoreLink).toBe('https://store.example.com/milk');
       expect(body.item.pictureUrl).toBe('https://images.example.com/milk.jpg');
-      expect(body.item.threshold).toBe(1);
     });
 
     it('sets GSI1PK for category queries', async () => {
-      mockSend.mockResolvedValueOnce({});
+      mockSend.mockResolvedValueOnce({ Item: undefined }); // no existing group
+      mockSend.mockResolvedValueOnce({ Item: undefined }); // createGroup check
+      mockSend.mockResolvedValueOnce({}); // PutCommand group
+      mockSend.mockResolvedValueOnce({}); // PutCommand item
 
       const result = await handler(
         makeEvent({
@@ -187,47 +257,42 @@ describe('Inventory Lambda handler', () => {
       expect(body.item.GSI1SK).toBe('ITEM#item-uuid-1234');
     });
 
-    it('calculates isLowStock correctly when quantity <= threshold', async () => {
-      mockSend.mockResolvedValueOnce({});
+    it('triggers low-stock notification when group transitions to low-stock', async () => {
+      const groupId = '972166f5862ccab9'; // defaultGroupId for Milk|Dairy|Liter
+      const existingGroup = {
+        PK: 'USER#user-123',
+        SK: `GROUP#${groupId}`,
+        groupId,
+        name: 'Milk',
+        category: 'Dairy',
+        unit: 'l',
+        totalQuantity: 5,
+        threshold: 10,
+        isLowStock: false,
+        syncVersion: 1,
+      };
+      mockSend.mockResolvedValueOnce({ Item: existingGroup }); // getGroup → exists
+      mockSend.mockResolvedValueOnce({}); // PutCommand item
+      // adjustGroupQuantity: getGroup then UpdateCommand
+      mockSend.mockResolvedValueOnce({ Item: { ...existingGroup, totalQuantity: 5, isLowStock: false } });
+      mockSend.mockResolvedValueOnce({
+        Attributes: { ...existingGroup, totalQuantity: 7, isLowStock: true, syncVersion: 2 },
+      });
 
       const result = await handler(
         makeEvent({
           httpMethod: 'POST',
-          body: JSON.stringify({ ...validItem, quantity: 1, threshold: 2 }),
+          body: JSON.stringify({ ...validItem, quantity: 2 }),
         }),
       );
       const body = JSON.parse(result.body);
 
-      expect(body.item.isLowStock).toBe(true);
-    });
-
-    it('calculates isLowStock correctly when quantity equals threshold', async () => {
-      mockSend.mockResolvedValueOnce({});
-
-      const result = await handler(
-        makeEvent({
-          httpMethod: 'POST',
-          body: JSON.stringify({ ...validItem, quantity: 3, threshold: 3 }),
-        }),
-      );
-      const body = JSON.parse(result.body);
-
-      expect(body.item.isLowStock).toBe(true);
-    });
-
-    it('sets isLowStock false when no threshold is set', async () => {
-      mockSend.mockResolvedValueOnce({});
-
-      const result = await handler(
-        makeEvent({
-          httpMethod: 'POST',
-          body: JSON.stringify(validItem),
-        }),
-      );
-      const body = JSON.parse(result.body);
-
-      expect(body.item.isLowStock).toBe(false);
-      expect(body.item.threshold).toBeUndefined();
+      expect(result.statusCode).toBe(201);
+      expect(body.lowStockTransition).toBe(true);
+      expect(body.notification).toBeDefined();
+      expect(body.notification.type).toBe('LOW_STOCK');
+      expect(body.notification.groupId).toBe(groupId);
+      expect(body.notification.message).toContain('Milk');
     });
 
     it('returns 400 when body is missing', async () => {
@@ -241,8 +306,6 @@ describe('Inventory Lambda handler', () => {
     });
 
     it('returns 400 with details when required fields are missing', async () => {
-      mockSend.mockResolvedValueOnce({});
-
       const result = await handler(
         makeEvent({
           httpMethod: 'POST',
@@ -293,35 +356,37 @@ describe('Inventory Lambda handler', () => {
   });
 
   describe('PUT /inventory/{itemId}', () => {
-    it('updates an inventory item with partial fields', async () => {
-      // GetCommand returns current item
+    const currentItem = {
+      PK: 'USER#user-123',
+      SK: 'ITEM#item-1',
+      itemId: 'item-1',
+      name: 'Milk',
+      category: 'Dairy',
+      quantity: 2,
+      unit: 'Liter',
+      location: 'loc-1',
+      groupId: 'abc123',
+      syncVersion: 1,
+    };
+
+    it('updates an inventory item quantity and adjusts group total', async () => {
+      // call #1: GetCommand for current item
+      mockSend.mockResolvedValueOnce({ Item: currentItem });
+      // call #2: getGroup for target group
       mockSend.mockResolvedValueOnce({
-        Item: {
-          PK: 'USER#user-123',
-          SK: 'ITEM#item-1',
-          name: 'Milk',
-          category: 'Dairy',
-          quantity: 2,
-          unit: 'Liter',
-          location: 'loc-1',
-          isLowStock: false,
-          syncVersion: 1,
-        },
+        Item: { PK: 'USER#user-123', SK: 'GROUP#abc123', groupId: 'abc123', name: 'Milk', totalQuantity: 2, threshold: 3, isLowStock: true, syncVersion: 1 },
       });
-      // UpdateCommand returns updated item
+      // call #3: UpdateCommand for item
       mockSend.mockResolvedValueOnce({
-        Attributes: {
-          PK: 'USER#user-123',
-          SK: 'ITEM#item-1',
-          name: 'Milk',
-          category: 'Dairy',
-          quantity: 5,
-          unit: 'Liter',
-          location: 'loc-1',
-          isLowStock: false,
-          syncVersion: 2,
-          updatedAt: '2025-01-01T00:00:00.000Z',
-        },
+        Attributes: { ...currentItem, quantity: 5, syncVersion: 2, updatedAt: '2025-01-01T00:00:00.000Z' },
+      });
+      // call #4: adjustGroupQuantity → getGroup
+      mockSend.mockResolvedValueOnce({
+        Item: { PK: 'USER#user-123', SK: 'GROUP#abc123', groupId: 'abc123', totalQuantity: 2, threshold: 3, isLowStock: true, syncVersion: 1 },
+      });
+      // call #5: adjustGroupQuantity → UpdateCommand
+      mockSend.mockResolvedValueOnce({
+        Attributes: { PK: 'USER#user-123', SK: 'GROUP#abc123', groupId: 'abc123', totalQuantity: 5, threshold: 3, isLowStock: false, syncVersion: 2 },
       });
 
       const result = await handler(
@@ -336,21 +401,23 @@ describe('Inventory Lambda handler', () => {
       expect(result.statusCode).toBe(200);
       expect(body.item.quantity).toBe(5);
       expect(body.item.syncVersion).toBe(2);
+      expect(body.groups).toBeDefined();
+      expect(body.groups[0].totalQuantity).toBe(5);
     });
 
     it('updates category and recalculates GSI1PK', async () => {
-      mockSend.mockResolvedValueOnce({
-        Attributes: {
-          PK: 'USER#user-123',
-          SK: 'ITEM#item-1',
-          name: 'Milk',
-          category: 'Beverages',
-          GSI1PK: 'USER#user-123#CAT#Beverages',
-          GSI1SK: 'ITEM#item-1',
-          quantity: 2,
-          unit: 'Liter',
-          syncVersion: 2,
-        },
+      mockSend.mockResolvedValueOnce({ Item: currentItem }); // GetCommand item
+      mockSend.mockResolvedValueOnce({ // getGroup
+        Item: { PK: 'USER#user-123', SK: 'GROUP#abc123', groupId: 'abc123', totalQuantity: 2, isLowStock: false, syncVersion: 1 },
+      });
+      mockSend.mockResolvedValueOnce({ // UpdateCommand item
+        Attributes: { ...currentItem, category: 'Beverages', GSI1PK: 'USER#user-123#CAT#Beverages', GSI1SK: 'ITEM#item-1', syncVersion: 2 },
+      });
+      mockSend.mockResolvedValueOnce({ // adjustGroupQuantity getGroup
+        Item: { PK: 'USER#user-123', SK: 'GROUP#abc123', groupId: 'abc123', totalQuantity: 2, isLowStock: false, syncVersion: 1 },
+      });
+      mockSend.mockResolvedValueOnce({ // adjustGroupQuantity UpdateCommand
+        Attributes: { PK: 'USER#user-123', SK: 'GROUP#abc123', totalQuantity: 2, isLowStock: false, syncVersion: 2 },
       });
 
       const result = await handler(
@@ -367,51 +434,63 @@ describe('Inventory Lambda handler', () => {
       expect(body.item.GSI1PK).toBe('USER#user-123#CAT#Beverages');
     });
 
-    it('recalculates isLowStock when quantity changes', async () => {
-      // GetCommand returns current item with threshold
+    it('reassigns item to a new group when identity fields change and reassignGroup is true', async () => {
+      mockSend.mockResolvedValueOnce({ Item: currentItem }); // GetCommand for current item
+      // getGroup for target (new) group → doesn't exist, createGroup will be called
+      mockSend.mockResolvedValueOnce({ Item: undefined });
+      // createGroup → getGroup inside
+      mockSend.mockResolvedValueOnce({ Item: undefined });
+      // createGroup → PutCommand for new group
+      mockSend.mockResolvedValueOnce({});
+      // UpdateCommand for item
       mockSend.mockResolvedValueOnce({
-        Item: {
-          PK: 'USER#user-123',
-          SK: 'ITEM#item-1',
-          quantity: 5,
-          threshold: 3,
-          isLowStock: false,
-          syncVersion: 1,
-        },
+        Attributes: { ...currentItem, name: 'Almond Milk', category: 'Dairy Alternative', unit: 'Liter', groupId: expect.any(String), syncVersion: 2 },
       });
-      // UpdateCommand returns updated item
+      // adjustGroupQuantity for OLD group → getGroup
       mockSend.mockResolvedValueOnce({
-        Attributes: {
-          PK: 'USER#user-123',
-          SK: 'ITEM#item-1',
-          quantity: 2,
-          threshold: 3,
-          isLowStock: true,
-          syncVersion: 2,
-        },
+        Item: { PK: 'USER#user-123', SK: 'GROUP#abc123', groupId: 'abc123', totalQuantity: 2, isLowStock: false, syncVersion: 1 },
+      });
+      // adjustGroupQuantity for OLD group → UpdateCommand (totalQuantity goes to 0)
+      mockSend.mockResolvedValueOnce({
+        Attributes: { PK: 'USER#user-123', SK: 'GROUP#abc123', groupId: 'abc123', totalQuantity: 0, isLowStock: false, syncVersion: 2 },
+      });
+      // adjustGroupQuantity for NEW group → getGroup
+      mockSend.mockResolvedValueOnce({
+        Item: { PK: 'USER#user-123', SK: 'GROUP#def456', groupId: 'def456', totalQuantity: 0, isLowStock: false, syncVersion: 1 },
+      });
+      // adjustGroupQuantity for NEW group → UpdateCommand
+      mockSend.mockResolvedValueOnce({
+        Attributes: { PK: 'USER#user-123', SK: 'GROUP#def456', groupId: 'def456', totalQuantity: 2, isLowStock: false, syncVersion: 2 },
       });
 
       const result = await handler(
         makeEvent({
           httpMethod: 'PUT',
           pathParameters: { itemId: 'item-1' },
-          body: JSON.stringify({ quantity: 2 }),
+          body: JSON.stringify({ name: 'Almond Milk', category: 'Dairy Alternative', reassignGroup: true }),
         }),
       );
       const body = JSON.parse(result.body);
 
       expect(result.statusCode).toBe(200);
-      expect(body.item.isLowStock).toBe(true);
+      expect(body.item.name).toBe('Almond Milk');
+      expect(body.item.groupId).not.toBe('abc123');
+      expect(body.groups).toBeDefined();
     });
 
     it('updates locationId field', async () => {
-      mockSend.mockResolvedValueOnce({
-        Attributes: {
-          PK: 'USER#user-123',
-          SK: 'ITEM#item-1',
-          location: 'loc-2',
-          syncVersion: 2,
-        },
+      mockSend.mockResolvedValueOnce({ Item: currentItem }); // GetCommand
+      mockSend.mockResolvedValueOnce({ // getGroup
+        Item: { PK: 'USER#user-123', SK: 'GROUP#abc123', groupId: 'abc123', totalQuantity: 2, isLowStock: false, syncVersion: 1 },
+      });
+      mockSend.mockResolvedValueOnce({ // UpdateCommand item
+        Attributes: { ...currentItem, location: 'loc-2', syncVersion: 2 },
+      });
+      mockSend.mockResolvedValueOnce({ // adjustGroupQuantity getGroup
+        Item: { PK: 'USER#user-123', SK: 'GROUP#abc123', groupId: 'abc123', totalQuantity: 2, isLowStock: false, syncVersion: 1 },
+      });
+      mockSend.mockResolvedValueOnce({ // adjustGroupQuantity UpdateCommand
+        Attributes: { PK: 'USER#user-123', SK: 'GROUP#abc123', totalQuantity: 2, isLowStock: false, syncVersion: 2 },
       });
 
       const result = await handler(
@@ -428,9 +507,7 @@ describe('Inventory Lambda handler', () => {
     });
 
     it('returns 404 when item does not exist (ConditionalCheckFailedException)', async () => {
-      const error = new Error('Condition not met');
-      error.name = 'ConditionalCheckFailedException';
-      mockSend.mockRejectedValueOnce(error);
+      mockSend.mockResolvedValueOnce({ Item: undefined }); // GetCommand returns no item
 
       const result = await handler(
         makeEvent({
@@ -480,19 +557,60 @@ describe('Inventory Lambda handler', () => {
       expect(result.statusCode).toBe(400);
       expect(JSON.parse(result.body).message).toBe('No fields to update');
     });
+
+    it('triggers low-stock notification when group transitions from not-low to low', async () => {
+      mockSend.mockResolvedValueOnce({ Item: { ...currentItem, quantity: 3 } }); // GetCommand item (old qty=3)
+      mockSend.mockResolvedValueOnce({ // getGroup
+        Item: { PK: 'USER#user-123', SK: 'GROUP#abc123', groupId: 'abc123', name: 'Milk', totalQuantity: 3, threshold: 3, isLowStock: false, syncVersion: 1 },
+      });
+      mockSend.mockResolvedValueOnce({ // UpdateCommand item
+        Attributes: { ...currentItem, quantity: 1, syncVersion: 2 },
+      });
+      // adjustGroupQuantity: totalQuantity=3, delta=(1-3)=-2, new total=1, threshold=3
+      mockSend.mockResolvedValueOnce({ // getGroup
+        Item: { PK: 'USER#user-123', SK: 'GROUP#abc123', groupId: 'abc123', totalQuantity: 3, threshold: 3, isLowStock: false, syncVersion: 1 },
+      });
+      mockSend.mockResolvedValueOnce({ // UpdateCommand group → low stock transition
+        Attributes: { PK: 'USER#user-123', SK: 'GROUP#abc123', groupId: 'abc123', name: 'Milk', totalQuantity: 1, threshold: 3, isLowStock: true, syncVersion: 2 },
+      });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'PUT',
+          pathParameters: { itemId: 'item-1' },
+          body: JSON.stringify({ quantity: 1 }),
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.lowStockTransition).toBe(true);
+      expect(body.notification).toBeDefined();
+      expect(body.notification.type).toBe('LOW_STOCK');
+      expect(body.notification.groupId).toBe('abc123');
+    });
   });
 
   describe('DELETE /inventory/{itemId}', () => {
-    it('deletes an existing inventory item', async () => {
+    it('deletes an existing inventory item and adjusts group quantity', async () => {
       // GetCommand returns existing item
       mockSend.mockResolvedValueOnce({
         Item: {
           PK: 'USER#user-123',
           SK: 'ITEM#item-1',
+          itemId: 'item-1',
           name: 'Milk',
+          quantity: 2,
+          groupId: 'abc123',
         },
       });
       // DeleteCommand succeeds
+      mockSend.mockResolvedValueOnce({});
+      // adjustGroupQuantity → getGroup
+      mockSend.mockResolvedValueOnce({
+        Item: { PK: 'USER#user-123', SK: 'GROUP#abc123', groupId: 'abc123', totalQuantity: 2, isLowStock: false, syncVersion: 1 },
+      });
+      // adjustGroupQuantity → UpdateCommand (total goes to 0, no threshold → group deleted)
       mockSend.mockResolvedValueOnce({});
 
       const result = await handler(
@@ -521,15 +639,34 @@ describe('Inventory Lambda handler', () => {
       expect(result.statusCode).toBe(404);
       expect(JSON.parse(result.body).error).toBe('NOT_FOUND');
     });
+
+    it('removes empty group without threshold when last item is deleted', async () => {
+      mockSend.mockResolvedValueOnce({
+        Item: { PK: 'USER#user-123', SK: 'ITEM#item-1', itemId: 'item-1', quantity: 1, groupId: 'abc123' },
+      });
+      mockSend.mockResolvedValueOnce({}); // DeleteCommand item
+      // adjustGroupQuantity → getGroup (total=1, no threshold)
+      mockSend.mockResolvedValueOnce({
+        Item: { PK: 'USER#user-123', SK: 'GROUP#abc123', groupId: 'abc123', totalQuantity: 1, isLowStock: false, syncVersion: 1 },
+      });
+      // adjustGroupQuantity → DeleteCommand (total becomes 0, no threshold)
+      mockSend.mockResolvedValueOnce({});
+
+      const result = await handler(
+        makeEvent({ httpMethod: 'DELETE', pathParameters: { itemId: 'item-1' } }),
+      );
+
+      expect(result.statusCode).toBe(200);
+    });
   });
 
   describe('GET /inventory/low-stock', () => {
-    it('returns only low-stock items', async () => {
-      const lowStockItems = [
-        { itemId: 'item-1', name: 'Milk', isLowStock: true, quantity: 1, threshold: 2 },
-        { itemId: 'item-2', name: 'Eggs', isLowStock: true, quantity: 0, threshold: 3 },
+    it('returns low-stock groups with aggregate quantities', async () => {
+      const lowStockGroups = [
+        { groupId: 'group-1', name: 'Milk', totalQuantity: 1, threshold: 2, isLowStock: true },
+        { groupId: 'group-2', name: 'Eggs', totalQuantity: 0, threshold: 3, isLowStock: true },
       ];
-      mockSend.mockResolvedValueOnce({ Items: lowStockItems });
+      mockSend.mockResolvedValueOnce({ Items: lowStockGroups });
 
       const result = await handler(
         makeEvent({
@@ -541,12 +678,14 @@ describe('Inventory Lambda handler', () => {
       const body = JSON.parse(result.body);
 
       expect(result.statusCode).toBe(200);
-      expect(body.items).toHaveLength(2);
-      expect(body.items[0].name).toBe('Milk');
-      expect(body.items[1].name).toBe('Eggs');
+      expect(body.groups).toHaveLength(2);
+      expect(body.groups[0].name).toBe('Milk');
+      expect(body.groups[1].name).toBe('Eggs');
+      // should NOT return items array (legacy format)
+      expect(body.items).toBeUndefined();
     });
 
-    it('returns empty list when no low-stock items exist', async () => {
+    it('returns empty list when no low-stock groups exist', async () => {
       mockSend.mockResolvedValueOnce({ Items: [] });
 
       const result = await handler(
@@ -559,10 +698,10 @@ describe('Inventory Lambda handler', () => {
       const body = JSON.parse(result.body);
 
       expect(result.statusCode).toBe(200);
-      expect(body.items).toHaveLength(0);
+      expect(body.groups).toHaveLength(0);
     });
 
-    it('queries with correct filter expression for isLowStock', async () => {
+    it('queries GROUP entities with isLowStock filter', async () => {
       mockSend.mockResolvedValueOnce({ Items: [] });
 
       await handler(
@@ -575,8 +714,11 @@ describe('Inventory Lambda handler', () => {
 
       expect(mockSend).toHaveBeenCalledWith(
         expect.objectContaining({
+          KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
           FilterExpression: 'isLowStock = :true',
           ExpressionAttributeValues: expect.objectContaining({
+            ':pk': 'USER#user-123',
+            ':skPrefix': 'GROUP#',
             ':true': true,
           }),
         }),
@@ -584,36 +726,155 @@ describe('Inventory Lambda handler', () => {
     });
   });
 
-  describe('POST /inventory - low-stock GSI1', () => {
-    it('sets GSI1PK to LOWSTOCK when item is low-stock on create', async () => {
-      mockSend.mockResolvedValueOnce({});
+  describe('PUT /inventory/groups/{groupId}', () => {
+    const existingGroup = {
+      PK: 'USER#user-123',
+      SK: 'GROUP#abc123',
+      entityType: 'InventoryGroup',
+      groupId: 'abc123',
+      canonicalKey: 'milk|dairy|l',
+      name: 'Milk',
+      category: 'Dairy',
+      unit: 'l',
+      totalQuantity: 5,
+      isLowStock: false,
+      syncVersion: 1,
+    };
+
+    it('sets the threshold on a group', async () => {
+      mockSend.mockResolvedValueOnce({ Item: existingGroup }); // getGroup
+      mockSend.mockResolvedValueOnce({ // UpdateCommand
+        Attributes: { ...existingGroup, threshold: 2, isLowStock: false, syncVersion: 2 },
+      });
 
       const result = await handler(
         makeEvent({
-          httpMethod: 'POST',
-          body: JSON.stringify({ ...validItem, quantity: 1, threshold: 2 }),
+          httpMethod: 'PUT',
+          resource: '/inventory/groups/{groupId}',
+          path: '/inventory/groups/abc123',
+          pathParameters: { groupId: 'abc123' },
+          body: JSON.stringify({ threshold: 2 }),
         }),
       );
       const body = JSON.parse(result.body);
 
-      expect(body.item.isLowStock).toBe(true);
-      expect(body.item.GSI1PK).toBe('USER#user-123#LOWSTOCK');
-      expect(body.item.GSI1SK).toBe('ITEM#item-uuid-1234');
+      expect(result.statusCode).toBe(200);
+      expect(body.group.threshold).toBe(2);
+      expect(body.group.isLowStock).toBe(false);
     });
 
-    it('sets GSI1PK to category when item is not low-stock on create', async () => {
-      mockSend.mockResolvedValueOnce({});
+    it('clears the threshold when null is passed', async () => {
+      const groupWithThreshold = { ...existingGroup, threshold: 2, isLowStock: true };
+      mockSend.mockResolvedValueOnce({ Item: groupWithThreshold }); // getGroup
+      mockSend.mockResolvedValueOnce({ // UpdateCommand with REMOVE
+        Attributes: { ...existingGroup, isLowStock: false, syncVersion: 2 },
+      });
 
       const result = await handler(
         makeEvent({
-          httpMethod: 'POST',
-          body: JSON.stringify({ ...validItem, quantity: 5, threshold: 2 }),
+          httpMethod: 'PUT',
+          resource: '/inventory/groups/{groupId}',
+          path: '/inventory/groups/abc123',
+          pathParameters: { groupId: 'abc123' },
+          body: JSON.stringify({ threshold: null }),
         }),
       );
       const body = JSON.parse(result.body);
 
-      expect(body.item.isLowStock).toBe(false);
-      expect(body.item.GSI1PK).toBe('USER#user-123#CAT#Dairy');
+      expect(result.statusCode).toBe(200);
+      expect(body.group.threshold).toBeUndefined();
+    });
+
+    it('triggers low-stock notification when threshold causes transition', async () => {
+      // totalQuantity=5, threshold=10 → isLowStock=true (transition)
+      mockSend.mockResolvedValueOnce({ Item: existingGroup }); // getGroup
+      mockSend.mockResolvedValueOnce({ // UpdateCommand
+        Attributes: { ...existingGroup, threshold: 10, isLowStock: true, syncVersion: 2 },
+      });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'PUT',
+          resource: '/inventory/groups/{groupId}',
+          path: '/inventory/groups/abc123',
+          pathParameters: { groupId: 'abc123' },
+          body: JSON.stringify({ threshold: 10 }),
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.lowStockTransition).toBe(true);
+      expect(body.notification).toBeDefined();
+      expect(body.notification.type).toBe('LOW_STOCK');
+      expect(body.notification.groupId).toBe('abc123');
+    });
+
+    it('does not trigger notification when group was already low-stock', async () => {
+      const alreadyLow = { ...existingGroup, threshold: 10, isLowStock: true };
+      mockSend.mockResolvedValueOnce({ Item: alreadyLow }); // getGroup
+      mockSend.mockResolvedValueOnce({ // UpdateCommand
+        Attributes: { ...alreadyLow, threshold: 5, isLowStock: true, syncVersion: 2 },
+      });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'PUT',
+          resource: '/inventory/groups/{groupId}',
+          path: '/inventory/groups/abc123',
+          pathParameters: { groupId: 'abc123' },
+          body: JSON.stringify({ threshold: 5 }),
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.lowStockTransition).toBeUndefined();
+    });
+
+    it('returns 404 when group does not exist', async () => {
+      mockSend.mockResolvedValueOnce({ Item: undefined }); // getGroup
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'PUT',
+          resource: '/inventory/groups/{groupId}',
+          path: '/inventory/groups/nonexistent',
+          pathParameters: { groupId: 'nonexistent' },
+          body: JSON.stringify({ threshold: 2 }),
+        }),
+      );
+
+      expect(result.statusCode).toBe(404);
+      expect(JSON.parse(result.body).error).toBe('NOT_FOUND');
+    });
+
+    it('returns 400 when threshold is negative', async () => {
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'PUT',
+          resource: '/inventory/groups/{groupId}',
+          path: '/inventory/groups/abc123',
+          pathParameters: { groupId: 'abc123' },
+          body: JSON.stringify({ threshold: -1 }),
+        }),
+      );
+
+      expect(result.statusCode).toBe(400);
+    });
+
+    it('returns 400 when body is missing', async () => {
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'PUT',
+          resource: '/inventory/groups/{groupId}',
+          path: '/inventory/groups/abc123',
+          pathParameters: { groupId: 'abc123' },
+          body: null,
+        }),
+      );
+
+      expect(result.statusCode).toBe(400);
     });
   });
 
@@ -954,9 +1215,7 @@ describe('Inventory Lambda handler', () => {
     });
 
     it('returns correct result format for barcode field (items)', async () => {
-      const items = [
-        { itemId: 'item-1', name: 'Milk', barcode: '123456', brand: 'FarmFresh' },
-      ];
+      const items = [{ itemId: 'item-1', name: 'Milk', barcode: '123456', brand: 'FarmFresh' }];
       mockSend.mockResolvedValueOnce({ Items: items });
 
       const result = await handler(
@@ -1520,9 +1779,7 @@ describe('Inventory Lambda handler', () => {
     });
 
     it('handles barcode search with exact match', async () => {
-      const items = [
-        { itemId: 'item-1', name: 'Milk', barcode: '1234567890' },
-      ];
+      const items = [{ itemId: 'item-1', name: 'Milk', barcode: '1234567890' }];
       mockSend.mockResolvedValueOnce({ Items: items }); // DynamoDB FilterExpression returns matching item
 
       const result = await handler(
@@ -1695,225 +1952,6 @@ describe('Inventory Lambda handler', () => {
     });
   });
 
-  describe('PUT /inventory/{itemId} - low-stock transition', () => {
-    it('includes lowStockTransition flag when item transitions to low-stock', async () => {
-      // GetCommand returns current item (not low-stock)
-      mockSend.mockResolvedValueOnce({
-        Item: {
-          PK: 'USER#user-123',
-          SK: 'ITEM#item-1',
-          name: 'Milk',
-          category: 'Dairy',
-          quantity: 5,
-          threshold: 3,
-          isLowStock: false,
-          syncVersion: 1,
-        },
-      });
-      // UpdateCommand returns updated item (now low-stock)
-      mockSend.mockResolvedValueOnce({
-        Attributes: {
-          PK: 'USER#user-123',
-          SK: 'ITEM#item-1',
-          name: 'Milk',
-          category: 'Dairy',
-          quantity: 2,
-          threshold: 3,
-          isLowStock: true,
-          syncVersion: 2,
-        },
-      });
-
-      const result = await handler(
-        makeEvent({
-          httpMethod: 'PUT',
-          pathParameters: { itemId: 'item-1' },
-          body: JSON.stringify({ quantity: 2 }),
-        }),
-      );
-      const body = JSON.parse(result.body);
-
-      expect(result.statusCode).toBe(200);
-      expect(body.lowStockTransition).toBe(true);
-      expect(body.notification).toBeDefined();
-      expect(body.notification.type).toBe('LOW_STOCK');
-      expect(body.notification.message).toContain('Milk');
-      expect(body.notification.itemId).toBe('item-1');
-    });
-
-    it('does not include lowStockTransition when item was already low-stock', async () => {
-      // GetCommand returns current item (already low-stock)
-      mockSend.mockResolvedValueOnce({
-        Item: {
-          PK: 'USER#user-123',
-          SK: 'ITEM#item-1',
-          name: 'Milk',
-          category: 'Dairy',
-          quantity: 2,
-          threshold: 3,
-          isLowStock: true,
-          syncVersion: 1,
-        },
-      });
-      // UpdateCommand returns updated item (still low-stock)
-      mockSend.mockResolvedValueOnce({
-        Attributes: {
-          PK: 'USER#user-123',
-          SK: 'ITEM#item-1',
-          name: 'Milk',
-          category: 'Dairy',
-          quantity: 1,
-          threshold: 3,
-          isLowStock: true,
-          syncVersion: 2,
-        },
-      });
-
-      const result = await handler(
-        makeEvent({
-          httpMethod: 'PUT',
-          pathParameters: { itemId: 'item-1' },
-          body: JSON.stringify({ quantity: 1 }),
-        }),
-      );
-      const body = JSON.parse(result.body);
-
-      expect(result.statusCode).toBe(200);
-      expect(body.lowStockTransition).toBeUndefined();
-      expect(body.notification).toBeUndefined();
-    });
-
-    it('does not include lowStockTransition when item moves out of low-stock', async () => {
-      // GetCommand returns current item (low-stock)
-      mockSend.mockResolvedValueOnce({
-        Item: {
-          PK: 'USER#user-123',
-          SK: 'ITEM#item-1',
-          name: 'Milk',
-          category: 'Dairy',
-          quantity: 2,
-          threshold: 3,
-          isLowStock: true,
-          syncVersion: 1,
-        },
-      });
-      // UpdateCommand returns updated item (no longer low-stock)
-      mockSend.mockResolvedValueOnce({
-        Attributes: {
-          PK: 'USER#user-123',
-          SK: 'ITEM#item-1',
-          name: 'Milk',
-          category: 'Dairy',
-          quantity: 10,
-          threshold: 3,
-          isLowStock: false,
-          syncVersion: 2,
-        },
-      });
-
-      const result = await handler(
-        makeEvent({
-          httpMethod: 'PUT',
-          pathParameters: { itemId: 'item-1' },
-          body: JSON.stringify({ quantity: 10 }),
-        }),
-      );
-      const body = JSON.parse(result.body);
-
-      expect(result.statusCode).toBe(200);
-      expect(body.lowStockTransition).toBeUndefined();
-    });
-
-    it('updates GSI1PK to LOWSTOCK when transitioning to low-stock', async () => {
-      mockSend.mockResolvedValueOnce({
-        Item: {
-          PK: 'USER#user-123',
-          SK: 'ITEM#item-1',
-          name: 'Milk',
-          category: 'Dairy',
-          quantity: 5,
-          threshold: 3,
-          isLowStock: false,
-          syncVersion: 1,
-        },
-      });
-      mockSend.mockResolvedValueOnce({
-        Attributes: {
-          PK: 'USER#user-123',
-          SK: 'ITEM#item-1',
-          name: 'Milk',
-          category: 'Dairy',
-          quantity: 2,
-          threshold: 3,
-          isLowStock: true,
-          GSI1PK: 'USER#user-123#LOWSTOCK',
-          syncVersion: 2,
-        },
-      });
-
-      await handler(
-        makeEvent({
-          httpMethod: 'PUT',
-          pathParameters: { itemId: 'item-1' },
-          body: JSON.stringify({ quantity: 2 }),
-        }),
-      );
-
-      // Verify the UpdateCommand was called with GSI1PK set to LOWSTOCK
-      expect(mockSend).toHaveBeenCalledWith(
-        expect.objectContaining({
-          ExpressionAttributeValues: expect.objectContaining({
-            ':v_gsi1pk': 'USER#user-123#LOWSTOCK',
-          }),
-        }),
-      );
-    });
-
-    it('updates GSI1PK back to category when moving out of low-stock', async () => {
-      mockSend.mockResolvedValueOnce({
-        Item: {
-          PK: 'USER#user-123',
-          SK: 'ITEM#item-1',
-          name: 'Milk',
-          category: 'Dairy',
-          quantity: 2,
-          threshold: 3,
-          isLowStock: true,
-          syncVersion: 1,
-        },
-      });
-      mockSend.mockResolvedValueOnce({
-        Attributes: {
-          PK: 'USER#user-123',
-          SK: 'ITEM#item-1',
-          name: 'Milk',
-          category: 'Dairy',
-          quantity: 10,
-          threshold: 3,
-          isLowStock: false,
-          GSI1PK: 'USER#user-123#CAT#Dairy',
-          syncVersion: 2,
-        },
-      });
-
-      await handler(
-        makeEvent({
-          httpMethod: 'PUT',
-          pathParameters: { itemId: 'item-1' },
-          body: JSON.stringify({ quantity: 10 }),
-        }),
-      );
-
-      expect(mockSend).toHaveBeenCalledWith(
-        expect.objectContaining({
-          ExpressionAttributeValues: expect.objectContaining({
-            ':v_gsi1pk': 'USER#user-123#CAT#Dairy',
-          }),
-        }),
-      );
-    });
-  });
-
   describe('POST /inventory/barcode-lookup', () => {
     const mockFetch = jest.fn();
 
@@ -1934,10 +1972,7 @@ describe('Inventory Lambda handler', () => {
     function mockOpenFoodFacts(product: Record<string, unknown> | null) {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () =>
-          product
-            ? { status: 1, product }
-            : { status: 0, product: null },
+        json: async () => (product ? { status: 1, product } : { status: 0, product: null }),
       });
     }
 
@@ -2040,5 +2075,4 @@ describe('Inventory Lambda handler', () => {
       expect(result.statusCode).toBe(400);
     });
   });
-
 });

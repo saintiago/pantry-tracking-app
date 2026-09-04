@@ -1,6 +1,5 @@
 import React, { useCallback, useState } from 'react';
 import type { InventoryItem } from '../../components/InventoryList/InventoryList';
-import { LowStockBadge } from '../../components/InventoryList/InventoryList';
 import type { StorageLocation } from '../../api/locations/locations';
 import { updateInventoryItem } from '../../api/inventory/inventory';
 import { VALID_UNITS, getUnitLabel, resolveUnit } from '../../types/units';
@@ -13,11 +12,12 @@ export interface ItemDetailPageProps {
   onItemUpdated: (
     updatedItem: InventoryItem,
     lowStockTransition?: boolean,
-    notification?: { type: string; message: string; itemId: string },
+    notification?: { type: string; message: string; itemId?: string; groupId?: string },
   ) => void;
 }
 
 interface EditFormState {
+  locationDetails: string;
   name: string;
   category: string;
   locationId: string;
@@ -28,7 +28,6 @@ interface EditFormState {
   barcode: string;
   whereToBuy: string;
   onlineStoreLink: string;
-  threshold: string;
 }
 
 interface EditFormErrors {
@@ -61,6 +60,7 @@ function initForm(item: InventoryItem): EditFormState {
     name: item.name,
     category: item.category,
     locationId: item.location,
+    locationDetails: item.locationDetails ?? '',
     quantity: formatQuantity(item.quantity),
     unit: resolveUnit(item.unit),
     expirationDate: item.expirationDate,
@@ -68,11 +68,15 @@ function initForm(item: InventoryItem): EditFormState {
     barcode: item.barcode ?? '',
     whereToBuy: item.whereToBuy ?? '',
     onlineStoreLink: item.onlineStoreLink ?? '',
-    threshold: item.threshold !== undefined ? String(item.threshold) : '',
   };
 }
 
-const ItemDetailPage: React.FC<ItemDetailPageProps> = ({ item, locations, onBack, onItemUpdated }) => {
+const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
+  item,
+  locations,
+  onBack,
+  onItemUpdated,
+}) => {
   const [editForm, setEditForm] = useState<EditFormState>(initForm(item));
   const [errors, setErrors] = useState<EditFormErrors>({});
   const [saving, setSaving] = useState(false);
@@ -102,6 +106,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({ item, locations, onBack
         name: editForm.name.trim(),
         category: editForm.category.trim(),
         locationId: editForm.locationId,
+        locationDetails: editForm.locationDetails.trim(),
         quantity: parseFractionalQuantity(editForm.quantity) ?? 0,
         unit: editForm.unit.trim(),
         expirationDate: editForm.expirationDate,
@@ -110,7 +115,17 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({ item, locations, onBack
       if (editForm.barcode.trim()) data.barcode = editForm.barcode.trim();
       if (editForm.whereToBuy.trim()) data.whereToBuy = editForm.whereToBuy.trim();
       if (editForm.onlineStoreLink.trim()) data.onlineStoreLink = editForm.onlineStoreLink.trim();
-      if (editForm.threshold !== '') data.threshold = Number(editForm.threshold);
+
+      const groupingFieldsChanged =
+        editForm.name.trim() !== item.name ||
+        editForm.category.trim() !== item.category ||
+        resolveUnit(editForm.unit) !== resolveUnit(item.unit);
+      if (groupingFieldsChanged) {
+        const keepCurrentGroup = window.confirm(
+          'Keep this item in its current inventory group? Select Cancel to assign it automatically from its new name, category, and unit.',
+        );
+        if (!keepCurrentGroup) data.reassignGroup = true;
+      }
 
       const response = await updateInventoryItem(item.itemId, data);
       onItemUpdated(response.item, response.lowStockTransition, response.notification);
@@ -132,11 +147,16 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({ item, locations, onBack
     <div style={styles.page}>
       {/* Page header with back button */}
       <div style={styles.pageHeader}>
-        <button onClick={onBack} style={styles.backButton} type="button" aria-label="Go back" disabled={saving}>
+        <button
+          onClick={onBack}
+          style={styles.backButton}
+          type="button"
+          aria-label="Go back"
+          disabled={saving}
+        >
           ← Back
         </button>
         <h2 style={styles.pageTitle}>{item.name}</h2>
-        {item.isLowStock && <LowStockBadge />}
       </div>
 
       {/* Picture */}
@@ -169,7 +189,11 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({ item, locations, onBack
             aria-required="true"
             aria-invalid={!!errors.name}
           />
-          {errors.name && <span style={styles.fieldError} role="alert">{errors.name}</span>}
+          {errors.name && (
+            <span style={styles.fieldError} role="alert">
+              {errors.name}
+            </span>
+          )}
         </div>
 
         {/* Category */}
@@ -186,7 +210,11 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({ item, locations, onBack
             aria-required="true"
             aria-invalid={!!errors.category}
           />
-          {errors.category && <span style={styles.fieldError} role="alert">{errors.category}</span>}
+          {errors.category && (
+            <span style={styles.fieldError} role="alert">
+              {errors.category}
+            </span>
+          )}
         </div>
 
         {/* Location */}
@@ -209,7 +237,24 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({ item, locations, onBack
               </option>
             ))}
           </select>
-          {errors.locationId && <span style={styles.fieldError} role="alert">{errors.locationId}</span>}
+          {errors.locationId && (
+            <span style={styles.fieldError} role="alert">
+              {errors.locationId}
+            </span>
+          )}
+        </div>
+
+        <div style={styles.fieldGroup}>
+          <label htmlFor="edit-location-details" style={styles.label}>
+            Location Details
+          </label>
+          <input
+            id="edit-location-details"
+            value={editForm.locationDetails}
+            onChange={handleChange('locationDetails')}
+            placeholder="e.g. Shelf 2A"
+            style={styles.input}
+          />
         </div>
 
         {/* Quantity */}
@@ -227,7 +272,11 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({ item, locations, onBack
             aria-invalid={!!errors.quantity}
             placeholder="e.g. 2, 1/2, 1 1/4"
           />
-          {errors.quantity && <span style={styles.fieldError} role="alert">{errors.quantity}</span>}
+          {errors.quantity && (
+            <span style={styles.fieldError} role="alert">
+              {errors.quantity}
+            </span>
+          )}
         </div>
 
         {/* Unit */}
@@ -245,10 +294,16 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({ item, locations, onBack
           >
             <option value="">Select a unit</option>
             {VALID_UNITS.map((u) => (
-              <option key={u} value={u}>{getUnitLabel(u, 1)}</option>
+              <option key={u} value={u}>
+                {getUnitLabel(u, 1)}
+              </option>
             ))}
           </select>
-          {errors.unit && <span style={styles.fieldError} role="alert">{errors.unit}</span>}
+          {errors.unit && (
+            <span style={styles.fieldError} role="alert">
+              {errors.unit}
+            </span>
+          )}
         </div>
 
         {/* Expiration Date */}
@@ -265,37 +320,67 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({ item, locations, onBack
             aria-required="true"
             aria-invalid={!!errors.expirationDate}
           />
-          {errors.expirationDate && <span style={styles.fieldError} role="alert">{errors.expirationDate}</span>}
+          {errors.expirationDate && (
+            <span style={styles.fieldError} role="alert">
+              {errors.expirationDate}
+            </span>
+          )}
         </div>
 
         {/* Brand (optional) */}
         <div style={styles.fieldGroup}>
-          <label htmlFor="edit-brand" style={styles.label}>Brand</label>
-          <input id="edit-brand" type="text" value={editForm.brand} onChange={handleChange('brand')} style={styles.input} />
+          <label htmlFor="edit-brand" style={styles.label}>
+            Brand
+          </label>
+          <input
+            id="edit-brand"
+            type="text"
+            value={editForm.brand}
+            onChange={handleChange('brand')}
+            style={styles.input}
+          />
         </div>
 
         {/* Barcode (optional) */}
         <div style={styles.fieldGroup}>
-          <label htmlFor="edit-barcode" style={styles.label}>Barcode</label>
-          <input id="edit-barcode" type="text" value={editForm.barcode} onChange={handleChange('barcode')} style={styles.input} />
+          <label htmlFor="edit-barcode" style={styles.label}>
+            Barcode
+          </label>
+          <input
+            id="edit-barcode"
+            type="text"
+            value={editForm.barcode}
+            onChange={handleChange('barcode')}
+            style={styles.input}
+          />
         </div>
 
         {/* Where to Buy (optional) */}
         <div style={styles.fieldGroup}>
-          <label htmlFor="edit-wheretobuy" style={styles.label}>Where to Buy</label>
-          <input id="edit-wheretobuy" type="text" value={editForm.whereToBuy} onChange={handleChange('whereToBuy')} style={styles.input} />
+          <label htmlFor="edit-wheretobuy" style={styles.label}>
+            Where to Buy
+          </label>
+          <input
+            id="edit-wheretobuy"
+            type="text"
+            value={editForm.whereToBuy}
+            onChange={handleChange('whereToBuy')}
+            style={styles.input}
+          />
         </div>
 
         {/* Online Store Link (optional) */}
         <div style={styles.fieldGroup}>
-          <label htmlFor="edit-onlinelink" style={styles.label}>Online Store Link</label>
-          <input id="edit-onlinelink" type="url" value={editForm.onlineStoreLink} onChange={handleChange('onlineStoreLink')} style={styles.input} />
-        </div>
-
-        {/* Threshold (optional) */}
-        <div style={styles.fieldGroup}>
-          <label htmlFor="edit-threshold" style={styles.label}>Low-Stock Threshold</label>
-          <input id="edit-threshold" type="number" min="0" value={editForm.threshold} onChange={handleChange('threshold')} style={styles.input} />
+          <label htmlFor="edit-onlinelink" style={styles.label}>
+            Online Store Link
+          </label>
+          <input
+            id="edit-onlinelink"
+            type="url"
+            value={editForm.onlineStoreLink}
+            onChange={handleChange('onlineStoreLink')}
+            style={styles.input}
+          />
         </div>
 
         {/* Spacer so content isn't hidden behind fixed action bar */}

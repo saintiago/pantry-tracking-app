@@ -6,7 +6,8 @@ A Progressive Web App (PWA) for household inventory management. Users track food
 - Inventory management with add/remove/update (barcode scanning, manual entry, receipt OCR)
 - Low-stock threshold notifications
 - Recipe management with ingredient availability checking
-- Meal planner calendar (breakfast, lunch, dinner)
+- Two-week meal planner calendar (breakfast, lunch, dinner), categorized recipe library,
+  drag-and-drop or keyboard/touch assignment, and bulk servings for future meals
 - Shopping list generation from meal plans minus current inventory
 - Offline-first with service worker caching and background sync
 - Cognito-based authentication (email/password)

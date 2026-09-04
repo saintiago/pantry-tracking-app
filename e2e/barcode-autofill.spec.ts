@@ -223,8 +223,9 @@ test.describe('Barcode Autofill Feature', () => {
     await nameInput.press('End');
     await nameInput.pressSequentially(' - Edited');
 
-    const bgColor = await nameInput.evaluate((el) => window.getComputedStyle(el).backgroundColor);
-    expect(bgColor).toBe('rgb(255, 255, 255)');
+    // Use Playwright's web-first assertion with retry — React state updates
+    // may not flush to the DOM synchronously after pressSequentially.
+    await expect(nameInput).toHaveCSS('background-color', 'rgb(255, 255, 255)');
   });
 
   test('should show autocomplete for category field', async ({ page }) => {

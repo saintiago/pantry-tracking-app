@@ -26,7 +26,7 @@ interface ItemDetailPageState {
   onItemUpdated: (
     updatedItem: InventoryItem,
     lowStockTransition?: boolean,
-    notification?: { type: string; message: string; itemId: string },
+    notification?: { type: string; message: string; itemId?: string; groupId?: string },
   ) => void;
 }
 
@@ -49,17 +49,19 @@ const LoadingSpinner: React.FC = () => (
     role="status"
     aria-label="Loading"
   >
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      width: '100%',
-      maxWidth: 440,
-      padding: '2rem 1.5rem',
-      backgroundColor: '#ffffff',
-      borderRadius: 12,
-      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-    }}>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        width: '100%',
+        maxWidth: 440,
+        padding: '2rem 1.5rem',
+        backgroundColor: '#ffffff',
+        borderRadius: 12,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+      }}
+    >
       <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '1.5rem' }}>
         🥫 Pantry Tracker
       </h1>
@@ -101,7 +103,12 @@ const AuthenticatedApp: React.FC = () => {
 
   const handleNavigate = (page: PageId) => {
     // Bump key when navigating back to inventory from another page — forces a fresh data fetch
-    if (page === 'inventory' && activePage !== 'inventory' && activePage !== 'add-item' && activePage !== 'item-detail') {
+    if (
+      page === 'inventory' &&
+      activePage !== 'inventory' &&
+      activePage !== 'add-item' &&
+      activePage !== 'item-detail'
+    ) {
       setInventoryKey((k) => k + 1);
     }
     setActivePage(page);
@@ -164,10 +171,7 @@ const AuthenticatedApp: React.FC = () => {
     }
     if (activePage === 'recipes') {
       return (
-        <RecipesPage
-          activeCookingSession={cookingSession}
-          onStartCooking={startCookingSession}
-        />
+        <RecipesPage activeCookingSession={cookingSession} onStartCooking={startCookingSession} />
       );
     }
     if (activePage === 'cooking' && cookingSession) {

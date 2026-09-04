@@ -4,24 +4,44 @@ import { getUnitLabel, resolveUnit } from '../../types/units';
 import { formatQuantity } from '../../utils/quantity';
 import { useHoverState, useInteractionFeedback } from '../../hooks/useInventoryAnimations';
 import Tooltip from '../Tooltip/Tooltip';
+import { thresholdUnits } from '../../types/thresholdUnits';
 
 export interface InventoryItem {
   itemId: string;
+  groupId?: string;
   name: string;
   category: string;
   expirationDate: string;
   location: string; // locationId
+  locationDetails?: string;
   quantity: number;
   unit: string;
-  isLowStock: boolean;
+  /** @deprecated Low-stock state is owned by InventoryGroup. */
+  isLowStock?: boolean;
   barcode?: string;
   brand?: string;
   whereToBuy?: string;
   onlineStoreLink?: string;
   pictureUrl?: string;
   threshold?: number;
+  thresholdUnit?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface InventoryGroup {
+  groupId: string;
+  canonicalKey: string;
+  name: string;
+  category: string;
+  unit: string;
+  threshold?: number;
+  thresholdUnit?: string;
+  totalQuantity: number;
+  isLowStock: boolean;
+  createdAt: string;
+  updatedAt: string;
+  syncVersion: number;
 }
 
 /* ── CategorySummary type and groupItemsByCategory ──────────────── */
@@ -45,6 +65,7 @@ export function formatQuantityByUnit(quantityByUnit: Record<string, number>): st
 
 export function groupItemsByCategory(items: InventoryItem[]): CategorySummary[] {
   const map = new Map<string, CategorySummary>();
+  const lowStockGroups = new Map<string, Set<string>>();
 
   for (const item of items) {
     const existing = map.get(item.category);
@@ -53,7 +74,13 @@ export function groupItemsByCategory(items: InventoryItem[]): CategorySummary[] 
       existing.totalQuantity += item.quantity;
       existing.quantityByUnit[item.unit] =
         (existing.quantityByUnit[item.unit] ?? 0) + item.quantity;
-      if (item.isLowStock) existing.lowStockCount += 1;
+      if (item.isLowStock) {
+        const identity = item.groupId ?? item.itemId;
+        const seen = lowStockGroups.get(item.category) ?? new Set<string>();
+        if (!seen.has(identity)) existing.lowStockCount += 1;
+        seen.add(identity);
+        lowStockGroups.set(item.category, seen);
+      }
     } else {
       map.set(item.category, {
         category: item.category,
@@ -62,6 +89,9 @@ export function groupItemsByCategory(items: InventoryItem[]): CategorySummary[] 
         quantityByUnit: { [item.unit]: item.quantity },
         lowStockCount: item.isLowStock ? 1 : 0,
       });
+      if (item.isLowStock) {
+        lowStockGroups.set(item.category, new Set([item.groupId ?? item.itemId]));
+      }
     }
   }
 
@@ -76,6 +106,7 @@ export function groupItemsByCategory(items: InventoryItem[]): CategorySummary[] 
  * to any API; derived purely from the provided InventoryItem list.
  */
 export interface GroupedRow {
+  groupId: string;
   groupingKey: string; // canonical composite key
   name: string; // display name (first child's original name)
   unit: string; // canonical unit key
@@ -84,6 +115,8 @@ export interface GroupedRow {
   totalQuantity: number;
   childCount: number;
   hasLowStock: boolean;
+  threshold?: number;
+  thresholdUnit?: string;
 }
 
 /**
@@ -110,23 +143,30 @@ function normalizeGroupCategory(category: string): string {
  *
  * Pure UI construct: no database records are created or modified.
  */
-export function groupItemsByGroupingKey(items: InventoryItem[]): GroupedRow[] {
+export function groupItemsByGroupingKey(
+  items: InventoryItem[],
+  inventoryGroups: InventoryGroup[] = [],
+): GroupedRow[] {
   const map = new Map<string, GroupedRow>();
+  const groupsById = new Map(inventoryGroups.map((group) => [group.groupId, group]));
 
   for (const item of items) {
     const canonicalUnit = resolveUnit(item.unit);
-    const groupingKey = `${normalizeGroupName(item.name)}|${normalizeGroupCategory(
+    const legacyGroupingKey = `${normalizeGroupName(item.name)}|${normalizeGroupCategory(
       item.category,
     )}|${canonicalUnit}`;
+    const groupingKey = item.groupId ?? legacyGroupingKey;
+    const persistedGroup = item.groupId ? groupsById.get(item.groupId) : undefined;
 
     const existing = map.get(groupingKey);
     if (existing) {
       existing.childItems.push(item);
       existing.totalQuantity += item.quantity;
       existing.childCount += 1;
-      if (item.isLowStock) existing.hasLowStock = true;
+      if (!item.groupId && item.isLowStock) existing.hasLowStock = true;
     } else {
       map.set(groupingKey, {
+        groupId: item.groupId ?? legacyGroupingKey,
         groupingKey,
         name: item.name,
         unit: canonicalUnit,
@@ -134,7 +174,9 @@ export function groupItemsByGroupingKey(items: InventoryItem[]): GroupedRow[] {
         childItems: [item],
         totalQuantity: item.quantity,
         childCount: 1,
-        hasLowStock: item.isLowStock,
+        hasLowStock: persistedGroup?.isLowStock ?? item.isLowStock ?? false,
+        threshold: persistedGroup?.threshold,
+        thresholdUnit: persistedGroup?.thresholdUnit,
       });
     }
   }
@@ -499,6 +541,11 @@ export interface GroupedRowProps {
   removeMode: boolean;
   onRemoveItem?: (itemId: string) => void;
   onItemClick?: (item: InventoryItem) => void;
+  onUpdateThreshold?: (
+    groupId: string,
+    threshold: number | null,
+    thresholdUnit?: string,
+  ) => Promise<void>;
 }
 
 /**
@@ -521,7 +568,17 @@ export const GroupedRowView: React.FC<GroupedRowProps> = ({
   removeMode,
   onRemoveItem,
   onItemClick,
+  onUpdateThreshold,
 }) => {
+  const [editingThreshold, setEditingThreshold] = useState(false);
+  const [thresholdValue, setThresholdValue] = useState(
+    group.threshold === undefined ? '' : String(group.threshold),
+  );
+  const [thresholdUnit, setThresholdUnit] = useState(
+    resolveUnit(group.thresholdUnit ?? group.unit),
+  );
+  const [thresholdError, setThresholdError] = useState('');
+  const [thresholdSaving, setThresholdSaving] = useState(false);
   const reactId = React.useId();
   const childRegionId = `grouped-row-children-${reactId}`;
   const { isHovered, hoverProps } = useHoverState();
@@ -575,6 +632,25 @@ export const GroupedRowView: React.FC<GroupedRowProps> = ({
           <div style={styles.groupedRowHeader}>
             <span style={styles.groupedRowName}>{group.name}</span>
             {group.hasLowStock && <LowStockBadge />}
+            {onUpdateThreshold && (
+              <button
+                type="button"
+                aria-label={`Edit low-stock threshold for ${group.name}`}
+                style={styles.thresholdButton}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setThresholdValue(group.threshold === undefined ? '' : String(group.threshold));
+                  setThresholdUnit(resolveUnit(group.thresholdUnit ?? group.unit));
+                  setThresholdError('');
+                  setEditingThreshold((value) => !value);
+                }}
+              >
+                ⚙ Threshold
+                {group.threshold === undefined
+                  ? ''
+                  : `: ${group.threshold} ${getUnitLabel(group.thresholdUnit ?? group.unit, group.threshold)}`}
+              </button>
+            )}
           </div>
           <div style={styles.groupedRowStats}>
             <span>{quantityText}</span>
@@ -583,6 +659,61 @@ export const GroupedRowView: React.FC<GroupedRowProps> = ({
           </div>
         </div>
       </div>
+
+      {editingThreshold && (
+        <form
+          style={styles.thresholdEditor}
+          onSubmit={async (event) => {
+            event.preventDefault();
+            const threshold = thresholdValue === '' ? null : Number(thresholdValue);
+            if (thresholdSaving) return;
+            setThresholdSaving(true);
+            setThresholdError('');
+            try {
+              await onUpdateThreshold?.(group.groupId, threshold, thresholdUnit);
+              setEditingThreshold(false);
+            } catch (err) {
+              setThresholdError(err instanceof Error ? err.message : 'Could not save threshold');
+            } finally {
+              setThresholdSaving(false);
+            }
+          }}
+        >
+          <label htmlFor={`threshold-${group.groupId}`}>Low-stock threshold</label>
+          <input
+            id={`threshold-${group.groupId}`}
+            type="number"
+            min="0"
+            step="any"
+            value={thresholdValue}
+            onChange={(event) => setThresholdValue(event.target.value)}
+            style={styles.thresholdInput}
+          />
+          <label htmlFor={`threshold-unit-${group.groupId}`}>Threshold unit</label>
+          <select
+            id={`threshold-unit-${group.groupId}`}
+            value={thresholdUnit}
+            onChange={(event) => setThresholdUnit(resolveUnit(event.target.value))}
+          >
+            {thresholdUnits(group.unit).map((unit) => (
+              <option key={unit} value={unit}>
+                {getUnitLabel(unit, 1)}
+              </option>
+            ))}
+          </select>
+          {thresholdError && <span role="alert">{thresholdError}</span>}
+          <button type="submit" disabled={thresholdSaving} style={styles.thresholdSaveButton}>
+            Save
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditingThreshold(false)}
+            style={styles.thresholdCancelButton}
+          >
+            Cancel
+          </button>
+        </form>
+      )}
 
       {/* Child region referenced by aria-controls. Rendered (empty) even when
           collapsed so the aria-controls target id always resolves. */}
@@ -614,18 +745,26 @@ export const GroupedRowView: React.FC<GroupedRowProps> = ({
 
 export interface InventoryListProps {
   items: InventoryItem[];
+  groups?: InventoryGroup[];
   locations: StorageLocation[];
   removeMode: boolean;
   onRemoveItem?: (itemId: string) => void;
   onItemClick?: (item: InventoryItem) => void;
+  onUpdateThreshold?: (
+    groupId: string,
+    threshold: number | null,
+    thresholdUnit?: string,
+  ) => Promise<void>;
 }
 
 const InventoryList: React.FC<InventoryListProps> = ({
   items,
+  groups = [],
   locations,
   removeMode,
   onRemoveItem,
   onItemClick,
+  onUpdateThreshold,
 }) => {
   const [textFilter, setTextFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
@@ -656,8 +795,24 @@ const InventoryList: React.FC<InventoryListProps> = ({
     return map;
   }, [locations]);
 
+  const groupsById = useMemo(
+    () => new Map(groups.map((group) => [group.groupId, group])),
+    [groups],
+  );
+
+  const effectiveItems = useMemo(
+    () =>
+      items.map((item) => ({
+        ...item,
+        isLowStock: item.groupId
+          ? (groupsById.get(item.groupId)?.isLowStock ?? false)
+          : item.isLowStock,
+      })),
+    [items, groupsById],
+  );
+
   const filteredItems = useMemo(() => {
-    let result = items;
+    let result = effectiveItems;
 
     if (showLowStockOnly) {
       result = result.filter((i) => i.isLowStock);
@@ -673,7 +828,7 @@ const InventoryList: React.FC<InventoryListProps> = ({
     }
 
     return result;
-  }, [items, textFilter, locationFilter, showLowStockOnly]);
+  }, [effectiveItems, textFilter, locationFilter, showLowStockOnly]);
 
   // Auto-reset to category-summary if selectedCategory no longer exists in filtered items
   React.useEffect(() => {
@@ -696,8 +851,8 @@ const InventoryList: React.FC<InventoryListProps> = ({
   // Recompute grouped rows whenever the displayed (post-filter) items change so
   // every displayed item stays represented in exactly one group.
   const groupedRows = useMemo(
-    () => groupItemsByGroupingKey(categoryFilteredItems),
-    [categoryFilteredItems],
+    () => groupItemsByGroupingKey(categoryFilteredItems, groups),
+    [categoryFilteredItems, groups],
   );
 
   const handleToggleGroup = (groupingKey: string) => {
@@ -795,6 +950,7 @@ const InventoryList: React.FC<InventoryListProps> = ({
                   removeMode={removeMode}
                   onRemoveItem={onRemoveItem}
                   onItemClick={onItemClick}
+                  onUpdateThreshold={onUpdateThreshold}
                 />
               ))}
             </div>
@@ -1091,6 +1247,50 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     fontSize: '1rem',
     color: 'var(--inv-text)',
+  },
+  thresholdButton: {
+    marginLeft: 'auto',
+    minHeight: 32,
+    padding: '0.25rem 0.5rem',
+    border: '1px solid var(--inv-border)',
+    borderRadius: 6,
+    background: 'var(--inv-warm-white)',
+    color: 'var(--inv-text-muted)',
+    cursor: 'pointer',
+  },
+  thresholdEditor: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: '0.5rem',
+    padding: '0.75rem',
+    border: '1.5px solid var(--inv-border)',
+    borderTop: 'none',
+    background: 'var(--inv-warm-white)',
+  },
+  thresholdInput: {
+    width: 90,
+    minHeight: 40,
+    padding: '0.375rem 0.5rem',
+    border: '1.5px solid var(--inv-border)',
+    borderRadius: 6,
+  },
+  thresholdSaveButton: {
+    minHeight: 40,
+    padding: '0.375rem 0.75rem',
+    border: 'none',
+    borderRadius: 6,
+    background: 'var(--inv-primary)',
+    color: '#fff',
+    cursor: 'pointer',
+  },
+  thresholdCancelButton: {
+    minHeight: 40,
+    padding: '0.375rem 0.75rem',
+    border: '1px solid var(--inv-border)',
+    borderRadius: 6,
+    background: 'transparent',
+    cursor: 'pointer',
   },
   groupedRowStats: {
     display: 'flex',

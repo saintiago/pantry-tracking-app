@@ -78,13 +78,15 @@ export function validateDateRange(startDate?: string, endDate?: string): string 
  * Requirements 7.5, 7.6: invalid mealType, missing/invalid date, missing recipeId/recipeName.
  */
 export function validateCreateBody(parsed: Record<string, unknown>): string | null {
+  if (parsed.servings !== undefined && !isValidServings(parsed.servings))
+    return 'servings must be a positive integer';
   if (!parsed.date) return 'date is required';
   if (!isValidIsoDate(parsed.date)) return 'date must be a valid ISO date (YYYY-MM-DD)';
   if (!parsed.mealType) return 'mealType is required';
-  if (!isValidMealType(parsed.mealType))
-    return `mealType must be one of: ${MEAL_TYPES.join(', ')}`;
+  if (!isValidMealType(parsed.mealType)) return `mealType must be one of: ${MEAL_TYPES.join(', ')}`;
   if (!parsed.recipeId || String(parsed.recipeId).trim() === '') return 'recipeId is required';
-  if (!parsed.recipeName || String(parsed.recipeName).trim() === '') return 'recipeName is required';
+  if (!parsed.recipeName || String(parsed.recipeName).trim() === '')
+    return 'recipeName is required';
   return null;
 }
 
@@ -95,6 +97,8 @@ export function validateCreateBody(parsed: Record<string, unknown>): string | nu
  * Requirements 7.8: invalid mealType, non-ISO date, empty recipeId/recipeName.
  */
 export function validateUpdateBody(parsed: Record<string, unknown>): string | null {
+  if (parsed.servings !== undefined && !isValidServings(parsed.servings))
+    return 'servings must be a positive integer';
   if (parsed.date !== undefined) {
     if (!isValidIsoDate(parsed.date)) return 'date must be a valid ISO date (YYYY-MM-DD)';
   }
@@ -133,6 +137,7 @@ export { TABLE_NAME };
 // ─── MealPlan shape (without DynamoDB keys) ───────────────────────────────────
 
 interface MealPlanItem {
+  servings?: number;
   planId: string;
   userId: string;
   date: string;
@@ -164,28 +169,28 @@ async function listMealPlans(
     return response(400, { error: 'VALIDATION_ERROR', message: rangeError });
   }
 
-  const result = await docClient.send(
-    new QueryCommand({
-      TableName: TABLE_NAME,
-      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
-      ExpressionAttributeValues: {
-        ':pk': `USER#${userId}`,
-        ':skPrefix': 'MEAL#',
-      },
-    }),
-  );
+  const items: Array<Record<string, unknown>> = [];
+  let cursor: Record<string, unknown> | undefined;
+  do {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+        ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':skPrefix': 'MEAL#' },
+        ...(cursor ? { ExclusiveStartKey: cursor } : {}),
+      }),
+    );
+    items.push(...(result.Items ?? []));
+    cursor = result.LastEvaluatedKey;
+  } while (cursor);
 
-  const items = (result.Items ?? []) as Array<Record<string, unknown>>;
   const typed = items.map((item) => stripKeys(item));
   const filtered = filterByDateRange(typed, startDate!, endDate!);
 
   return response(200, { mealPlans: filtered });
 }
 
-async function createMealPlan(
-  userId: string,
-  body: string | null,
-): Promise<APIGatewayProxyResult> {
+async function createMealPlan(userId: string, body: string | null): Promise<APIGatewayProxyResult> {
   if (!body) {
     return response(400, { error: 'VALIDATION_ERROR', message: 'Missing request body' });
   }
@@ -217,6 +222,7 @@ async function createMealPlan(
     mealType,
     recipeId: parsed.recipeId as string,
     recipeName: parsed.recipeName as string,
+    ...(parsed.servings !== undefined ? { servings: parsed.servings } : {}),
     createdAt: now,
     updatedAt: now,
     syncVersion: 1,
@@ -281,6 +287,8 @@ async function updateMealPlan(
   const newSK = `MEAL#${newDate}#${newMealType}#${planId}`;
 
   const updatedItem: Record<string, unknown> = {
+    ...(existing.servings !== undefined ? { servings: existing.servings } : {}),
+    ...(parsed.servings !== undefined ? { servings: parsed.servings } : {}),
     PK: `USER#${userId}`,
     SK: newSK,
     entityType: 'MealPlan',
@@ -322,13 +330,15 @@ async function updateMealPlan(
         TableName: TABLE_NAME,
         Key: { PK: `USER#${userId}`, SK: oldSK },
         UpdateExpression:
-          'SET recipeId = :recipeId, recipeName = :recipeName, updatedAt = :updatedAt, syncVersion = syncVersion + :inc',
+          'SET recipeId = :recipeId, recipeName = :recipeName, updatedAt = :updatedAt, syncVersion = syncVersion + :inc' +
+          (parsed.servings !== undefined ? ', servings = :servings' : ''),
         ConditionExpression: 'attribute_exists(PK)',
         ExpressionAttributeValues: {
           ':recipeId': newRecipeId,
           ':recipeName': newRecipeName,
           ':updatedAt': now,
           ':inc': 1,
+          ...(parsed.servings !== undefined ? { ':servings': parsed.servings } : {}),
         },
       }),
     );
@@ -371,6 +381,66 @@ async function deleteMealPlan(userId: string, planId: string): Promise<APIGatewa
 
 // ─── Route Dispatcher ─────────────────────────────────────────────────────────
 
+export function isValidServings(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
+}
+
+async function updateFutureServings(userId: string, body: string | null) {
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(body ?? '{}');
+  } catch {
+    return response(400, { message: 'Invalid JSON body' });
+  }
+  if (!parsed || !isValidIsoDate(parsed.startDate) || !isValidServings(parsed.servings)) {
+    return response(400, {
+      message: 'A valid startDate and positive integer servings are required',
+    });
+  }
+
+  // Read every page: future meals must not be limited to the visible calendar or
+  // DynamoDB's first response page. Absolute assignments make retry safe.
+  let cursor: Record<string, unknown> | undefined;
+  let updatedCount = 0;
+  do {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
+        ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':prefix': 'MEAL#' },
+        ...(cursor ? { ExclusiveStartKey: cursor } : {}),
+        ConsistentRead: true,
+      }),
+    );
+    for (const item of result.Items ?? []) {
+      if (typeof item.date !== 'string' || item.date < (parsed.startDate as string)) continue;
+      try {
+        await docClient.send(
+          new UpdateCommand({
+            TableName: TABLE_NAME,
+            Key: { PK: `USER#${userId}`, SK: item.SK },
+            UpdateExpression:
+              'SET servings = :servings, updatedAt = :now, syncVersion = if_not_exists(syncVersion, :zero) + :inc',
+            ConditionExpression: 'attribute_exists(PK)',
+            ExpressionAttributeValues: {
+              ':servings': parsed.servings,
+              ':now': new Date().toISOString(),
+              ':zero': 0,
+              ':inc': 1,
+            },
+          }),
+        );
+        updatedCount++;
+      } catch (error) {
+        // A concurrently deleted assignment must not be recreated.
+        if ((error as { name?: string }).name !== 'ConditionalCheckFailedException') throw error;
+      }
+    }
+    cursor = result.LastEvaluatedKey;
+  } while (cursor);
+  return response(200, { updatedCount });
+}
+
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   const userId = getUserId(event);
   if (!userId) {
@@ -381,6 +451,9 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
   const planId = event.pathParameters?.planId ?? null;
 
   try {
+    if (method === 'PUT' && !planId) {
+      return await updateFutureServings(userId, event.body);
+    }
     if (method === 'GET' && !planId) {
       const query = (event.queryStringParameters ?? {}) as Record<string, string | undefined>;
       return await listMealPlans(userId, query);

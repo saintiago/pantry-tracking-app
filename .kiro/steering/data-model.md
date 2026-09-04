@@ -64,25 +64,49 @@ interface InventoryItem {
   SK: string; // ITEM#<itemId>
   entityType: 'InventoryItem';
   itemId: string;
+  groupId: string; // InventoryGroup groupId
   userId: string;
   barcode?: string;
   name: string;
   category: string;
   expirationDate: string; // ISO date, REQUIRED
   location: string; // StorageLocation locationId
+  locationDetails?: string; // Optional shelf/section, editable and clearable
   quantity: number;
-  unit: UnitType; // Constrained to: Gram, Kilo, Milliliter, Liter, Unit
+  unit: UnitType; // Canonical unit key; legacy labels normalized on input
   brand?: string;
   whereToBuy?: string;
   onlineStoreLink?: string;
   pictureUrl?: string; // S3 URL for item picture
-  threshold?: number;
-  isLowStock: boolean; // true iff quantity <= threshold
   createdAt: string;
   updatedAt: string;
   syncVersion: number;
   GSI1PK?: string; // USER#<userId>#CAT#<category> or USER#<userId>#LOC#<location>
   GSI1SK?: string; // ITEM#<itemId>
+}
+```
+
+### InventoryGroup
+
+Persisted product-level grouping for stock lots that share normalized name, category, and unit.
+
+```typescript
+interface InventoryGroup {
+  PK: string; // USER#<userId>
+  SK: string; // GROUP#<groupId>
+  entityType: 'InventoryGroup';
+  groupId: string; // deterministic for the default canonical group
+  canonicalKey: string; // normalized name|category|canonical unit
+  name: string;
+  category: string;
+  unit: UnitType;
+  threshold?: number; // absent disables low-stock warnings
+  thresholdUnit?: UnitType; // defaults to group unit; compatible mass/volume conversions supported
+  totalQuantity: number; // sum of child inventory item quantities
+  isLowStock: boolean; // threshold converted to group unit before comparing totalQuantity <= threshold
+  createdAt: string;
+  updatedAt: string;
+  syncVersion: number;
 }
 ```
 
@@ -147,6 +171,7 @@ interface MealPlan {
   mealType: 'breakfast' | 'lunch' | 'dinner';
   recipeId: string;
   recipeName: string; // Denormalized for display
+  servings?: number; // Positive integer per assignment; older rows use recipe portions
   createdAt: string;
   updatedAt: string;
   syncVersion: number;
@@ -202,7 +227,8 @@ interface SyncQueueItem {
 | POST   | /inventory                    | Inventory       | Yes  | Add inventory item                                      |
 | PUT    | /inventory/{itemId}           | Inventory       | Yes  | Update inventory item                                   |
 | DELETE | /inventory/{itemId}           | Inventory       | Yes  | Remove inventory item                                   |
-| GET    | /inventory/low-stock          | Inventory       | Yes  | Get items at or below threshold                         |
+| GET    | /inventory/low-stock          | Inventory       | Yes  | Get groups at or below threshold                        |
+| PUT    | /inventory/groups/{groupId}   | Inventory       | Yes  | Set or clear a group low-stock threshold                |
 | GET    | /inventory/search             | Inventory       | Yes  | Search inventory for autocomplete (query: field, query) |
 | POST   | /inventory/barcode-lookup     | Inventory       | Yes  | Lookup product by barcode (external API)                |
 | GET    | /recipes                      | Recipe          | Yes  | List all recipes                                        |
@@ -213,6 +239,7 @@ interface SyncQueueItem {
 | DELETE | /recipes/{recipeId}           | Recipe          | Yes  | Delete recipe                                           |
 | GET    | /meal-plans                   | MealPlan        | Yes  | Get meal plans (query: startDate, endDate)              |
 | POST   | /meal-plans                   | MealPlan        | Yes  | Create meal assignment                                  |
+| PUT    | /meal-plans                   | MealPlan        | Yes  | Set servings on all assignments from startDate onward |
 | PUT    | /meal-plans/{planId}          | MealPlan        | Yes  | Update assignment                                       |
 | DELETE | /meal-plans/{planId}          | MealPlan        | Yes  | Remove assignment                                       |
 | POST   | /shopping-list/generate       | ShoppingList    | Yes  | Generate shopping list for date range                   |
@@ -237,6 +264,7 @@ interface AddInventoryRequest {
   category: string;
   expirationDate: string; // ISO date, required
   locationId: string;
+  locationDetails?: string;
   quantity: number;
   unit: UnitType; // Must be a valid UnitType value
   barcode?: string;
@@ -244,7 +272,6 @@ interface AddInventoryRequest {
   whereToBuy?: string;
   onlineStoreLink?: string;
   pictureUrl?: string;
-  threshold?: number;
 }
 
 // PUT /inventory/{itemId}
@@ -253,6 +280,7 @@ interface UpdateInventoryRequest {
   category?: string;
   expirationDate?: string;
   locationId?: string;
+  locationDetails?: string; // empty string clears the shelf/section
   quantity?: number;
   unit?: UnitType; // Validated against UnitType when provided
   barcode?: string;
@@ -260,12 +288,13 @@ interface UpdateInventoryRequest {
   whereToBuy?: string;
   onlineStoreLink?: string;
   pictureUrl?: string;
-  threshold?: number;
+  reassignGroup?: boolean; // true applies automatic grouping after identity changes
 }
 
 // GET /inventory response
 interface ListInventoryResponse {
   items: InventoryItem[];
+  groups: InventoryGroup[];
   lastEvaluatedKey?: string;
 }
 
@@ -304,7 +333,20 @@ interface BarcodeLookupResponse {
 
 `POST /inventory` creates a new inventory item row for every submission. Each add always results in a new item — there is no merge/dedup behavior on the backend.
 
-Grouping of items in the category view (items sharing name + category + unit) is a purely client-side UI construct and does **not** affect this API contract — no rows are created, merged, or modified by grouping.
+`POST /inventory` assigns every new lot to a persisted default group using normalized name + category + canonical unit. `GET /inventory` returns `{ items, groups }`. Thresholds and low-stock state belong to groups, not individual inventory items.
+
+#### Group threshold units
+
+`PUT /inventory/groups/{groupId}` accepts `{ threshold: number | null,
+thresholdUnit?: UnitType }`. A missing unit means the group's stock unit. The value
+must be finite and nonnegative. Kilograms/grams and liters/milliliters convert within
+their dimension; all other units must match the stock unit. Null removes both the
+threshold and its unit. Aggregation after lot mutations uses the same conversion.
+
+Autocomplete searches read all inventory pages and return the latest created lot per
+barcode (or canonical product identity without barcode), capped at ten suggestions.
+Adding another lot copies saved expiration, photo, and location details; group threshold
+settings remain on the automatically matched group. User-entered form values are preserved.
 
 ### Storage Locations
 
@@ -385,6 +427,15 @@ interface CreateMealPlanRequest {
   recipeName: string; // Denormalized for display
 }
 ```
+
+#### Bulk servings
+
+`PUT /meal-plans` accepts `{ startDate: "YYYY-MM-DD", servings: positiveInteger }`
+and returns `{ updatedCount }`. The client supplies its local calendar date. The
+handler reads every database page in the authenticated user's partition and updates
+all assignments on/after that date, including outside the visible calendar. It never
+updates recipe records or earlier meals. Absolute servings assignments are safe to
+retry after a partial network failure; concurrent deletions are not recreated.
 
 ### Shopping List
 

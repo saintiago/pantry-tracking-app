@@ -103,7 +103,10 @@ describe('fetchMealPlans', () => {
   });
 
   it('returns the parsed JSON response', async () => {
-    const mealPlans = [mockMealPlan, { ...mockMealPlan, planId: 'plan-2', mealType: 'lunch' as const }];
+    const mealPlans = [
+      mockMealPlan,
+      { ...mockMealPlan, planId: 'plan-2', mealType: 'lunch' as const },
+    ];
     mockFetch().mockResolvedValue({
       ok: true,
       json: async () => ({ mealPlans }),
@@ -357,7 +360,7 @@ describe('fetchRecipesForPlanning', () => {
     );
   });
 
-  it('maps full recipe objects to PlannableRecipe shape (recipeId + name only)', async () => {
+  it('keeps recipe identity, categories and portions for planning', async () => {
     const fullRecipes = [
       { recipeId: 'r1', name: 'Pasta', tags: ['italian'], portions: 2, createdAt: '…' },
       { recipeId: 'r2', name: 'Salad', tags: ['veg'], portions: 1, createdAt: '…' },
@@ -370,11 +373,11 @@ describe('fetchRecipesForPlanning', () => {
     const result = await fetchRecipesForPlanning();
 
     expect(result.recipes).toEqual([
-      { recipeId: 'r1', name: 'Pasta' },
-      { recipeId: 'r2', name: 'Salad' },
+      { recipeId: 'r1', name: 'Pasta', tags: ['italian'], portions: 2 },
+      { recipeId: 'r2', name: 'Salad', tags: ['veg'], portions: 1 },
     ]);
     // Verify extra fields are stripped
-    expect(Object.keys(result.recipes[0])).toEqual(['recipeId', 'name']);
+    expect(Object.keys(result.recipes[0])).toEqual(['recipeId', 'name', 'tags', 'portions']);
   });
 
   it('returns an empty recipes array when the server returns no recipes', async () => {

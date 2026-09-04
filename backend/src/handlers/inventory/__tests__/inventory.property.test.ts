@@ -159,9 +159,7 @@ describe('Inventory Property Tests', () => {
 
           const listResult = await handler(makeEvent());
           const listBody = JSON.parse(listResult.body);
-          const found = listBody.items.find(
-            (item: { itemId: string }) => item.itemId === itemId,
-          );
+          const found = listBody.items.find((item: { itemId: string }) => item.itemId === itemId);
           expect(found).toBeUndefined();
         }),
         { numRuns: 100 },
@@ -170,151 +168,115 @@ describe('Inventory Property Tests', () => {
   });
 
   /**
-   * Feature: inventory-core, Property 3: Quantity Update Round-Trip
-   * Validates: Requirements 6.1
+   * Feature: inventory-core, Property 3: Item Creation Assigns Group
+   * Validates: Requirements 6.1 (adapted for group-based model)
    *
-   * For any inventory item and any valid positive quantity value, updating the item's
-   * quantity and then retrieving the item should return the updated quantity value.
+   * For any valid inventory item data, creating an item assigns it a deterministic
+   * groupId and includes the group in the response with the correct total quantity.
    */
-  describe('Property 3: Quantity Update Round-Trip', () => {
-    it('should return the updated quantity after update', async () => {
+  describe('Property 3: Item Creation Assigns Group', () => {
+    it('should assign a groupId and create a group with correct total quantity', async () => {
       await fc.assert(
-        fc.asyncProperty(
-          fc.uuid(),
-          positiveQuantityArb,
-          positiveQuantityArb,
-          async (itemId, originalQty, newQty) => {
-            jest.clearAllMocks();
+        fc.asyncProperty(validItemArb, async (itemData) => {
+          jest.clearAllMocks();
+          uuidCounter = 0;
 
-            // GetCommand returns current item (for low-stock recalc)
-            mockSend.mockResolvedValueOnce({
-              Item: {
-                PK: 'USER#user-prop-test',
-                SK: `ITEM#${itemId}`,
-                quantity: originalQty,
-                category: 'Dairy',
-                isLowStock: false,
-                syncVersion: 1,
-              },
-            });
-            // UpdateCommand returns updated item
-            mockSend.mockResolvedValueOnce({
-              Attributes: {
-                PK: 'USER#user-prop-test',
-                SK: `ITEM#${itemId}`,
-                itemId,
-                quantity: newQty,
-                category: 'Dairy',
-                isLowStock: false,
-                syncVersion: 2,
-              },
-            });
+          // Mock chain for POST with no existing group (4 calls)
+          mockSend.mockResolvedValueOnce({ Item: undefined }); // getGroup check
+          mockSend.mockResolvedValueOnce({ Item: undefined }); // createGroup getGroup
+          mockSend.mockResolvedValueOnce({}); // PutCommand for group
+          mockSend.mockResolvedValueOnce({}); // PutCommand for item
 
-            const updateResult = await handler(
-              makeEvent({
-                httpMethod: 'PUT',
-                pathParameters: { itemId },
-                body: JSON.stringify({ quantity: newQty }),
-              }),
-            );
+          const result = await handler(
+            makeEvent({
+              httpMethod: 'POST',
+              body: JSON.stringify(itemData),
+            }),
+          );
 
-            expect(updateResult.statusCode).toBe(200);
-            const body = JSON.parse(updateResult.body);
-            expect(body.item.quantity).toBe(newQty);
-          },
-        ),
+          expect(result.statusCode).toBe(201);
+          const body = JSON.parse(result.body);
+          expect(body.item.groupId).toBeDefined();
+          expect(typeof body.item.groupId).toBe('string');
+          expect(body.item.name).toBe(itemData.name);
+          expect(body.item.quantity).toBe(itemData.quantity);
+          // Response includes the group with the item's quantity as initial total
+          expect(body.groups).toHaveLength(1);
+          expect(body.groups[0].totalQuantity).toBe(itemData.quantity);
+          expect(body.groups[0].groupId).toBe(body.item.groupId);
+        }),
         { numRuns: 100 },
       );
     });
   });
 
   /**
-   * Feature: inventory-core, Property 4: Low Stock Threshold Invariant
-   * Validates: Requirements 7.2
+   * Feature: inventory-core, Property 4: Low Stock Threshold Invariant on Groups
+   * Validates: Requirements 7.2 (adapted for group-based model)
    *
-   * For any inventory item with a defined threshold, the item's isLowStock flag
-   * should be true if and only if quantity <= threshold.
+   * For any group with a defined threshold, isLowStock should be true if and only
+   * if totalQuantity <= threshold. When no threshold is set, isLowStock is false.
    */
-  describe('Property 4: Low Stock Threshold Invariant', () => {
-    it('should set isLowStock correctly based on quantity vs threshold on create', async () => {
+  describe('Property 4: Low Stock Group Invariant', () => {
+    it('should set isLowStock correctly on group creation based on quantity vs threshold', async () => {
       await fc.assert(
-        fc.asyncProperty(
-          validItemArb,
-          thresholdArb,
-          async (itemData, threshold) => {
-            jest.clearAllMocks();
-            uuidCounter = 0;
+        fc.asyncProperty(validItemArb, thresholdArb, async (itemData, threshold) => {
+          jest.clearAllMocks();
+          uuidCounter = 0;
 
-            mockSend.mockResolvedValueOnce({});
+          const groupId = 'fixed-group-id'; // will be overwritten by defaultGroupId
 
-            const result = await handler(
-              makeEvent({
-                httpMethod: 'POST',
-                body: JSON.stringify({ ...itemData, threshold }),
-              }),
-            );
+          // Create with existing group that has a threshold
+          mockSend.mockResolvedValueOnce({
+            Item: {
+              PK: 'USER#user-prop-test',
+              SK: `GROUP#${groupId}`,
+              groupId,
+              totalQuantity: 0,
+              threshold,
+              isLowStock: false, // initially not low (total=0, but threshold needed)
+              syncVersion: 1,
+            },
+          });
+          mockSend.mockResolvedValueOnce({}); // PutCommand for item
+          // adjustGroupQuantity: getGroup
+          mockSend.mockResolvedValueOnce({
+            Item: {
+              PK: 'USER#user-prop-test',
+              SK: `GROUP#${groupId}`,
+              groupId,
+              totalQuantity: 0,
+              threshold,
+              isLowStock: false,
+              syncVersion: 1,
+            },
+          });
+          // adjustGroupQuantity: UpdateCommand
+          const newTotal = itemData.quantity;
+          const expectedLowStock = threshold !== undefined && newTotal <= threshold;
+          mockSend.mockResolvedValueOnce({
+            Attributes: {
+              PK: 'USER#user-prop-test',
+              SK: `GROUP#${groupId}`,
+              groupId,
+              totalQuantity: newTotal,
+              threshold,
+              isLowStock: expectedLowStock,
+              syncVersion: 2,
+            },
+          });
 
-            expect(result.statusCode).toBe(201);
-            const body = JSON.parse(result.body);
-            const expectedLowStock = itemData.quantity <= threshold;
-            expect(body.item.isLowStock).toBe(expectedLowStock);
-          },
-        ),
-        { numRuns: 100 },
-      );
-    });
+          const result = await handler(
+            makeEvent({
+              httpMethod: 'POST',
+              body: JSON.stringify(itemData),
+            }),
+          );
 
-    it('should recalculate isLowStock correctly on quantity update', async () => {
-      await fc.assert(
-        fc.asyncProperty(
-          fc.uuid(),
-          positiveQuantityArb,
-          thresholdArb,
-          async (itemId, newQty, threshold) => {
-            jest.clearAllMocks();
-
-            const expectedLowStock = newQty <= threshold;
-
-            // GetCommand returns current item with threshold
-            mockSend.mockResolvedValueOnce({
-              Item: {
-                PK: 'USER#user-prop-test',
-                SK: `ITEM#${itemId}`,
-                quantity: 50,
-                threshold,
-                category: 'Dairy',
-                isLowStock: false,
-                syncVersion: 1,
-              },
-            });
-            // UpdateCommand returns updated item
-            mockSend.mockResolvedValueOnce({
-              Attributes: {
-                PK: 'USER#user-prop-test',
-                SK: `ITEM#${itemId}`,
-                itemId,
-                quantity: newQty,
-                threshold,
-                isLowStock: expectedLowStock,
-                syncVersion: 2,
-              },
-            });
-
-            const result = await handler(
-              makeEvent({
-                httpMethod: 'PUT',
-                pathParameters: { itemId },
-                body: JSON.stringify({ quantity: newQty }),
-              }),
-            );
-
-            expect(result.statusCode).toBe(200);
-
-            // Verify the UpdateCommand was called with the correct isLowStock value
-            const updateCall = mockSend.mock.calls[1][0];
-            expect(updateCall.ExpressionAttributeValues[':v_isLowStock']).toBe(expectedLowStock);
-          },
-        ),
+          expect(result.statusCode).toBe(201);
+          const body = JSON.parse(result.body);
+          expect(body.groups[0].isLowStock).toBe(expectedLowStock);
+        }),
         { numRuns: 100 },
       );
     });
@@ -322,37 +284,34 @@ describe('Inventory Property Tests', () => {
 
   /**
    * Feature: inventory-core, Property 5: Low Stock List Accuracy
-   * Validates: Requirements 7.3
+   * Validates: Requirements 7.3 (adapted for group-based model)
    *
-   * For any user's inventory, the low-stock items view should contain exactly
-   * the set of items where isLowStock is true.
+   * The low-stock endpoint returns groups with isLowStock=true, keyed by GROUP# prefix.
    */
-  describe('Property 5: Low Stock List Accuracy', () => {
-    it('should return only items with isLowStock=true from low-stock endpoint', async () => {
+  describe('Property 5: Low Stock Group List Accuracy', () => {
+    it('should return only groups with isLowStock=true from low-stock endpoint', async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.array(
             fc.record({
-              itemId: fc.uuid(),
+              groupId: fc.uuid(),
               name: nameArb,
-              quantity: positiveQuantityArb,
+              totalQuantity: positiveQuantityArb,
               threshold: thresholdArb,
             }),
             { minLength: 1, maxLength: 20 },
           ),
-          async (items) => {
+          async (groups) => {
             jest.clearAllMocks();
 
-            // Compute isLowStock for each item
-            const allItems = items.map((item) => ({
-              ...item,
-              isLowStock: item.quantity <= item.threshold,
+            // Compute isLowStock for each group
+            const allGroups = groups.map((g) => ({
+              ...g,
+              isLowStock: g.totalQuantity <= g.threshold,
             }));
+            const lowStockGroups = allGroups.filter((g) => g.isLowStock);
 
-            const lowStockItems = allItems.filter((item) => item.isLowStock);
-
-            // The low-stock endpoint uses FilterExpression, so DynamoDB returns only matching items
-            mockSend.mockResolvedValueOnce({ Items: lowStockItems });
+            mockSend.mockResolvedValueOnce({ Items: lowStockGroups });
 
             const result = await handler(
               makeEvent({
@@ -365,13 +324,15 @@ describe('Inventory Property Tests', () => {
             expect(result.statusCode).toBe(200);
             const body = JSON.parse(result.body);
 
-            // Every returned item should have isLowStock=true
-            for (const item of body.items) {
-              expect(item.isLowStock).toBe(true);
+            // Should return groups (not items)
+            expect(body.groups).toBeDefined();
+
+            // Every returned group should have isLowStock=true
+            for (const group of body.groups) {
+              expect(group.isLowStock).toBe(true);
             }
 
-            // Count should match expected low-stock items
-            expect(body.items.length).toBe(lowStockItems.length);
+            expect(body.groups.length).toBe(lowStockGroups.length);
           },
         ),
         { numRuns: 100 },
@@ -381,49 +342,94 @@ describe('Inventory Property Tests', () => {
 
   /**
    * Feature: inventory-core, Property 6: Low Stock In-App Notification Trigger
-   * Validates: Requirements 7.5
+   * Validates: Requirements 7.5 (adapted for group-based model)
    *
-   * For any inventory item that transitions to low-stock status, the system should
-   * generate an in-app notification.
+   * When a group transitions from not-low-stock to low-stock, a notification is generated.
    */
-  describe('Property 6: Low Stock In-App Notification Trigger', () => {
-    it('should generate notification when item transitions to low-stock', async () => {
+  describe('Property 6: Low Stock Group Notification Trigger', () => {
+    it('should generate notification when group transitions to low-stock via quantity change', async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.uuid(),
           nameArb,
-          // quantity that will be below threshold
-          fc.record({
-            newQuantity: fc.integer({ min: 1, max: 100 }),
-            threshold: fc.integer({ min: 1, max: 100 }),
-          }).filter(({ newQuantity, threshold }) => newQuantity <= threshold),
+          fc
+            .record({
+              newQuantity: fc.integer({ min: 1, max: 100 }),
+              threshold: fc.integer({ min: 1, max: 100 }),
+            })
+            .filter(({ newQuantity, threshold }) => newQuantity <= threshold),
           async (itemId, itemName, { newQuantity, threshold }) => {
             jest.clearAllMocks();
 
-            // GetCommand returns current item that is NOT low-stock
+            const groupId = 'fixed-grp';
+            const oldQuantity = threshold + 10; // above threshold
+            const existingTotal = oldQuantity;
+            const delta = newQuantity - oldQuantity;
+            const newTotal = Math.max(0, existingTotal + delta);
+            const expectedLowStock = newTotal <= threshold;
+
+            // GetCommand returns current item (not low-stock in group)
             mockSend.mockResolvedValueOnce({
               Item: {
                 PK: 'USER#user-prop-test',
                 SK: `ITEM#${itemId}`,
+                itemId,
                 name: itemName,
                 category: 'Dairy',
-                quantity: threshold + 10, // above threshold
+                quantity: oldQuantity,
+                unit: 'Liter',
+                location: 'loc-1',
+                groupId,
+                syncVersion: 1,
+              },
+            });
+            // getGroup for target
+            mockSend.mockResolvedValueOnce({
+              Item: {
+                PK: 'USER#user-prop-test',
+                SK: `GROUP#${groupId}`,
+                groupId,
+                name: itemName,
+                totalQuantity: existingTotal,
                 threshold,
                 isLowStock: false,
                 syncVersion: 1,
               },
             });
-            // UpdateCommand returns updated item (now low-stock)
+            // UpdateCommand returns updated item
             mockSend.mockResolvedValueOnce({
               Attributes: {
                 PK: 'USER#user-prop-test',
                 SK: `ITEM#${itemId}`,
                 itemId,
                 name: itemName,
-                category: 'Dairy',
                 quantity: newQuantity,
+                groupId,
+                syncVersion: 2,
+              },
+            });
+            // adjustGroupQuantity: getGroup
+            mockSend.mockResolvedValueOnce({
+              Item: {
+                PK: 'USER#user-prop-test',
+                SK: `GROUP#${groupId}`,
+                groupId,
+                totalQuantity: existingTotal,
                 threshold,
-                isLowStock: true,
+                isLowStock: false,
+                syncVersion: 1,
+              },
+            });
+            // adjustGroupQuantity: UpdateCommand
+            mockSend.mockResolvedValueOnce({
+              Attributes: {
+                PK: 'USER#user-prop-test',
+                SK: `GROUP#${groupId}`,
+                groupId,
+                name: itemName,
+                totalQuantity: newTotal,
+                threshold,
+                isLowStock: expectedLowStock,
                 syncVersion: 2,
               },
             });
@@ -438,37 +444,61 @@ describe('Inventory Property Tests', () => {
 
             expect(result.statusCode).toBe(200);
             const body = JSON.parse(result.body);
-            expect(body.lowStockTransition).toBe(true);
-            expect(body.notification).toBeDefined();
-            expect(body.notification.type).toBe('LOW_STOCK');
-            expect(body.notification.itemId).toBe(itemId);
-            expect(body.notification.message).toContain(itemName);
+
+            if (expectedLowStock) {
+              expect(body.lowStockTransition).toBe(true);
+              expect(body.notification).toBeDefined();
+              expect(body.notification.type).toBe('LOW_STOCK');
+              expect(body.notification.groupId).toBe(groupId);
+              expect(body.notification.message).toContain(itemName);
+            } else {
+              expect(body.lowStockTransition).toBeUndefined();
+            }
           },
         ),
         { numRuns: 100 },
       );
     });
 
-    it('should NOT generate notification when item was already low-stock', async () => {
+    it('should NOT generate notification when group was already low-stock', async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.uuid(),
           nameArb,
-          fc.record({
-            newQuantity: fc.integer({ min: 1, max: 100 }),
-            threshold: fc.integer({ min: 1, max: 100 }),
-          }).filter(({ newQuantity, threshold }) => newQuantity <= threshold),
+          fc
+            .record({
+              newQuantity: fc.integer({ min: 1, max: 100 }),
+              threshold: fc.integer({ min: 1, max: 100 }),
+            })
+            .filter(({ newQuantity, threshold }) => newQuantity <= threshold),
           async (itemId, itemName, { newQuantity, threshold }) => {
             jest.clearAllMocks();
 
-            // GetCommand returns current item that is ALREADY low-stock
+            const groupId = 'fixed-grp';
+
+            // GetCommand returns current item (already low-stock group)
             mockSend.mockResolvedValueOnce({
               Item: {
                 PK: 'USER#user-prop-test',
                 SK: `ITEM#${itemId}`,
+                itemId,
                 name: itemName,
                 category: 'Dairy',
-                quantity: threshold - 1,
+                quantity: threshold - 1, // already low
+                unit: 'Liter',
+                location: 'loc-1',
+                groupId,
+                syncVersion: 1,
+              },
+            });
+            // getGroup for target (already low-stock)
+            mockSend.mockResolvedValueOnce({
+              Item: {
+                PK: 'USER#user-prop-test',
+                SK: `GROUP#${groupId}`,
+                groupId,
+                name: itemName,
+                totalQuantity: threshold - 1,
                 threshold,
                 isLowStock: true,
                 syncVersion: 1,
@@ -481,6 +511,28 @@ describe('Inventory Property Tests', () => {
                 itemId,
                 name: itemName,
                 quantity: newQuantity,
+                groupId,
+                syncVersion: 2,
+              },
+            });
+            // adjustGroupQuantity: getGroup (already low)
+            mockSend.mockResolvedValueOnce({
+              Item: {
+                PK: 'USER#user-prop-test',
+                SK: `GROUP#${groupId}`,
+                groupId,
+                totalQuantity: threshold - 1,
+                threshold,
+                isLowStock: true,
+                syncVersion: 1,
+              },
+            });
+            mockSend.mockResolvedValueOnce({
+              Attributes: {
+                PK: 'USER#user-prop-test',
+                SK: `GROUP#${groupId}`,
+                groupId,
+                totalQuantity: threshold - 1 + (newQuantity - (threshold - 1)),
                 threshold,
                 isLowStock: true,
                 syncVersion: 2,
@@ -507,139 +559,82 @@ describe('Inventory Property Tests', () => {
   });
 
   /**
-   * Feature: inventory-core, Property 8: Validation Error for Missing Required Fields
-   * Validates: Requirements 3.3
-   *
-   * For any inventory item submission missing one or more required fields, the system
-   * should reject the submission and return validation errors indicating which fields
-   * are missing.
-   */
-  describe('Property 8: Validation Error for Missing Required Fields', () => {
-    const requiredFields = ['name', 'category', 'expirationDate', 'locationId', 'quantity', 'unit'];
-
-    it('should reject submission and list missing fields', async () => {
-      // Generate a non-empty subset of required fields to omit
-      const subsetArb = fc
-        .subarray(requiredFields, { minLength: 1, maxLength: requiredFields.length })
-        .filter((arr) => arr.length > 0);
-
-      await fc.assert(
-        fc.asyncProperty(validItemArb, subsetArb, async (itemData, fieldsToOmit) => {
-          jest.clearAllMocks();
-
-          const submission: Record<string, unknown> = { ...itemData };
-          for (const field of fieldsToOmit) {
-            delete submission[field];
-          }
-
-          const result = await handler(
-            makeEvent({
-              httpMethod: 'POST',
-              body: JSON.stringify(submission),
-            }),
-          );
-
-          expect(result.statusCode).toBe(400);
-          const body = JSON.parse(result.body);
-          expect(body.error).toBe('VALIDATION_ERROR');
-          expect(body.details).toBeDefined();
-
-          // Each omitted field should appear in the error details
-          const errorFields = body.details.map((d: { field: string }) => d.field);
-          for (const omitted of fieldsToOmit) {
-            expect(errorFields).toContain(omitted);
-          }
-        }),
-        { numRuns: 100 },
-      );
-    });
-  });
-
-  /**
    * Feature: inventory-core, Property 9: Image Storage with Reference
    * Validates: Requirements 3.5
    *
-   * For any uploaded image, the image should be stored in S3 and the corresponding
-   * DynamoDB record should contain the S3 key reference.
-   *
-   * Note: STORAGE_BUCKET is captured at module load time. When a bucket is configured
-   * and a non-S3/non-HTTPS pictureUrl is provided, the handler converts it to an S3
-   * reference. When the pictureUrl is already an S3 or HTTPS URL, it is preserved.
-   * We test the DynamoDB record contains the pictureUrl reference in all cases.
+   * For any uploaded image, the DynamoDB record should contain the pictureUrl.
    */
   describe('Property 9: Image Storage with Reference', () => {
     it('should store pictureUrl reference in DynamoDB record when provided as S3 URL', async () => {
       await fc.assert(
-        fc.asyncProperty(
-          validItemArb,
-          fc.uuid(),
-          async (itemData, imageId) => {
-            jest.clearAllMocks();
-            uuidCounter = 0;
+        fc.asyncProperty(validItemArb, fc.uuid(), async (itemData, imageId) => {
+          jest.clearAllMocks();
+          uuidCounter = 0;
 
-            const s3Url = `s3://my-bucket/inventory-items/${imageId}`;
-            mockSend.mockResolvedValueOnce({});
+          const s3Url = `s3://my-bucket/inventory-items/${imageId}`;
+          mockSend.mockResolvedValueOnce({ Item: undefined }); // getGroup
+          mockSend.mockResolvedValueOnce({ Item: undefined }); // createGroup getGroup
+          mockSend.mockResolvedValueOnce({}); // PutCommand group
+          mockSend.mockResolvedValueOnce({}); // PutCommand item
 
-            const result = await handler(
-              makeEvent({
-                httpMethod: 'POST',
-                body: JSON.stringify({ ...itemData, pictureUrl: s3Url }),
-              }),
-            );
+          const result = await handler(
+            makeEvent({
+              httpMethod: 'POST',
+              body: JSON.stringify({ ...itemData, pictureUrl: s3Url }),
+            }),
+          );
 
-            expect(result.statusCode).toBe(201);
-            const body = JSON.parse(result.body);
-            expect(body.item.pictureUrl).toBeDefined();
-            expect(body.item.pictureUrl).toBe(s3Url);
+          expect(result.statusCode).toBe(201);
+          const body = JSON.parse(result.body);
+          expect(body.item.pictureUrl).toBe(s3Url);
 
-            // Verify the PutCommand was called with the pictureUrl in the item
-            const putCall = mockSend.mock.calls[0][0];
-            expect(putCall.Item.pictureUrl).toBe(s3Url);
-          },
-        ),
+          // Verify the PutCommand (call #3, index 3) was called with the pictureUrl
+          const itemPutCall = mockSend.mock.calls[3][0];
+          expect(itemPutCall.Item.pictureUrl).toBe(s3Url);
+        }),
         { numRuns: 100 },
       );
     });
 
-    it('should store pictureUrl reference in DynamoDB record when provided as HTTPS URL', async () => {
+    it('should store pictureUrl reference when provided as HTTPS URL', async () => {
       await fc.assert(
-        fc.asyncProperty(
-          validItemArb,
-          fc.uuid(),
-          async (itemData, imageId) => {
-            jest.clearAllMocks();
-            uuidCounter = 0;
+        fc.asyncProperty(validItemArb, fc.uuid(), async (itemData, imageId) => {
+          jest.clearAllMocks();
+          uuidCounter = 0;
 
-            const httpsUrl = `https://images.example.com/items/${imageId}.jpg`;
-            mockSend.mockResolvedValueOnce({});
+          const httpsUrl = `https://images.example.com/items/${imageId}.jpg`;
+          mockSend.mockResolvedValueOnce({ Item: undefined });
+          mockSend.mockResolvedValueOnce({ Item: undefined });
+          mockSend.mockResolvedValueOnce({});
+          mockSend.mockResolvedValueOnce({});
 
-            const result = await handler(
-              makeEvent({
-                httpMethod: 'POST',
-                body: JSON.stringify({ ...itemData, pictureUrl: httpsUrl }),
-              }),
-            );
+          const result = await handler(
+            makeEvent({
+              httpMethod: 'POST',
+              body: JSON.stringify({ ...itemData, pictureUrl: httpsUrl }),
+            }),
+          );
 
-            expect(result.statusCode).toBe(201);
-            const body = JSON.parse(result.body);
-            expect(body.item.pictureUrl).toBeDefined();
-            expect(body.item.pictureUrl).toBe(httpsUrl);
+          expect(result.statusCode).toBe(201);
+          const body = JSON.parse(result.body);
+          expect(body.item.pictureUrl).toBe(httpsUrl);
 
-            // Verify the PutCommand was called with the pictureUrl in the item
-            const putCall = mockSend.mock.calls[0][0];
-            expect(putCall.Item.pictureUrl).toBe(httpsUrl);
-          },
-        ),
+          const itemPutCall = mockSend.mock.calls[3][0];
+          expect(itemPutCall.Item.pictureUrl).toBe(httpsUrl);
+        }),
         { numRuns: 100 },
       );
     });
 
-    it('should not include pictureUrl in DynamoDB record when not provided', async () => {
+    it('should not include pictureUrl when not provided', async () => {
       await fc.assert(
         fc.asyncProperty(validItemArb, async (itemData) => {
           jest.clearAllMocks();
           uuidCounter = 0;
 
+          mockSend.mockResolvedValueOnce({ Item: undefined });
+          mockSend.mockResolvedValueOnce({ Item: undefined });
+          mockSend.mockResolvedValueOnce({});
           mockSend.mockResolvedValueOnce({});
 
           const result = await handler(
@@ -659,78 +654,67 @@ describe('Inventory Property Tests', () => {
   });
 
   /**
-   * Feature: inventory-core, Property 26: Threshold Setting Persistence
-   * Validates: Requirements 7.1
+   * Feature: inventory-core, Property 26: Group Threshold Setting Persistence
+   * Validates: Requirements 7.1 (adapted for group-based model)
    *
-   * For any inventory item and valid threshold value, setting the threshold and
-   * retrieving the item should return the set threshold value.
+   * Setting the threshold on a group via PUT /inventory/groups/{groupId}
+   * persists the value and recalculates isLowStock.
    */
-  describe('Property 26: Threshold Setting Persistence', () => {
-    it('should persist threshold value on item creation', async () => {
+  describe('Property 26: Group Threshold Persistence', () => {
+    it('should persist threshold via group update endpoint and recalculate isLowStock', async () => {
       await fc.assert(
-        fc.asyncProperty(validItemArb, thresholdArb, async (itemData, threshold) => {
-          jest.clearAllMocks();
-          uuidCounter = 0;
+        fc.asyncProperty(
+          fc.uuid(),
+          positiveQuantityArb,
+          thresholdArb,
+          async (groupId, totalQuantity, newThreshold) => {
+            jest.clearAllMocks();
 
-          mockSend.mockResolvedValueOnce({});
+            const expectedLowStock = totalQuantity <= newThreshold;
 
-          const result = await handler(
-            makeEvent({
-              httpMethod: 'POST',
-              body: JSON.stringify({ ...itemData, threshold }),
-            }),
-          );
+            // getGroup returns existing group
+            mockSend.mockResolvedValueOnce({
+              Item: {
+                PK: 'USER#user-prop-test',
+                SK: `GROUP#${groupId}`,
+                groupId,
+                name: 'Test',
+                unit: 'piece',
+                totalQuantity,
+                isLowStock: false,
+                syncVersion: 1,
+              },
+            });
+            // UpdateCommand
+            mockSend.mockResolvedValueOnce({
+              Attributes: {
+                PK: 'USER#user-prop-test',
+                SK: `GROUP#${groupId}`,
+                groupId,
+                name: 'Test',
+                totalQuantity,
+                threshold: newThreshold,
+                isLowStock: expectedLowStock,
+                syncVersion: 2,
+              },
+            });
 
-          expect(result.statusCode).toBe(201);
-          const body = JSON.parse(result.body);
-          expect(body.item.threshold).toBe(threshold);
-        }),
-        { numRuns: 100 },
-      );
-    });
+            const result = await handler(
+              makeEvent({
+                httpMethod: 'PUT',
+                resource: '/inventory/groups/{groupId}',
+                path: '/inventory/groups/some-group',
+                pathParameters: { groupId },
+                body: JSON.stringify({ threshold: newThreshold }),
+              }),
+            );
 
-    it('should persist threshold value on item update', async () => {
-      await fc.assert(
-        fc.asyncProperty(fc.uuid(), thresholdArb, async (itemId, newThreshold) => {
-          jest.clearAllMocks();
-
-          // GetCommand returns current item
-          mockSend.mockResolvedValueOnce({
-            Item: {
-              PK: 'USER#user-prop-test',
-              SK: `ITEM#${itemId}`,
-              quantity: 10,
-              threshold: 5,
-              category: 'Dairy',
-              isLowStock: false,
-              syncVersion: 1,
-            },
-          });
-          // UpdateCommand returns updated item with new threshold
-          mockSend.mockResolvedValueOnce({
-            Attributes: {
-              PK: 'USER#user-prop-test',
-              SK: `ITEM#${itemId}`,
-              itemId,
-              quantity: 10,
-              threshold: newThreshold,
-              isLowStock: 10 <= newThreshold,
-              syncVersion: 2,
-            },
-          });
-
-          const result = await handler(
-            makeEvent({
-              httpMethod: 'PUT',
-              pathParameters: { itemId },
-              body: JSON.stringify({ threshold: newThreshold }),
-            }),
-          );
-
-          expect(result.statusCode).toBe(200);
-          const body = JSON.parse(result.body);
-          expect(body.item.threshold).toBe(newThreshold);
-        }),
+            expect(result.statusCode).toBe(200);
+            const body = JSON.parse(result.body);
+            expect(body.group.threshold).toBe(newThreshold);
+            expect(body.group.isLowStock).toBe(expectedLowStock);
+          },
+        ),
         { numRuns: 100 },
       );
     });

@@ -74,6 +74,24 @@ npx playwright test --debug
 
 No `.env.test` file needed. All config is in `playwright.config.ts`.
 
+## Issue #4–#6 regression coverage
+
+- `recipe-issue4-edge-cases.spec.ts` adds stateful edit/save coverage for sections,
+  handful validation, deferred portion scaling, notes removal, and instruction
+  renumbering. It checks compact ingredient layout at desktop and mobile widths.
+- `meal-planner-improvements.spec.ts` checks categorized recipes, real drag/drop,
+  keyboard and mobile selection, two-week navigation, bulk servings and retries.
+- `inventory-improvements.spec.ts` checks photo/expiration/shelf copying, persisted
+  grouping, threshold units and errors, and Location Details editing/clearing.
+- `barcode-scanning.spec.ts` substitutes camera hardware with a canvas video stream
+  containing a valid generated EAN-13 pattern. Quagga decoding runs unchanged. It
+  checks camera locking, stream release, permission/unavailable fallback, timeout,
+  retry and manual entry. Do not replace the decoder with a success callback.
+
+Scope recipe-name assertions to calendar date columns when the recipe library
+contains the same names. Use exact labels for instruction fields because remove
+buttons include the same step text. Never put live credentials into test fixtures.
+
 ## Structure
 
 ```

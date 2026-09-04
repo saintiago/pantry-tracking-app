@@ -1,3 +1,8 @@
+> September 2026 update: the original one-week/lazy-library behavior below is historical.
+> The current issue #5 requirements and implementation are documented in
+> `../open-issues-4-6/requirements.md` and `design.md`. Two-week rendering, categorized
+> library, drag/drop and bulk servings supersede the corresponding original clauses.
+
 # Implementation Plan: Meal Planner (Stage 5)
 
 ## Overview

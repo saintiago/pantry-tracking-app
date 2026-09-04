@@ -2,7 +2,7 @@
 
 ## Overview
 
-The autocomplete and autofill feature enhances the AddItemModal component by providing intelligent field suggestions and automatic population based on existing inventory data. All text input fields (barcode, name, category, brand, whereToBuy, onlineStoreLink) now display autocomplete dropdowns showing matching values from previously entered items. The unit field remains a standard dropdown with VALID_UNITS and does not have autocomplete.
+The autocomplete and autofill feature enhances the AddItemPage component by providing intelligent field suggestions and automatic population based on existing inventory data. All text input fields (barcode, name, category, brand, whereToBuy, onlineStoreLink) now display autocomplete dropdowns showing matching values from previously entered items. The unit field remains a standard dropdown with VALID_UNITS and does not have autocomplete.
 
 The feature distinguishes between two types of autofill behavior:
 - **Full Autofill Fields** (barcode, name): Selecting from their autocomplete dropdown populates ALL other form fields with complete item data
@@ -19,7 +19,7 @@ The system provides visual feedback to distinguish prefilled fields from user-ed
 ### Component Architecture
 
 ```
-AddItemModal (Enhanced)
+AddItemPage (Enhanced)
 ├── Autocomplete System
 │   ├── Barcode field autocomplete (Full Autofill)
 │   ├── Name field autocomplete (Full Autofill)
@@ -79,64 +79,64 @@ POST /inventory/barcode-lookup (ALREADY IMPLEMENTED)
 ```mermaid
 sequenceDiagram
     participant User
-    participant AddItemModal
+    participant AddItemPage
     participant API
     participant DynamoDB
     participant OpenFoodFacts
 
-    Note over User,AddItemModal: Barcode Field (Full Autofill)
-    User->>AddItemModal: Type barcode (3+ chars)
-    AddItemModal->>AddItemModal: Debounce 300ms
-    AddItemModal->>API: GET /inventory/search?field=barcode&query=123
+    Note over User,AddItemPage: Barcode Field (Full Autofill)
+    User->>AddItemPage: Type barcode (3+ chars)
+    AddItemPage->>AddItemPage: Debounce 300ms
+    AddItemPage->>API: GET /inventory/search?field=barcode&query=123
     API->>DynamoDB: Query items with barcode substring match
     DynamoDB-->>API: Return matching items
-    API-->>AddItemModal: Return items list (max 10)
-    AddItemModal->>User: Display autocomplete dropdown
+    API-->>AddItemPage: Return items list (max 10)
+    AddItemPage->>User: Display autocomplete dropdown
     
-    User->>AddItemModal: Select item from dropdown
-    AddItemModal->>AddItemModal: Populate ALL fields with item data
-    AddItemModal->>User: Display autofilled form with prefilled styling
+    User->>AddItemPage: Select item from dropdown
+    AddItemPage->>AddItemPage: Populate ALL fields with item data
+    AddItemPage->>User: Display autofilled form with prefilled styling
 
     Note over User,OpenFoodFacts: External Lookup (if no local match and 8+ digits)
-    User->>AddItemModal: Enter complete barcode (8+ digits)
-    AddItemModal->>API: GET /inventory/search?field=barcode&query=12345678
+    User->>AddItemPage: Enter complete barcode (8+ digits)
+    AddItemPage->>API: GET /inventory/search?field=barcode&query=12345678
     API->>DynamoDB: Query items by barcode
     DynamoDB-->>API: No matches
-    API-->>AddItemModal: Empty results
-    AddItemModal->>API: POST /inventory/barcode-lookup
+    API-->>AddItemPage: Empty results
+    AddItemPage->>API: POST /inventory/barcode-lookup
     API->>OpenFoodFacts: GET /api/v2/product/{barcode}
     OpenFoodFacts-->>API: Return product data
-    API-->>AddItemModal: Return normalized product info
-    AddItemModal->>AddItemModal: Populate ALL fields automatically
-    AddItemModal->>User: Display autofilled form
+    API-->>AddItemPage: Return normalized product info
+    AddItemPage->>AddItemPage: Populate ALL fields automatically
+    AddItemPage->>User: Display autofilled form
 
-    Note over User,AddItemModal: Name Field (Full Autofill)
-    User->>AddItemModal: Type name (3+ chars)
-    AddItemModal->>AddItemModal: Debounce 300ms
-    AddItemModal->>API: GET /inventory/search?field=name&query=dor
+    Note over User,AddItemPage: Name Field (Full Autofill)
+    User->>AddItemPage: Type name (3+ chars)
+    AddItemPage->>AddItemPage: Debounce 300ms
+    AddItemPage->>API: GET /inventory/search?field=name&query=dor
     API->>DynamoDB: Query items with name substring match
     DynamoDB-->>API: Return matching items
-    API-->>AddItemModal: Return items list (max 10)
-    AddItemModal->>User: Display autocomplete dropdown
-    User->>AddItemModal: Select item from dropdown
-    AddItemModal->>AddItemModal: Populate ALL fields with item data
+    API-->>AddItemPage: Return items list (max 10)
+    AddItemPage->>User: Display autocomplete dropdown
+    User->>AddItemPage: Select item from dropdown
+    AddItemPage->>AddItemPage: Populate ALL fields with item data
 
-    Note over User,AddItemModal: Category/Brand/etc (Single Autofill)
-    User->>AddItemModal: Type in category field (1+ chars)
-    AddItemModal->>AddItemModal: Debounce 300ms
-    AddItemModal->>API: GET /inventory/search?field=category&query=sna
+    Note over User,AddItemPage: Category/Brand/etc (Single Autofill)
+    User->>AddItemPage: Type in category field (1+ chars)
+    AddItemPage->>AddItemPage: Debounce 300ms
+    AddItemPage->>API: GET /inventory/search?field=category&query=sna
     API->>DynamoDB: Query all items, extract distinct categories
     DynamoDB-->>API: Return all items
     API->>API: Filter distinct categories by substring
-    API-->>AddItemModal: Return matching values (max 10)
-    AddItemModal->>User: Display autocomplete dropdown
-    User->>AddItemModal: Select value from dropdown
-    AddItemModal->>AddItemModal: Populate ONLY category field
+    API-->>AddItemPage: Return matching values (max 10)
+    AddItemPage->>User: Display autocomplete dropdown
+    User->>AddItemPage: Select value from dropdown
+    AddItemPage->>AddItemPage: Populate ONLY category field
 ```
 
 ## Components and Interfaces
 
-### Frontend: AddItemModal Enhancements
+### Frontend: AddItemPage Enhancements
 
 #### New State Variables
 
@@ -162,7 +162,7 @@ interface AutofillState {
 
 #### New Props (None - internal state only)
 
-The AddItemModal component interface remains unchanged. All autofill functionality is internal.
+The AddItemPage component interface remains unchanged. All autofill functionality is internal.
 
 #### Styling Constants
 
@@ -462,7 +462,7 @@ The backend already handles mapping Open Food Facts responses to the ProductInfo
 
 ### Property 15: Selective Field Population
 
-*For any* lookup result, the autofill system SHALL populate only the fields that have corresponding data in the result (name, category, brand, unit, whereToBuy, onlineStoreLink) and SHALL NOT populate expirationDate, locationId, quantity, or threshold fields
+*For any* lookup result, the autofill system SHALL populate only the fields that have corresponding data in the result (name, category, brand, unit, whereToBuy, onlineStoreLink) and SHALL additionally copy expirationDate, locationId, locationDetails and pictureUrl from saved household lots, default the new quantity to one, and retain the canonical group threshold. External catalog results do not supply household fields
 
 **Validates: Requirements 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7**
 
@@ -586,7 +586,7 @@ Property-based tests verify universal properties across randomized inputs using 
 
 #### Test Configuration
 ```typescript
-// frontend/src/components/AddItemModal.property.test.tsx
+// frontend/src/components/AddItemPage.property.test.tsx
 import fc from 'fast-check';
 
 const TEST_ITERATIONS = 100;

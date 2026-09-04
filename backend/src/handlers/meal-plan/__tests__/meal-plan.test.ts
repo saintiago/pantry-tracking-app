@@ -19,6 +19,66 @@ jest.mock('crypto', () => ({
 
 import { handler } from '../meal-plan';
 
+describe('Future meal servings', () => {
+  beforeEach(() => mockSend.mockReset());
+
+  it('updates today and future meals across database pages, never past meals or recipe records', async () => {
+    const past = { ...existingMealPlan, date: '2026-09-03', SK: 'MEAL#2026-09-03#dinner#past' };
+    const today = { ...existingMealPlan, date: '2026-09-04', SK: 'MEAL#2026-09-04#lunch#today' };
+    const future = { ...existingMealPlan, date: '2027-01-01', SK: 'MEAL#2027-01-01#dinner#future' };
+    const cursor = { PK: 'USER#user-123', SK: today.SK };
+    mockSend
+      .mockResolvedValueOnce({ Items: [past, today], LastEvaluatedKey: cursor })
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ Items: [future] })
+      .mockResolvedValueOnce({});
+    const result = await handler(
+      makeEvent({
+        httpMethod: 'PUT',
+        body: JSON.stringify({ startDate: '2026-09-04', servings: 2 }),
+      }),
+    );
+    expect(result.statusCode).toBe(200);
+    expect(JSON.parse(result.body)).toEqual({ updatedCount: 2 });
+    const writes = mockSend.mock.calls
+      .map(([command]) => command)
+      .filter((command) => command._type === 'Update');
+    expect(writes.map((command) => command.Key.SK)).toEqual([today.SK, future.SK]);
+    expect(writes.every((command) => command.ExpressionAttributeValues[':servings'] === 2)).toBe(
+      true,
+    );
+    expect(mockSend.mock.calls[2][0].ExclusiveStartKey).toEqual(cursor);
+    expect(writes.every((command) => command.ConditionExpression === 'attribute_exists(PK)')).toBe(
+      true,
+    );
+  });
+
+  it.each([0, -1, 1.5, null, '2'])(
+    'rejects invalid servings %p before database access',
+    async (servings) => {
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'PUT',
+          body: JSON.stringify({ startDate: '2026-09-04', servings }),
+        }),
+      );
+      expect(result.statusCode).toBe(400);
+      expect(mockSend).not.toHaveBeenCalled();
+    },
+  );
+
+  it('returns zero updates when no future meals exist', async () => {
+    mockSend.mockResolvedValueOnce({ Items: [] });
+    const result = await handler(
+      makeEvent({
+        httpMethod: 'PUT',
+        body: JSON.stringify({ startDate: '2026-09-04', servings: 2 }),
+      }),
+    );
+    expect(JSON.parse(result.body)).toEqual({ updatedCount: 0 });
+  });
+});
+
 function makeEvent(overrides: Partial<APIGatewayProxyEvent> = {}): APIGatewayProxyEvent {
   return {
     httpMethod: 'GET',
@@ -149,7 +209,7 @@ describe('MealPlan Lambda handler', () => {
       expect(result.statusCode).toBe(405);
     });
 
-    it('returns 405 for PUT without planId', async () => {
+    it('rejects a bulk PUT with missing servings and startDate', async () => {
       const result = await handler(
         makeEvent({
           httpMethod: 'PUT',
@@ -157,7 +217,7 @@ describe('MealPlan Lambda handler', () => {
           body: JSON.stringify({ recipeName: 'Updated' }),
         }),
       );
-      expect(result.statusCode).toBe(405);
+      expect(result.statusCode).toBe(400);
     });
 
     it('returns 405 for PATCH method', async () => {
@@ -216,9 +276,7 @@ describe('MealPlan Lambda handler', () => {
     });
 
     it('returns 400 when startDate is missing', async () => {
-      const result = await handler(
-        makeEvent({ queryStringParameters: { endDate: '2025-01-19' } }),
-      );
+      const result = await handler(makeEvent({ queryStringParameters: { endDate: '2025-01-19' } }));
       expect(result.statusCode).toBe(400);
       expect(JSON.parse(result.body).error).toBe('VALIDATION_ERROR');
     });
@@ -328,9 +386,7 @@ describe('MealPlan Lambda handler', () => {
 
     it('returns 400 when date is missing', async () => {
       const { date: _date, ...noDate } = validBody;
-      const result = await handler(
-        makeEvent({ httpMethod: 'POST', body: JSON.stringify(noDate) }),
-      );
+      const result = await handler(makeEvent({ httpMethod: 'POST', body: JSON.stringify(noDate) }));
       expect(result.statusCode).toBe(400);
     });
 

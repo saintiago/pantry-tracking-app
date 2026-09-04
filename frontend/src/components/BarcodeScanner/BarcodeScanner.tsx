@@ -27,13 +27,19 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarc
   const [timedOut, setTimedOut] = useState(false);
   const [manualBarcode, setManualBarcode] = useState('');
   const [lookingUp, setLookingUp] = useState(false);
+  const [scanAttempt, setScanAttempt] = useState(0);
 
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const quaggaRunningRef = useRef(false);
   const detectedRef = useRef(false);
+  const sessionRef = useRef(0);
+  const onDetectedRef = useRef(onBarcodeDetected);
+  onDetectedRef.current = onBarcodeDetected;
 
   const stopQuagga = useCallback(() => {
+    sessionRef.current += 1;
+    Quagga.offDetected();
     if (quaggaRunningRef.current) {
       Quagga.offDetected();
       Quagga.stop();
@@ -45,8 +51,11 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarc
     }
   }, []);
 
-  const startScanning = useCallback(() => {
+  const startScanning = useCallback(async () => {
     if (!videoContainerRef.current) return;
+
+    stopQuagga();
+    const session = sessionRef.current;
 
     setScanning(true);
     setTimedOut(false);
@@ -54,23 +63,58 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarc
     setError(null);
     detectedRef.current = false;
 
+    let deviceId: string | undefined;
+    try {
+      // Permission unlocks device labels. Release this temporary stream before
+      // Quagga opens the selected physical camera, avoiding two competing streams.
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+      });
+      const track = stream.getVideoTracks()[0];
+      deviceId = track?.getSettings().deviceId;
+      stream.getTracks().forEach((entry) => entry.stop());
+      if (session !== sessionRef.current) return;
+      const cameras = (await navigator.mediaDevices.enumerateDevices()).filter(
+        (device) => device.kind === 'videoinput',
+      );
+      const macro = cameras.find((camera) => /macro/i.test(camera.label));
+      const rear = cameras.find(
+        (camera) => /back|rear|environment/i.test(camera.label) && !/wide|tele/i.test(camera.label),
+      );
+      deviceId = macro?.deviceId || rear?.deviceId || deviceId;
+    } catch (err) {
+      if (session !== sessionRef.current) return;
+      setError(
+        (err as { name?: string }).name === 'NotAllowedError'
+          ? 'permission-denied'
+          : 'camera-unavailable',
+      );
+      setScanning(false);
+      return;
+    }
+    if (session !== sessionRef.current || !videoContainerRef.current) return;
+
     Quagga.init(
       {
         inputStream: {
           type: 'LiveStream',
           target: videoContainerRef.current,
           constraints: {
-            facingMode: 'environment',
-            width: { ideal: 640 },
-            height: { ideal: 480 },
+            ...(deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'environment' }),
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
           },
         },
         decoder: {
-          readers: ['ean_reader', 'upc_reader'],
+          readers: ['ean_reader', 'ean_8_reader', 'upc_reader', 'upc_e_reader'],
         },
         locate: true,
       },
       (err) => {
+        if (session !== sessionRef.current) {
+          Quagga.stop();
+          return;
+        }
         if (err) {
           const errorName = (err as { name?: string }).name || '';
           if (errorName === 'NotAllowedError') {
@@ -100,32 +144,36 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarc
     );
 
     Quagga.onDetected(async (result) => {
+      if (session !== sessionRef.current) return;
       if (detectedRef.current) return;
       const code = result?.codeResult?.code;
       if (!code) return;
 
       detectedRef.current = true;
       stopQuagga();
+      const lookupSession = sessionRef.current;
       setScanning(false);
       setLookingUp(true);
 
       try {
         const lookupResult = await lookupBarcode(code);
-        onBarcodeDetected({
+        if (lookupSession !== sessionRef.current) return;
+        onDetectedRef.current({
           barcode: code,
           found: lookupResult.found,
           product: lookupResult.product,
         });
       } catch {
-        onBarcodeDetected({
+        if (lookupSession !== sessionRef.current) return;
+        onDetectedRef.current({
           barcode: code,
           found: false,
         });
       } finally {
-        setLookingUp(false);
+        if (lookupSession === sessionRef.current) setLookingUp(false);
       }
     });
-  }, [stopQuagga, onBarcodeDetected]);
+  }, [stopQuagga]);
 
   // Start scanning when modal opens
   useEffect(() => {
@@ -137,12 +185,15 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarc
       detectedRef.current = false;
       // Delay to allow the DOM to render the video container
       const timeout = setTimeout(() => startScanning(), 100);
-      return () => clearTimeout(timeout);
+      return () => {
+        clearTimeout(timeout);
+        stopQuagga();
+      };
     } else {
       stopQuagga();
       setScanning(false);
     }
-  }, [isOpen, startScanning, stopQuagga]);
+  }, [isOpen, startScanning, stopQuagga, scanAttempt]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -153,12 +204,13 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarc
 
   const handleRetry = useCallback(() => {
     setTimedOut(false);
-    startScanning();
-  }, [startScanning]);
+    setScanAttempt((attempt) => attempt + 1);
+  }, []);
 
   const handleManualEntry = useCallback(() => {
-    onClose();
-  }, [onClose]);
+    stopQuagga();
+    onDetectedRef.current({ barcode: '', found: false });
+  }, [stopQuagga]);
 
   const handleManualLookup = useCallback(async () => {
     const trimmed = manualBarcode.trim();
@@ -208,9 +260,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarc
         </div>
 
         {/* Looking up state */}
-        {lookingUp && (
-          <div style={styles.statusMessage}>Looking up barcode…</div>
-        )}
+        {lookingUp && <div style={styles.statusMessage}>Looking up barcode…</div>}
 
         {/* Permission denied */}
         {error === 'permission-denied' && (
@@ -228,13 +278,13 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarc
         )}
 
         {/* Camera unavailable — manual fallback */}
-        {error === 'camera-unavailable' && (
+        {(error === 'camera-unavailable' || error === 'permission-denied') && (
           <div style={styles.errorContent} data-testid="camera-unavailable">
             <div style={styles.errorIcon}>📷</div>
-            <p style={styles.errorText}>Camera is not available on this device.</p>
-            <p style={styles.instructionText}>
-              You can enter a barcode manually below.
-            </p>
+            {error === 'camera-unavailable' && (
+              <p style={styles.errorText}>Camera is not available on this device.</p>
+            )}
+            <p style={styles.instructionText}>You can enter a barcode manually below.</p>
             <div style={styles.manualInputGroup}>
               <input
                 type="text"
@@ -308,7 +358,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarc
 };
 
 export default BarcodeScanner;
-
 
 const styles: Record<string, React.CSSProperties> = {
   overlay: {

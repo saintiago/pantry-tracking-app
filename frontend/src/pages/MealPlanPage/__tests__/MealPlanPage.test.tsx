@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import MealPlanPage from '../MealPlanPage';
@@ -89,7 +89,7 @@ describe('MealPlanPage — initial render', () => {
     await waitFor(() => {
       // 7 "Add recipe" buttons — one per day column
       const addButtons = screen.getAllByRole('button', { name: 'Add recipe' });
-      expect(addButtons).toHaveLength(7);
+      expect(addButtons).toHaveLength(14);
     });
   });
 
@@ -99,7 +99,7 @@ describe('MealPlanPage — initial render', () => {
     await waitFor(() => {
       const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
       // At least a few labels must be present (exact set depends on current week)
-      const found = dayLabels.filter((l) => screen.queryByText(l) !== null);
+      const found = dayLabels.filter((l) => screen.queryAllByText(l).length === 2);
       expect(found.length).toBeGreaterThanOrEqual(7);
     });
   });
@@ -116,7 +116,7 @@ describe('MealPlanPage — initial render', () => {
     renderPage();
 
     // Loading text should be visible immediately
-    expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(screen.getByText('Loading…')).toBeInTheDocument();
     expect(screen.getByText('Loading…')).toBeInTheDocument();
 
     // Resolve the fetch so the component settles
@@ -135,7 +135,11 @@ describe('MealPlanPage — initial render', () => {
 
     // Wait for first load to finish and card to appear
     await waitFor(() => {
-      expect(screen.getByText('Oatmeal')).toBeInTheDocument();
+      expect(
+        within(
+          document.querySelector('[data-date="' + currentWeekDate + '"]') as HTMLElement,
+        ).getByText('Oatmeal'),
+      ).toBeInTheDocument();
     });
 
     // Second navigation — returns pending promise so loading state shows
@@ -151,7 +155,7 @@ describe('MealPlanPage — initial render', () => {
 
     // Loading state is shown; previous week's card is cleared
     expect(screen.getByText('Loading…')).toBeInTheDocument();
-    expect(screen.queryByText('Oatmeal')).not.toBeInTheDocument();
+    expect(document.querySelector('[data-date="' + currentWeekDate + '"]')).not.toBeInTheDocument();
 
     act(() => resolveSecond({ mealPlans: [] }));
     await waitFor(() => expect(screen.queryByText('Loading…')).not.toBeInTheDocument());
@@ -170,7 +174,7 @@ describe('MealPlanPage — error states', () => {
 
     // All 7 add buttons still present
     const addButtons = screen.getAllByRole('button', { name: 'Add recipe' });
-    expect(addButtons).toHaveLength(7);
+    expect(addButtons).toHaveLength(14);
   });
 
   it('shows error banner and retry button on week-load failure (Req 2.5)', async () => {
@@ -257,14 +261,12 @@ describe('MealPlanPage — week navigation', () => {
     // Next week start should be 7 days after first
     const firstStartDate = new Date(firstStart);
     const secondStartDate = new Date(secondStart);
-    const diffDays =
-      (secondStartDate.getTime() - firstStartDate.getTime()) / (1000 * 60 * 60 * 24);
+    const diffDays = (secondStartDate.getTime() - firstStartDate.getTime()) / (1000 * 60 * 60 * 24);
     expect(diffDays).toBe(7);
 
     const firstEndDate = new Date(firstEnd);
     const secondEndDate = new Date(secondEnd);
-    const endDiffDays =
-      (secondEndDate.getTime() - firstEndDate.getTime()) / (1000 * 60 * 60 * 24);
+    const endDiffDays = (secondEndDate.getTime() - firstEndDate.getTime()) / (1000 * 60 * 60 * 24);
     expect(endDiffDays).toBe(7);
   });
 
@@ -340,7 +342,11 @@ describe('MealPlanPage — add recipe flow', () => {
     });
 
     // Card should now be visible
-    expect(screen.getByText('Pasta')).toBeInTheDocument();
+    expect(
+      within(
+        document.querySelector('[data-date="' + currentWeekDate + '"]') as HTMLElement,
+      ).getByText('Pasta'),
+    ).toBeInTheDocument();
   });
 });
 
@@ -355,7 +361,11 @@ describe('MealPlanPage — remove flow', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('Oatmeal')).toBeInTheDocument();
+      expect(
+        within(
+          document.querySelector('[data-date="' + currentWeekDate + '"]') as HTMLElement,
+        ).getByText('Oatmeal'),
+      ).toBeInTheDocument();
     });
 
     const removeButton = screen.getByRole('button', { name: 'Remove assignment' });
@@ -375,13 +385,21 @@ describe('MealPlanPage — remove flow', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('Oatmeal')).toBeInTheDocument();
+      expect(
+        within(
+          document.querySelector('[data-date="' + currentWeekDate + '"]') as HTMLElement,
+        ).getByText('Oatmeal'),
+      ).toBeInTheDocument();
     });
 
     await userEvent.click(screen.getByRole('button', { name: 'Remove assignment' }));
 
     await waitFor(() => {
-      expect(screen.queryByText('Oatmeal')).not.toBeInTheDocument();
+      expect(
+        within(
+          document.querySelector('[data-date="' + currentWeekDate + '"]') as HTMLElement,
+        ).queryByText('Oatmeal'),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -393,7 +411,11 @@ describe('MealPlanPage — remove flow', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('Oatmeal')).toBeInTheDocument();
+      expect(
+        within(
+          document.querySelector('[data-date="' + currentWeekDate + '"]') as HTMLElement,
+        ).getByText('Oatmeal'),
+      ).toBeInTheDocument();
     });
 
     const removeButton = screen.getByRole('button', { name: 'Remove assignment' });
@@ -404,7 +426,11 @@ describe('MealPlanPage — remove flow', () => {
     });
 
     // Card still visible
-    expect(screen.getByText('Oatmeal')).toBeInTheDocument();
+    expect(
+      within(
+        document.querySelector('[data-date="' + currentWeekDate + '"]') as HTMLElement,
+      ).getByText('Oatmeal'),
+    ).toBeInTheDocument();
 
     // Button is re-enabled
     expect(screen.getByRole('button', { name: 'Remove assignment' })).not.toBeDisabled();
@@ -424,7 +450,11 @@ describe('MealPlanPage — remove flow', () => {
     renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText('Oatmeal')).toBeInTheDocument();
+      expect(
+        within(
+          document.querySelector('[data-date="' + currentWeekDate + '"]') as HTMLElement,
+        ).getByText('Oatmeal'),
+      ).toBeInTheDocument();
     });
 
     const removeButton = screen.getByRole('button', { name: 'Remove assignment' });

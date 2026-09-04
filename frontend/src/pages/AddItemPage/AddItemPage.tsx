@@ -12,6 +12,8 @@ export interface AddItemData {
   category: string;
   expirationDate: string;
   locationId: string;
+  locationDetails?: string;
+  pictureUrl?: string;
   quantity: number;
   unit: string;
   barcode?: string;
@@ -54,6 +56,8 @@ const INITIAL_FORM = {
   category: '',
   expirationDate: '',
   locationId: '',
+  locationDetails: '',
+  pictureUrl: '',
   quantity: '',
   unit: 'piece',
   barcode: '',
@@ -104,14 +108,16 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
     prefilledFieldsRef.current = prefilledFields;
   }, [prefilledFields]);
 
-  const [autocompleteDropdowns, setAutocompleteDropdowns] = useState<Record<string, DropdownState>>({
-    barcode: { visible: false, items: [], focusedIndex: -1 },
-    name: { visible: false, items: [], focusedIndex: -1 },
-    category: { visible: false, values: [], focusedIndex: -1 },
-    brand: { visible: false, values: [], focusedIndex: -1 },
-    whereToBuy: { visible: false, values: [], focusedIndex: -1 },
-    onlineStoreLink: { visible: false, values: [], focusedIndex: -1 },
-  });
+  const [autocompleteDropdowns, setAutocompleteDropdowns] = useState<Record<string, DropdownState>>(
+    {
+      barcode: { visible: false, items: [], focusedIndex: -1 },
+      name: { visible: false, items: [], focusedIndex: -1 },
+      category: { visible: false, values: [], focusedIndex: -1 },
+      brand: { visible: false, values: [], focusedIndex: -1 },
+      whereToBuy: { visible: false, values: [], focusedIndex: -1 },
+      onlineStoreLink: { visible: false, values: [], focusedIndex: -1 },
+    },
+  );
 
   const debounceTimers = useRef<Record<string, NodeJS.Timeout>>({});
   const abortControllers = useRef<Record<string, AbortController>>({});
@@ -134,15 +140,54 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
       const updates: Partial<typeof prev> = {};
       const newPrefilledFields = new Set<string>();
 
-      if ((triggerField === 'name' || !prev.name) && item.name) { updates.name = item.name; newPrefilledFields.add('name'); }
-      if (!prev.category && item.category) { updates.category = item.category; newPrefilledFields.add('category'); }
-      if (!prev.brand && item.brand) { updates.brand = item.brand; newPrefilledFields.add('brand'); }
-      if ((!prev.unit || prev.unit === 'piece') && item.unit && (VALID_UNITS.includes(item.unit as UnitType) || item.unit in LEGACY_UNIT_MAP)) { updates.unit = resolveUnit(item.unit); newPrefilledFields.add('unit'); }
-      if (!prev.locationId && item.location) { updates.locationId = item.location; newPrefilledFields.add('locationId'); }
-      if (!prev.quantity) { updates.quantity = '1'; newPrefilledFields.add('quantity'); }
-      if (!prev.whereToBuy && item.whereToBuy) { updates.whereToBuy = item.whereToBuy; newPrefilledFields.add('whereToBuy'); }
-      if (!prev.onlineStoreLink && item.onlineStoreLink) { updates.onlineStoreLink = item.onlineStoreLink; newPrefilledFields.add('onlineStoreLink'); }
-      if ((triggerField === 'barcode' || !prev.barcode) && item.barcode) { updates.barcode = item.barcode; newPrefilledFields.add('barcode'); }
+      if ((triggerField === 'name' || !prev.name) && item.name) {
+        updates.name = item.name;
+        newPrefilledFields.add('name');
+      }
+      if (!prev.category && item.category) {
+        updates.category = item.category;
+        newPrefilledFields.add('category');
+      }
+      if (!prev.brand && item.brand) {
+        updates.brand = item.brand;
+        newPrefilledFields.add('brand');
+      }
+      if (
+        (!prev.unit || prev.unit === 'piece') &&
+        item.unit &&
+        (VALID_UNITS.includes(item.unit as UnitType) || item.unit in LEGACY_UNIT_MAP)
+      ) {
+        updates.unit = resolveUnit(item.unit);
+        newPrefilledFields.add('unit');
+      }
+      if (!prev.locationId && item.location) {
+        updates.locationId = item.location;
+        newPrefilledFields.add('locationId');
+      }
+      if (!prev.locationDetails && item.locationDetails) {
+        updates.locationDetails = item.locationDetails;
+        newPrefilledFields.add('locationDetails');
+      }
+      if (!prev.pictureUrl && item.pictureUrl) {
+        updates.pictureUrl = item.pictureUrl;
+        newPrefilledFields.add('pictureUrl');
+      }
+      if (!prev.quantity) {
+        updates.quantity = '1';
+        newPrefilledFields.add('quantity');
+      }
+      if (!prev.whereToBuy && item.whereToBuy) {
+        updates.whereToBuy = item.whereToBuy;
+        newPrefilledFields.add('whereToBuy');
+      }
+      if (!prev.onlineStoreLink && item.onlineStoreLink) {
+        updates.onlineStoreLink = item.onlineStoreLink;
+        newPrefilledFields.add('onlineStoreLink');
+      }
+      if ((triggerField === 'barcode' || !prev.barcode) && item.barcode) {
+        updates.barcode = item.barcode;
+        newPrefilledFields.add('barcode');
+      }
 
       // Copy the suggestion's expiration date only when it is non-empty AND the field
       // is empty, marking it prefilled (Req 4.1, 4.2). An existing user-entered value is
@@ -163,18 +208,41 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
       // (Req 4.3). Skip when a user value already exists or the suggestion has none
       // (Req 4.4, 4.5).
       if (didFillExpiration) {
-        setTimeout(() => {
+        queueMicrotask(() => {
           const el = document.getElementById('add-item-expiration') as HTMLInputElement | null;
           if (el) {
             el.focus();
-            try { el.showPicker(); } catch { /* showPicker not supported */ }
+            try {
+              el.showPicker();
+            } catch {
+              /* showPicker not supported */
+            }
           }
-        }, 50);
+        });
       }
 
       return { ...prev, ...updates };
     });
   }, []);
+
+  useEffect(() => {
+    if (!prefillData?.barcode) return;
+    let cancelled = false;
+    searchInventory('barcode', prefillData.barcode)
+      .then((result) => {
+        const latest = result.items
+          ?.filter((item) => item.barcode === prefillData.barcode)
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+        if (!cancelled && latest) performFullAutofill(latest, 'barcode');
+      })
+      .catch(() => {
+        if (!cancelled)
+          setLookupError('Could not load saved product details. You can enter them manually.');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [prefillData?.barcode, performFullAutofill]);
 
   const performSingleAutofill = useCallback((field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -231,10 +299,22 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
           setForm((prev) => {
             const updates: Partial<typeof prev> = {};
             const newPrefilledFields = new Set<string>();
-            if (!prev.name && product.name) { updates.name = product.name; newPrefilledFields.add('name'); }
-            if (!prev.category && product.category) { updates.category = product.category; newPrefilledFields.add('category'); }
-            if (!prev.brand && product.brand) { updates.brand = product.brand; newPrefilledFields.add('brand'); }
-            if (!prev.quantity) { updates.quantity = '1'; newPrefilledFields.add('quantity'); }
+            if (!prev.name && product.name) {
+              updates.name = product.name;
+              newPrefilledFields.add('name');
+            }
+            if (!prev.category && product.category) {
+              updates.category = product.category;
+              newPrefilledFields.add('category');
+            }
+            if (!prev.brand && product.brand) {
+              updates.brand = product.brand;
+              newPrefilledFields.add('brand');
+            }
+            if (!prev.quantity) {
+              updates.quantity = '1';
+              newPrefilledFields.add('quantity');
+            }
             if (newPrefilledFields.size > 0) {
               setPrefilledFields((p) => new Set([...p, ...newPrefilledFields]));
             }
@@ -260,8 +340,16 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
       // Use ref to always read the latest prefilledFields, avoiding stale closure
       if (prefilledFieldsRef.current.has(field)) {
         if (value === '') {
-          setPrefilledFields((prev) => { const next = new Set(prev); next.delete(field); return next; });
-          setUserEditedFields((prev) => { const next = new Set(prev); next.delete(field); return next; });
+          setPrefilledFields((prev) => {
+            const next = new Set(prev);
+            next.delete(field);
+            return next;
+          });
+          setUserEditedFields((prev) => {
+            const next = new Set(prev);
+            next.delete(field);
+            return next;
+          });
         } else {
           setUserEditedFields((prev) => new Set([...prev, field]));
         }
@@ -270,7 +358,12 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
       if (field === 'barcode') setLookupError(null);
 
       const thresholds: Record<string, number> = {
-        barcode: 3, name: 3, category: 1, brand: 1, whereToBuy: 1, onlineStoreLink: 3,
+        barcode: 3,
+        name: 3,
+        category: 1,
+        brand: 1,
+        whereToBuy: 1,
+        onlineStoreLink: 3,
       };
       const threshold = thresholds[field];
       if (threshold === undefined) return;
@@ -306,9 +399,11 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
     (field: string, index: number) => {
       const dropdown = autocompleteDropdowns[field];
       if (field === 'barcode' || field === 'name') {
-        if (dropdown.items && dropdown.items[index]) performFullAutofill(dropdown.items[index], field);
+        if (dropdown.items && dropdown.items[index])
+          performFullAutofill(dropdown.items[index], field);
       } else {
-        if (dropdown.values && dropdown.values[index]) performSingleAutofill(field, dropdown.values[index]);
+        if (dropdown.values && dropdown.values[index])
+          performSingleAutofill(field, dropdown.values[index]);
       }
       setAutocompleteDropdowns((prev) => ({
         ...prev,
@@ -380,6 +475,8 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
         category: form.category.trim(),
         expirationDate: form.expirationDate,
         locationId: form.locationId,
+        ...(form.locationDetails.trim() ? { locationDetails: form.locationDetails.trim() } : {}),
+        ...(form.pictureUrl ? { pictureUrl: form.pictureUrl } : {}),
         quantity: parseFractionalQuantity(form.quantity) ?? 0,
         unit: form.unit.trim(),
       };
@@ -449,7 +546,11 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
               aria-controls={autocompleteDropdowns.name.visible ? 'name-dropdown' : undefined}
               aria-expanded={autocompleteDropdowns.name.visible}
             />
-            {errors.name && <span style={styles.fieldError} role="alert">{errors.name}</span>}
+            {errors.name && (
+              <span style={styles.fieldError} role="alert">
+                {errors.name}
+              </span>
+            )}
             <AutocompleteDropdown
               isVisible={autocompleteDropdowns.name.visible}
               items={autocompleteDropdowns.name.items}
@@ -487,10 +588,16 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
               aria-required="true"
               aria-invalid={!!errors.category}
               aria-autocomplete={autocompleteDropdowns.category.visible ? 'list' : undefined}
-              aria-controls={autocompleteDropdowns.category.visible ? 'category-dropdown' : undefined}
+              aria-controls={
+                autocompleteDropdowns.category.visible ? 'category-dropdown' : undefined
+              }
               aria-expanded={autocompleteDropdowns.category.visible}
             />
-            {errors.category && <span style={styles.fieldError} role="alert">{errors.category}</span>}
+            {errors.category && (
+              <span style={styles.fieldError} role="alert">
+                {errors.category}
+              </span>
+            )}
             <AutocompleteDropdown
               isVisible={autocompleteDropdowns.category.visible}
               values={autocompleteDropdowns.category.values}
@@ -519,7 +626,11 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
             aria-required="true"
             aria-invalid={!!errors.expirationDate}
           />
-          {errors.expirationDate && <span style={styles.fieldError} role="alert">{errors.expirationDate}</span>}
+          {errors.expirationDate && (
+            <span style={styles.fieldError} role="alert">
+              {errors.expirationDate}
+            </span>
+          )}
         </div>
 
         {/* Location */}
@@ -542,7 +653,23 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
               </option>
             ))}
           </select>
-          {errors.locationId && <span style={styles.fieldError} role="alert">{errors.locationId}</span>}
+          {errors.locationId && (
+            <span style={styles.fieldError} role="alert">
+              {errors.locationId}
+            </span>
+          )}
+        </div>
+        <div style={styles.fieldGroup}>
+          <label htmlFor="add-item-location-details" style={styles.label}>
+            Location Details
+          </label>
+          <input
+            id="add-item-location-details"
+            value={form.locationDetails}
+            onChange={handleChange('locationDetails')}
+            placeholder="e.g. Shelf 2A"
+            style={styles.input}
+          />
         </div>
 
         {/* Quantity */}
@@ -560,7 +687,11 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
             aria-invalid={!!errors.quantity}
             placeholder="e.g. 2, 1/2, 1 1/4"
           />
-          {errors.quantity && <span style={styles.fieldError} role="alert">{errors.quantity}</span>}
+          {errors.quantity && (
+            <span style={styles.fieldError} role="alert">
+              {errors.quantity}
+            </span>
+          )}
         </div>
 
         {/* Unit */}
@@ -578,15 +709,23 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
           >
             <option value="">Select a unit</option>
             {VALID_UNITS.map((u) => (
-              <option key={u} value={u}>{getUnitLabel(u, 1)}</option>
+              <option key={u} value={u}>
+                {getUnitLabel(u, 1)}
+              </option>
             ))}
           </select>
-          {errors.unit && <span style={styles.fieldError} role="alert">{errors.unit}</span>}
+          {errors.unit && (
+            <span style={styles.fieldError} role="alert">
+              {errors.unit}
+            </span>
+          )}
         </div>
 
         {/* Barcode (optional) */}
         <div style={styles.fieldGroup}>
-          <label htmlFor="add-item-barcode" style={styles.label}>Barcode</label>
+          <label htmlFor="add-item-barcode" style={styles.label}>
+            Barcode
+          </label>
           <div style={{ position: 'relative' }}>
             <input
               id="add-item-barcode"
@@ -599,7 +738,11 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
               aria-expanded={autocompleteDropdowns.barcode.visible}
             />
             {lookupLoading && <div style={styles.loadingIndicator}>Looking up...</div>}
-            {lookupError && <span style={styles.fieldError} role="alert">{lookupError}</span>}
+            {lookupError && (
+              <span style={styles.fieldError} role="alert">
+                {lookupError}
+              </span>
+            )}
             <AutocompleteDropdown
               isVisible={autocompleteDropdowns.barcode.visible}
               items={autocompleteDropdowns.barcode.items}
@@ -624,7 +767,9 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
 
         {/* Brand (optional) */}
         <div style={styles.fieldGroup}>
-          <label htmlFor="add-item-brand" style={styles.label}>Brand</label>
+          <label htmlFor="add-item-brand" style={styles.label}>
+            Brand
+          </label>
           <div style={{ position: 'relative' }}>
             <input
               id="add-item-brand"
@@ -652,7 +797,9 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
 
         {/* Where to Buy (optional) */}
         <div style={styles.fieldGroup}>
-          <label htmlFor="add-item-wheretobuy" style={styles.label}>Where to Buy</label>
+          <label htmlFor="add-item-wheretobuy" style={styles.label}>
+            Where to Buy
+          </label>
           <div style={{ position: 'relative' }}>
             <input
               id="add-item-wheretobuy"
@@ -661,7 +808,9 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
               onChange={handleChange('whereToBuy')}
               style={getFieldStyle('whereToBuy')}
               aria-autocomplete={autocompleteDropdowns.whereToBuy.visible ? 'list' : undefined}
-              aria-controls={autocompleteDropdowns.whereToBuy.visible ? 'wheretobuy-dropdown' : undefined}
+              aria-controls={
+                autocompleteDropdowns.whereToBuy.visible ? 'wheretobuy-dropdown' : undefined
+              }
               aria-expanded={autocompleteDropdowns.whereToBuy.visible}
             />
             <AutocompleteDropdown
@@ -680,7 +829,9 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
 
         {/* Online Store Link (optional) */}
         <div style={styles.fieldGroup}>
-          <label htmlFor="add-item-onlinelink" style={styles.label}>Online Store Link</label>
+          <label htmlFor="add-item-onlinelink" style={styles.label}>
+            Online Store Link
+          </label>
           <div style={{ position: 'relative' }}>
             <input
               id="add-item-onlinelink"
@@ -689,7 +840,9 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
               onChange={handleChange('onlineStoreLink')}
               style={getFieldStyle('onlineStoreLink')}
               aria-autocomplete={autocompleteDropdowns.onlineStoreLink.visible ? 'list' : undefined}
-              aria-controls={autocompleteDropdowns.onlineStoreLink.visible ? 'onlinelink-dropdown' : undefined}
+              aria-controls={
+                autocompleteDropdowns.onlineStoreLink.visible ? 'onlinelink-dropdown' : undefined
+              }
               aria-expanded={autocompleteDropdowns.onlineStoreLink.visible}
             />
             <AutocompleteDropdown
@@ -708,7 +861,16 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
 
         {/* Picture (optional) */}
         <div style={styles.fieldGroup}>
-          <label htmlFor="add-item-picture" style={styles.label}>Picture</label>
+          <label htmlFor="add-item-picture" style={styles.label}>
+            Picture
+          </label>
+          {form.pictureUrl && !pictureFile && (
+            <img
+              src={form.pictureUrl}
+              alt="Product photo"
+              style={{ width: 96, height: 96, objectFit: 'contain' }}
+            />
+          )}
           <input
             id="add-item-picture"
             type="file"
@@ -724,12 +886,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
 
       {/* Fixed action bar at bottom */}
       <div style={styles.actionBar} data-testid="action-bar">
-        <button
-          type="button"
-          onClick={onBack}
-          style={styles.cancelButton}
-          disabled={submitting}
-        >
+        <button type="button" onClick={onBack} style={styles.cancelButton} disabled={submitting}>
           Cancel
         </button>
         <button

@@ -17,6 +17,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
+    "migrate:inventory-groups": "node scripts/migrate-inventory-groups.mjs",
     "type-check": "npm run type-check --workspaces --if-present",
     "prepare": "husky"
   },

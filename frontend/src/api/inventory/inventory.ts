@@ -1,8 +1,9 @@
 import { API_URL } from '../../config';
 import { getCurrentSession } from '../../auth/cognitoClient/cognitoClient';
 import type { InventoryItem } from '../../components/InventoryList/InventoryList';
+import type { InventoryGroup } from '../../components/InventoryList/InventoryList';
 
-export type { InventoryItem } from '../../components/InventoryList/InventoryList';
+export type { InventoryItem, InventoryGroup } from '../../components/InventoryList/InventoryList';
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const session = await getCurrentSession();
@@ -17,13 +18,21 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 
 export interface FetchInventoryResponse {
   items: InventoryItem[];
+  groups?: InventoryGroup[];
   lastEvaluatedKey?: string;
 }
 
 export interface MutationResponse {
   item: InventoryItem;
+  groups?: InventoryGroup[];
   lowStockTransition?: boolean;
-  notification?: { type: string; message: string; itemId: string };
+  notification?: { type: string; message: string; groupId?: string; itemId?: string };
+}
+
+export interface GroupMutationResponse {
+  group: InventoryGroup;
+  lowStockTransition?: boolean;
+  notification?: { type: string; message: string; groupId?: string; itemId?: string };
 }
 
 export async function fetchInventory(): Promise<FetchInventoryResponse> {
@@ -36,9 +45,7 @@ export async function fetchInventory(): Promise<FetchInventoryResponse> {
   return res.json();
 }
 
-export async function addInventoryItem(
-  data: Record<string, unknown>,
-): Promise<MutationResponse> {
+export async function addInventoryItem(data: Record<string, unknown>): Promise<MutationResponse> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${API_URL}/inventory`, {
     method: 'POST',
@@ -82,13 +89,31 @@ export async function deleteInventoryItem(itemId: string): Promise<void> {
 }
 
 export async function fetchLowStockItems(): Promise<{
-  items: InventoryItem[];
+  groups: InventoryGroup[];
 }> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${API_URL}/inventory/low-stock`, { headers });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.message ?? 'Failed to fetch low stock items');
+  }
+  return res.json();
+}
+
+export async function updateInventoryGroupThreshold(
+  groupId: string,
+  threshold: number | null,
+  thresholdUnit?: string,
+): Promise<GroupMutationResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_URL}/inventory/groups/${groupId}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({ threshold, ...(thresholdUnit ? { thresholdUnit } : {}) }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.message ?? 'Failed to update inventory group');
   }
   return res.json();
 }

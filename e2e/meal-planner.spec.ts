@@ -56,7 +56,7 @@ const MONTH_NAMES = [
 
 /** Mirrors frontend getMonthYearLabel for the visible week (start … start+6). */
 function getMonthYearLabel(start: string): string {
-  const end = addDaysIso(start, 6);
+  const end = addDaysIso(start, 13);
   const [fy, fm] = start.split('-').map(Number);
   const [ly, lm] = end.split('-').map(Number);
   if (fy === ly && fm === lm) return `${MONTH_NAMES[fm - 1]} ${fy}`;
@@ -245,7 +245,7 @@ test.describe('Meal Planner', () => {
 
   // ── 1. View current week ─────────────────────────────────────────────────
 
-  test('shows 7 day columns with Mon–Sun labels and an Add button each (Req 1.1)', async ({
+  test('shows 14 day columns with Mon–Sun labels and an Add button each (Req 1.1)', async ({
     page,
   }) => {
     const expectedDayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -254,7 +254,7 @@ test.describe('Meal Planner', () => {
     }
 
     const addButtons = page.getByRole('button', { name: 'Add recipe' });
-    await expect(addButtons).toHaveCount(7);
+    await expect(addButtons).toHaveCount(14);
   });
 
   test('day columns show numeric dates matching the current week (Req 1.1)', async ({ page }) => {
@@ -263,14 +263,12 @@ test.describe('Meal Planner', () => {
   });
 
   test('shows the month/year label for the visible week', async ({ page }) => {
-    await expect(
-      page.getByRole('heading', { name: getMonthYearLabel(weekStart) }),
-    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: getMonthYearLabel(weekStart) })).toBeVisible();
   });
 
   test('renders seeded meal plan cards for the current week (Req 1.1)', async ({ page }) => {
-    await expect(page.getByText('Pasta Carbonara')).toBeVisible();
-    await expect(page.getByText('Tomato Soup')).toBeVisible();
+    await expect(page.locator('[data-date]').getByText('Pasta Carbonara')).toBeVisible();
+    await expect(page.locator('[data-date]').getByText('Tomato Soup')).toBeVisible();
   });
 
   test('breakfast card appears before lunch card on the same day (Req 1.1 ordering)', async ({
@@ -310,7 +308,7 @@ test.describe('Meal Planner', () => {
 
     // Dialog closes and the new card appears
     await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('Pancakes')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('[data-date]').getByText('Pancakes')).toBeVisible({ timeout: 5000 });
   });
 
   test('cancelling the Add Recipe dialog does not create a meal plan (Req 4.8)', async ({
@@ -323,7 +321,7 @@ test.describe('Meal Planner', () => {
 
     await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 3000 });
     // No Pancakes card created
-    await expect(page.getByText('Pancakes')).not.toBeVisible();
+    await expect(page.locator('[data-date]').getByText('Pancakes')).not.toBeVisible();
   });
 
   // ── 3. Navigate weeks ────────────────────────────────────────────────────
@@ -332,21 +330,23 @@ test.describe('Meal Planner', () => {
     page,
   }) => {
     // Seeded cards are on the current week
-    await expect(page.getByText('Pasta Carbonara')).toBeVisible();
+    await expect(page.locator('[data-date]').getByText('Pasta Carbonara')).toBeVisible();
 
     // Advance to next week — no plans there
     await page.getByRole('button', { name: 'Next week' }).click();
 
     const nextMondayNumber = getDayNumber(addDaysIso(weekStart, 7));
     await expect(page.getByText(String(nextMondayNumber)).first()).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('Pasta Carbonara')).not.toBeVisible();
+    await expect(page.locator('[data-date]').getByText('Pasta Carbonara')).not.toBeVisible();
 
     // Go back — seeded cards return
     await page.getByRole('button', { name: 'Previous week' }).click();
     await expect(page.getByText(String(getDayNumber(weekStart))).first()).toBeVisible({
       timeout: 5000,
     });
-    await expect(page.getByText('Pasta Carbonara')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('[data-date]').getByText('Pasta Carbonara')).toBeVisible({
+      timeout: 5000,
+    });
   });
 
   test('Previous then Next week returns to the original week (Req 3.2, 3.3)', async ({ page }) => {
@@ -365,14 +365,18 @@ test.describe('Meal Planner', () => {
   // ── 4. Remove a recipe ──────────────────────────────────────────────────
 
   test('can remove an existing recipe card and it disappears (Req 5.2, 5.4)', async ({ page }) => {
-    await expect(page.getByText('Tomato Soup')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('[data-date]').getByText('Tomato Soup')).toBeVisible({
+      timeout: 5000,
+    });
 
     // Remove the lunch card (Tomato Soup is the second card). Target its remove button.
     const removeButtons = page.getByRole('button', { name: 'Remove assignment' });
     await removeButtons.nth(1).click();
 
     // After successful delete + re-fetch the card disappears
-    await expect(page.getByText('Tomato Soup')).not.toBeVisible({ timeout: 5000 });
+    await expect(page.locator('[data-date]').getByText('Tomato Soup')).not.toBeVisible({
+      timeout: 5000,
+    });
 
     // The DELETE used the lunch plan's id (Req 5.2)
     expect(deletedPlanIds).toContain('plan-lunch');

@@ -2,6 +2,7 @@ import { API_URL } from '../../config';
 import { getCurrentSession } from '../../auth/cognitoClient/cognitoClient';
 
 export interface MealPlan {
+  servings?: number;
   planId: string;
   date: string; // YYYY-MM-DD
   mealType: 'breakfast' | 'lunch' | 'dinner';
@@ -12,6 +13,7 @@ export interface MealPlan {
 }
 
 export interface CreateMealPlanInput {
+  servings?: number;
   date: string;
   mealType: 'breakfast' | 'lunch' | 'dinner';
   recipeId: string;
@@ -21,6 +23,8 @@ export interface CreateMealPlanInput {
 export interface PlannableRecipe {
   recipeId: string;
   name: string;
+  tags?: string[];
+  portions?: number;
 }
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
@@ -56,9 +60,7 @@ export async function fetchMealPlans(
   }
 }
 
-export async function createMealPlan(
-  input: CreateMealPlanInput,
-): Promise<{ mealPlan: MealPlan }> {
+export async function createMealPlan(input: CreateMealPlanInput): Promise<{ mealPlan: MealPlan }> {
   const headers = await getAuthHeaders();
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 10000);
@@ -113,13 +115,35 @@ export async function fetchRecipesForPlanning(): Promise<{ recipes: PlannableRec
     }
     const data = await res.json();
     // Map full Recipe objects to PlannableRecipe (pick recipeId and name only)
-    const recipes: PlannableRecipe[] = (data.recipes ?? []).map(
-      (r: { recipeId: string; name: string }) => ({
-        recipeId: r.recipeId,
-        name: r.name,
-      }),
-    );
+    const recipes: PlannableRecipe[] = (data.recipes ?? []).map((r: PlannableRecipe) => ({
+      recipeId: r.recipeId,
+      name: r.name,
+      ...(r.tags ? { tags: r.tags } : {}),
+      ...(r.portions ? { portions: r.portions } : {}),
+    }));
     return { recipes };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+export async function updateFutureServings(
+  startDate: string,
+  servings: number,
+): Promise<{ updatedCount: number }> {
+  const headers = await getAuthHeaders();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  try {
+    const res = await fetch(`${API_URL}/meal-plans`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ startDate, servings }),
+      signal: controller.signal,
+    });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.message ?? 'Failed to update servings');
+    return body;
   } finally {
     clearTimeout(timeoutId);
   }

@@ -1,9 +1,11 @@
 # Pantry Tracking App — Claude Context
 
 ## What this app is
+
 A mobile-first PWA for household inventory management. Users track food/household items across storage locations (Pantry, Fridge, Freezer, Limbo Pantry), plan meals, and generate shopping lists. Installable as a PWA, offline-first via service worker.
 
 ## Monorepo layout
+
 ```
 frontend/   React 18 + TypeScript + Vite (inline styles, no CSS framework)
 backend/    AWS Lambda (Node.js/TS) — DynamoDB single-table, S3, Cognito
@@ -14,7 +16,9 @@ scripts/    deploy.sh (CDK + S3 sync + CF invalidation)
 ```
 
 ## Steering docs
+
 `.kiro/steering/` is the source of truth for architecture, tech stack, data model, and workflows. **Read the relevant steering doc before making decisions** — CLAUDE.md is a quick-ref summary, not exhaustive. Key files:
+
 - `tech.md` — tech stack, test framework (Jest), environments
 - `structure.md` — directory layout, config files
 - `data-model.md` — DynamoDB schema, entities, API routes
@@ -23,6 +27,7 @@ scripts/    deploy.sh (CDK + S3 sync + CF invalidation)
 - `product.md` — product requirements
 
 ## Frontend structure
+
 ```
 frontend/src/
   api/          API client modules per feature
@@ -37,6 +42,7 @@ frontend/src/
 ```
 
 ## Key conventions
+
 - **Styling**: Inline `React.CSSProperties` objects only — no CSS modules, no Tailwind, no styled-components
 - **Routing**: State-based via `PageId` in `App.tsx` + `Layout`. No react-router. New pages = new `PageId` + `<Name>Page.tsx`
 - **No modals for forms** — use dedicated full pages (see `AddItemPage`, `ItemDetailPage`)
@@ -45,12 +51,14 @@ frontend/src/
 - **Commits/push/deploy**: NEVER without explicit user instruction per message — this applies to ALL changes including documentation, CLAUDE.md edits, and session learnings. If you have something worth committing, mention it to the user and let them decide.
 
 ## Design tokens (current — being redesigned)
+
 - Primary: `#4a90d9` (blue) | Text: `#1a1a1a` | BG: `#f5f5f5` | Card: `#ffffff`
 - Border: `#e5e7eb` | Input border: `#d1d5db` | Muted: `#6b7280`
 - Low stock: `#fef3c7` / `#92400e` | Success: `#16a34a` | Error: `#dc2626`
 - Radii: 6px inputs, 8–10px cards, 16px chips, 20px toggle
 
 ## Common commands
+
 ```bash
 npm install                    # from root
 npm test                       # all tests
@@ -63,21 +71,25 @@ npm run test:e2e               # Playwright headless
 ```
 
 ## E2E testing gotchas
+
 - Auth: Vite plugin replaces cognitoClient when `VITE_MOCK_AUTH=true` — never mock Cognito at network level
 - API: intercepted via `page.route()` — `VITE_API_URL=https://mock-api.test`
 - AutocompleteDropdown uses `onMouseDown` (not `onClick`) — use `await option.click()` after waiting for visibility
 - Scope modal selectors to `getByRole('dialog')` to avoid conflicts with page inputs
 
 ## Data model quick ref
+
 - DynamoDB single-table `PantryApp` — PK: `USER#<id>`, SK: entity-prefixed
-- Entities: `InventoryItem`, `StorageLocation`, `Recipe`, `MealPlan`, `Receipt`
+- Entities: `InventoryItem` (stock lot), `InventoryGroup` (group threshold and aggregate), `StorageLocation`, `Recipe`, `MealPlan`, `Receipt`
 - Units: defined in `frontend/src/types/units.ts` + `backend/src/types/units.ts`
 - Full schema + API routes: `.kiro/steering/data-model.md`
 
 ## Active design initiative
+
 Redesigning the UI: warm pastel aesthetic (blush/lavender/sage), game-like interaction feedback (shake on error, bounce on success, hover scale+shadow on desktop, form field pulse on validation error). Piloting on Inventory page first.
 
 ## Tool & workflow gotchas
+
 - **Never use PowerShell for text file manipulation** — `Set-Content -Encoding utf8` adds a BOM that corrupts source files. Use Bash (`head`, `tail`, `sed`, `git show`, `git checkout`) for bulk operations and the Edit tool for surgical changes.
 - **Prefer Bash over PowerShell** for all shell commands. PowerShell on this machine is Windows PowerShell 5.1 (no `&&`, no `||`, different encoding behavior).
 - **Never `--no-verify` commits** — the pre-commit hook runs lint + `test:unit` + `test:e2e`. Fix root causes instead of skipping hooks.

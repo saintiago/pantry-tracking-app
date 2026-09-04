@@ -10,7 +10,7 @@ import type { BarcodeLookupResult } from '../../components/BarcodeScanner/Barcod
 const BarcodeScanner = lazy(() => import('../../components/BarcodeScanner/BarcodeScanner'));
 import type { AddItemData } from '../AddItemPage/AddItemPage';
 import type { StorageLocation } from '../../api/locations/locations';
-import type { InventoryItem } from '../../components/InventoryList/InventoryList';
+import type { InventoryGroup, InventoryItem } from '../../components/InventoryList/InventoryList';
 import type { PageId } from '../../components/Layout/Layout';
 import {
   fetchLocations,
@@ -22,6 +22,7 @@ import {
   fetchInventory,
   addInventoryItem,
   deleteInventoryItem,
+  updateInventoryGroupThreshold,
 } from '../../api/inventory/inventory';
 
 // --- Barcode Scanner Loading Fallback ---
@@ -72,10 +73,7 @@ export class BarcodeScannerErrorBoundary extends React.Component<
   render() {
     if (this.state.error) {
       return (
-        <div
-          data-testid="barcode-scanner-error"
-          style={styles.scannerErrorOverlay}
-        >
+        <div data-testid="barcode-scanner-error" style={styles.scannerErrorOverlay}>
           <div style={styles.scannerErrorModal}>
             <p style={styles.scannerErrorText}>Couldn't load the scanner.</p>
             <div style={styles.scannerErrorButtons}>
@@ -120,14 +118,19 @@ interface InventoryPageProps {
     onItemUpdated: (
       updatedItem: InventoryItem,
       lowStockTransition?: boolean,
-      notification?: { type: string; message: string; itemId: string },
+      notification?: { type: string; message: string; itemId?: string; groupId?: string },
     ) => void,
   ) => void;
 }
 
-const InventoryPage: React.FC<InventoryPageProps> = ({ onNavigate: _onNavigate, onNavigateToAddItem, onNavigateToItemDetail }) => {
+const InventoryPage: React.FC<InventoryPageProps> = ({
+  onNavigate: _onNavigate,
+  onNavigateToAddItem,
+  onNavigateToItemDetail,
+}) => {
   const [locations, setLocations] = useState<StorageLocation[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [inventoryGroups, setInventoryGroups] = useState<InventoryGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
@@ -146,6 +149,7 @@ const InventoryPage: React.FC<InventoryPageProps> = ({ onNavigate: _onNavigate, 
   const loadInventory = useCallback(async () => {
     const data = await fetchInventory();
     setInventoryItems(data.items);
+    setInventoryGroups(data.groups ?? []);
   }, []);
 
   const loadAll = useCallback(async () => {
@@ -224,58 +228,85 @@ const InventoryPage: React.FC<InventoryPageProps> = ({ onNavigate: _onNavigate, 
     [loadInventory],
   );
 
-  const handleAddMenuSelect = useCallback((method: 'manual' | 'barcode' | 'receipt') => {
-    setAddMenuOpen(false);
-    if (method === 'manual') {
-      onNavigateToAddItem(locations, handleAddItem);
-    } else if (method === 'barcode') {
-      setScannerOpen(true);
+  const handleAddMenuSelect = useCallback(
+    (method: 'manual' | 'barcode' | 'receipt') => {
+      setAddMenuOpen(false);
+      if (method === 'manual') {
+        onNavigateToAddItem(locations, handleAddItem);
+      } else if (method === 'barcode') {
+        setScannerOpen(true);
+      }
+      // Future tasks will wire receipt
+    },
+    [locations, onNavigateToAddItem, handleAddItem],
+  );
+
+  const handleBarcodeDetected = useCallback(
+    (result: BarcodeLookupResult) => {
+      setScannerOpen(false);
+      onNavigateToAddItem(locations, handleAddItem, {
+        barcode: result.barcode,
+        name: result.product?.name,
+        brand: result.product?.brand,
+        category: result.product?.category,
+      });
+    },
+    [locations, onNavigateToAddItem, handleAddItem],
+  );
+
+  const handleRemoveItem = useCallback(async (itemId: string) => {
+    try {
+      await deleteInventoryItem(itemId);
+      const data = await fetchInventory();
+      setInventoryItems(data.items);
+      setInventoryGroups(data.groups ?? []);
+      if (data.items.length === 0) {
+        setRemoveMode(false);
+      }
+    } catch {
+      // Silently handle — could add error toast in future
     }
-    // Future tasks will wire receipt
-  }, [locations, onNavigateToAddItem, handleAddItem]);
+  }, []);
 
-  const handleBarcodeDetected = useCallback((result: BarcodeLookupResult) => {
-    setScannerOpen(false);
-    onNavigateToAddItem(locations, handleAddItem, {
-      barcode: result.barcode,
-      name: result.product?.name,
-      brand: result.product?.brand,
-      category: result.product?.category,
-    });
-  }, [locations, onNavigateToAddItem, handleAddItem]);
-
-  const handleRemoveItem = useCallback(
-    async (itemId: string) => {
-      try {
-        await deleteInventoryItem(itemId);
-        const data = await fetchInventory();
-        setInventoryItems(data.items);
-        if (data.items.length === 0) {
-          setRemoveMode(false);
-        }
-      } catch {
-        // Silently handle — could add error toast in future
+  const handleItemUpdated = useCallback(
+    (
+      updatedItem: InventoryItem,
+      lowStockTransition?: boolean,
+      notificationData?: { type: string; message: string; itemId?: string; groupId?: string },
+    ) => {
+      setInventoryItems((prev) =>
+        prev.map((i) => (i.itemId === updatedItem.itemId ? updatedItem : i)),
+      );
+      if (lowStockTransition && notificationData) {
+        setNotification({ message: notificationData.message, visible: true });
       }
     },
     [],
   );
 
-  const handleItemUpdated = useCallback((updatedItem: InventoryItem, lowStockTransition?: boolean, notificationData?: { type: string; message: string; itemId: string }) => {
-    setInventoryItems((prev) =>
-      prev.map((i) => (i.itemId === updatedItem.itemId ? updatedItem : i)),
-    );
-    if (lowStockTransition && notificationData) {
-      setNotification({ message: notificationData.message, visible: true });
-    }
-  }, []);
-
-  const handleItemClick = useCallback((item: InventoryItem) => {
-    onNavigateToItemDetail(item, locations, handleItemUpdated);
-  }, [locations, onNavigateToItemDetail, handleItemUpdated]);
+  const handleItemClick = useCallback(
+    (item: InventoryItem) => {
+      onNavigateToItemDetail(item, locations, handleItemUpdated);
+    },
+    [locations, onNavigateToItemDetail, handleItemUpdated],
+  );
 
   const toggleRemoveMode = useCallback(() => {
     setRemoveMode((prev) => !prev);
   }, []);
+
+  const handleUpdateThreshold = useCallback(
+    async (groupId: string, threshold: number | null, thresholdUnit?: string) => {
+      const result = await updateInventoryGroupThreshold(groupId, threshold, thresholdUnit);
+      setInventoryGroups((previous) =>
+        previous.map((group) => (group.groupId === groupId ? result.group : group)),
+      );
+      if (result.lowStockTransition && result.notification) {
+        setNotification({ message: result.notification.message, visible: true });
+      }
+    },
+    [],
+  );
 
   if (loading) {
     return (
@@ -316,7 +347,9 @@ const InventoryPage: React.FC<InventoryPageProps> = ({ onNavigate: _onNavigate, 
             aria-expanded={addMenuOpen}
             aria-haspopup="menu"
           >
-            <span style={styles.buttonIcon} aria-hidden="true">+</span>
+            <span style={styles.buttonIcon} aria-hidden="true">
+              +
+            </span>
             <span>Add</span>
           </button>
           {addMenuOpen && (
@@ -355,7 +388,9 @@ const InventoryPage: React.FC<InventoryPageProps> = ({ onNavigate: _onNavigate, 
           aria-label="Remove item"
           aria-pressed={removeMode}
         >
-          <span style={styles.buttonIcon} aria-hidden="true">−</span>
+          <span style={styles.buttonIcon} aria-hidden="true">
+            −
+          </span>
           <span>Remove</span>
         </button>
       </div>
@@ -368,10 +403,12 @@ const InventoryPage: React.FC<InventoryPageProps> = ({ onNavigate: _onNavigate, 
 
       <InventoryList
         items={inventoryItems}
+        groups={inventoryGroups}
         locations={locations}
         removeMode={removeMode}
         onRemoveItem={handleRemoveItem}
         onItemClick={handleItemClick}
+        onUpdateThreshold={handleUpdateThreshold}
       />
 
       <StorageLocationManager

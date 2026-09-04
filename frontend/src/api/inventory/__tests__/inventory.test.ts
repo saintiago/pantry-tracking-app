@@ -4,6 +4,7 @@ import {
   updateInventoryItem,
   deleteInventoryItem,
   fetchLowStockItems,
+  updateInventoryGroupThreshold,
   searchInventory,
 } from '../inventory';
 
@@ -80,8 +81,14 @@ describe('addInventoryItem', () => {
       json: async () => ({ item }),
     } as Response);
 
-    const data = { name: 'Eggs', category: 'Dairy', quantity: 12, unit: 'pcs',
-      expirationDate: '2025-01-01', locationId: 'loc-1' };
+    const data = {
+      name: 'Eggs',
+      category: 'Dairy',
+      quantity: 12,
+      unit: 'pcs',
+      expirationDate: '2025-01-01',
+      locationId: 'loc-1',
+    };
     const result = await addInventoryItem(data);
 
     expect(mockFetch()).toHaveBeenCalledWith('https://api.example.com/inventory', {
@@ -111,9 +118,15 @@ describe('updateInventoryItem', () => {
     const item = { itemId: 'item-1', name: 'Milk', quantity: 3 };
     mockFetch().mockResolvedValue({
       ok: true,
-      json: async () => ({ item, lowStockTransition: true, notification: {
-        type: 'LOW_STOCK', message: 'Milk is running low', itemId: 'item-1',
-      } }),
+      json: async () => ({
+        item,
+        lowStockTransition: true,
+        notification: {
+          type: 'LOW_STOCK',
+          message: 'Milk is running low',
+          itemId: 'item-1',
+        },
+      }),
     } as Response);
 
     const data = { quantity: 3 };
@@ -167,10 +180,10 @@ describe('deleteInventoryItem', () => {
 
 describe('fetchLowStockItems', () => {
   it('sends GET /inventory/low-stock with auth header', async () => {
-    const items = [{ itemId: 'item-1', name: 'Milk', isLowStock: true }];
+    const groups = [{ groupId: 'group-1', name: 'Milk', isLowStock: true }];
     mockFetch().mockResolvedValue({
       ok: true,
-      json: async () => ({ items }),
+      json: async () => ({ groups }),
     } as Response);
 
     const result = await fetchLowStockItems();
@@ -178,7 +191,7 @@ describe('fetchLowStockItems', () => {
     expect(mockFetch()).toHaveBeenCalledWith('https://api.example.com/inventory/low-stock', {
       headers: expectedHeaders,
     });
-    expect(result).toEqual({ items });
+    expect(result).toEqual({ groups });
   });
 
   it('throws with server error message on failure', async () => {
@@ -188,6 +201,20 @@ describe('fetchLowStockItems', () => {
     } as Response);
 
     await expect(fetchLowStockItems()).rejects.toThrow('Server error');
+  });
+});
+
+describe('updateInventoryGroupThreshold', () => {
+  it('sets or clears the threshold on the persisted group', async () => {
+    const group = { groupId: 'group-1', name: 'Milk', threshold: 2, totalQuantity: 1 };
+    mockFetch().mockResolvedValue({ ok: true, json: async () => ({ group }) } as Response);
+
+    await expect(updateInventoryGroupThreshold('group-1', 2)).resolves.toEqual({ group });
+    expect(mockFetch()).toHaveBeenCalledWith('https://api.example.com/inventory/groups/group-1', {
+      method: 'PUT',
+      headers: expectedHeaders,
+      body: JSON.stringify({ threshold: 2 }),
+    });
   });
 });
 

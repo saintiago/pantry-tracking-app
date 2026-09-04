@@ -47,11 +47,7 @@ export class PantryStack extends cdk.Stack {
       autoDeleteObjects: true,
       cors: [
         {
-          allowedMethods: [
-            s3.HttpMethods.GET,
-            s3.HttpMethods.PUT,
-            s3.HttpMethods.POST,
-          ],
+          allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.PUT, s3.HttpMethods.POST],
           allowedOrigins: ['*'],
           allowedHeaders: ['*'],
           maxAge: 3600,
@@ -107,36 +103,31 @@ export class PantryStack extends cdk.Stack {
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
-        allowHeaders: [
-          'Content-Type',
-          'Authorization',
-          'X-Amz-Date',
-          'X-Api-Key',
-        ],
+        allowHeaders: ['Content-Type', 'Authorization', 'X-Amz-Date', 'X-Api-Key'],
       },
     });
 
-    this.cognitoAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(
-      this,
-      'PantryAuthorizer',
-      {
-        cognitoUserPools: [this.userPool],
-        authorizerName: 'PantryCognitoAuthorizer',
-        resultsCacheTtl: cdk.Duration.minutes(5),
-      },
-    );
+    this.cognitoAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(this, 'PantryAuthorizer', {
+      cognitoUserPools: [this.userPool],
+      authorizerName: 'PantryCognitoAuthorizer',
+      resultsCacheTtl: cdk.Duration.minutes(5),
+    });
 
     // Placeholder health endpoint (unauthenticated) ensures the API deploys.
     // A protected endpoint uses the authorizer so CDK validates it.
     const healthResource = this.api.root.addResource('health');
-    healthResource.addMethod('GET', new apigateway.MockIntegration({
-      integrationResponses: [{ statusCode: '200' }],
-      requestTemplates: { 'application/json': '{"statusCode": 200}' },
-    }), {
-      methodResponses: [{ statusCode: '200' }],
-      authorizer: this.cognitoAuthorizer,
-      authorizationType: apigateway.AuthorizationType.COGNITO,
-    });
+    healthResource.addMethod(
+      'GET',
+      new apigateway.MockIntegration({
+        integrationResponses: [{ statusCode: '200' }],
+        requestTemplates: { 'application/json': '{"statusCode": 200}' },
+      }),
+      {
+        methodResponses: [{ statusCode: '200' }],
+        authorizer: this.cognitoAuthorizer,
+        authorizationType: apigateway.AuthorizationType.COGNITO,
+      },
+    );
 
     // ─── Auth Lambda ────────────────────────────────────────────────
     const authLambda = new NodejsFunction(this, 'AuthLambda', {
@@ -155,18 +146,19 @@ export class PantryStack extends cdk.Stack {
     // API Gateway: POST /auth/verify (unauthenticated)
     const authResource = this.api.root.addResource('auth');
     const verifyResource = authResource.addResource('verify');
-    verifyResource.addMethod(
-      'POST',
-      new apigateway.LambdaIntegration(authLambda),
-      { authorizationType: apigateway.AuthorizationType.NONE },
-    );
+    verifyResource.addMethod('POST', new apigateway.LambdaIntegration(authLambda), {
+      authorizationType: apigateway.AuthorizationType.NONE,
+    });
 
     // ─── Storage Location Lambda ────────────────────────────────────
     const storageLocationLambda = new NodejsFunction(this, 'StorageLocationLambda', {
       functionName: 'PantryStorageLocationFunction',
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'handler',
-      entry: path.join(__dirname, '../../backend/src/handlers/storage-location/storage-location.ts'),
+      entry: path.join(
+        __dirname,
+        '../../backend/src/handlers/storage-location/storage-location.ts',
+      ),
       environment: {
         TABLE_NAME: this.table.tableName,
       },
@@ -224,6 +216,10 @@ export class PantryStack extends cdk.Stack {
     const barcodeLookupResource = inventoryResource.addResource('barcode-lookup');
     barcodeLookupResource.addMethod('POST', inventoryIntegration, authMethodOptions);
 
+    const inventoryGroupsResource = inventoryResource.addResource('groups');
+    const inventoryGroupIdResource = inventoryGroupsResource.addResource('{groupId}');
+    inventoryGroupIdResource.addMethod('PUT', inventoryIntegration, authMethodOptions);
+
     const inventoryItemIdResource = inventoryResource.addResource('{itemId}');
     inventoryItemIdResource.addMethod('PUT', inventoryIntegration, authMethodOptions);
     inventoryItemIdResource.addMethod('DELETE', inventoryIntegration, authMethodOptions);
@@ -276,17 +272,16 @@ export class PantryStack extends cdk.Stack {
 
     mealPlansResource.addMethod('GET', mealPlanIntegration, authMethodOptions);
     mealPlansResource.addMethod('POST', mealPlanIntegration, authMethodOptions);
+    mealPlansResource.addMethod('PUT', mealPlanIntegration, authMethodOptions);
 
     const mealPlanIdResource = mealPlansResource.addResource('{planId}');
     mealPlanIdResource.addMethod('PUT', mealPlanIntegration, authMethodOptions);
     mealPlanIdResource.addMethod('DELETE', mealPlanIntegration, authMethodOptions);
 
     // ─── CloudFront Distribution ─────────────────────────────────────
-    const originAccessIdentity = new cloudfront.OriginAccessIdentity(
-      this,
-      'WebsiteOAI',
-      { comment: 'OAI for Pantry App website bucket' },
-    );
+    const originAccessIdentity = new cloudfront.OriginAccessIdentity(this, 'WebsiteOAI', {
+      comment: 'OAI for Pantry App website bucket',
+    });
 
     this.websiteBucket.addToResourcePolicy(
       new iam.PolicyStatement({
@@ -301,8 +296,7 @@ export class PantryStack extends cdk.Stack {
         origin: new origins.S3Origin(this.websiteBucket, {
           originAccessIdentity,
         }),
-        viewerProtocolPolicy:
-          cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
       },
       defaultRootObject: 'index.html',
