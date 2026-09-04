@@ -4,8 +4,8 @@
 
 Implement every request in open issues #4, #5, and #6. Existing code and earlier
 checked task lists are inputs, not evidence of current completion. Preserve the
-inventory-group work already present in the worktree. Do not commit, push, or deploy
-without an explicit request in the current user message.
+inventory-group work already present in the worktree. Complete delivery under the
+autonomous workflow in `.kiro/steering/workflow.md`.
 
 ## Tool readiness (2026-09-04)
 

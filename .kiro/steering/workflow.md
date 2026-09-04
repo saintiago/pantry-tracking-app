@@ -11,9 +11,8 @@ inclusion: always
 
 ## Git & Deployment
 
-- **Never run `git commit` unless the user explicitly says "commit" in their message.**
-- **Never run `git push` unless the user explicitly says "push" in their message.**
-- **Never run `./scripts/deploy.sh` or any deployment command unless the user explicitly says "deploy" in their message.**
-- When a user says "commit, push and deploy" that counts as explicit permission for all three — but only for that single request. Do not carry over permission to subsequent messages.
-- After completing code changes, tests, or fixes — stop. Tell the user what's ready and wait for them to explicitly ask to commit, push, or deploy.
-- Do not chain extra commits or pushes during a task (e.g. fixing a bug mid-task does not grant permission to commit that fix — finish the task, report, and wait).
+- Complete requested work end to end, including commits, pushes and deployments when needed, without waiting for separate approval at each step.
+- Follow any narrower scope or restriction in the user's request.
+- Run required checks and commit hooks; resolve failures before releasing changes. Never bypass hooks with `--no-verify`.
+- Verify deployed behavior and report the commit, released version and verification results.
+- Documentation-only changes do not require an application deployment.

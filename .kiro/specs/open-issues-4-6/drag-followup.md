@@ -28,6 +28,9 @@ meal, Escape, pointer cancellation, edge scrolling, touch swiping and touch taps
 Scroll and tap tests are separate gestures so synthetic swipe momentum cannot consume
 the tap under test. The initial combined test exposed that test-driver timing issue.
 
-This follow-up is local and has not been committed or deployed. The live diagnostic
-intercepted meal-creation requests, so it did not modify account data. Release awaits
-the new explicit commit/deploy instruction required by AGENTS.md and workflow.md.
+Released in commit `79c170e` as v0.0.49. Live checks in installed Windows Chrome
+verified ordinary mouse dragging, a scrolled library and second-week destination,
+Escape cancellation, and persistence across reload. Temporary records were removed;
+original inventory, recipes and meal plans were unchanged. The earlier read-only
+diagnostic intercepted meal-creation requests. Repository policy now permits
+autonomous commits, pushes and deployments within the requested scope.

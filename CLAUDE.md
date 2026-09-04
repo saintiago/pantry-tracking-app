@@ -48,7 +48,7 @@ frontend/src/
 - **No modals for forms** — use dedicated full pages (see `AddItemPage`, `ItemDetailPage`)
 - **Tests**: `__tests__/` sibling dirs. Unit = `.test.tsx`, property-based = `.property.test.tsx`, E2E = `e2e/*.spec.ts`
 - **Fix all issues, pre-existing or not**: don't skip a bug, test failure, or broken config just because it predates your change. If something is broken, fix it.
-- **Commits/push/deploy**: NEVER without explicit user instruction per message — this applies to ALL changes including documentation, CLAUDE.md edits, and session learnings. If you have something worth committing, mention it to the user and let them decide.
+- **Autonomous delivery**: Complete requested work, including commits, pushes and deployments when needed, without separate approval at each step. Run required checks and hooks, verify releases, and report the outcome. Follow any narrower scope or restriction in the user's request.
 
 ## Design tokens (current — being redesigned)
 

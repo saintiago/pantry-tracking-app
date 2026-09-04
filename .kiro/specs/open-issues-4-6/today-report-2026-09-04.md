@@ -7,9 +7,10 @@
 The backend, API routes and frontend were deployed through the project's release
 script. CloudFormation reached `UPDATE_COMPLETE`; CloudFront cache invalidation completed.
 
-**Ready locally, not released:** the subsequent Windows Chrome mouse-drag correction.
-It has passed local and installed-Chrome checks but has not been committed, deployed,
-or verified against the live backend. The live app still uses the original drag implementation.
+**Follow-up released:** commit `79c170e`, frontend **v0.0.49**, includes the Windows
+Chrome mouse-drag correction. Live checks verified dragging, scrolling to second-week
+targets, cancellation and persistence after reload. Temporary records were removed
+and the original inventory, recipes and meal plans were confirmed unchanged.
 No Git push was performed today.
 
 This report covers this task's work. Some recipe features and the initial inventory-group
@@ -42,7 +43,7 @@ and the new `recipe-issue4-edge-cases.spec.ts`.
 | --- | --- | --- |
 | A recipe library to the left of the desktop calendar, categorized by existing tags. Multi-tag recipes appear in each category; untagged recipes have an Uncategorized section. | Browser tests checked categories, alphabetical ordering, empty/error/retry states and desktop placement. The actual account's library loaded during live verification. | Released in v0.0.48. |
 | A fourteen-day calendar with seven-day previous/next navigation. | Browser tests checked all dates across a month boundary, navigation, saved assignments and existing add/remove behavior. Live desktop/mobile views showed both weeks. | Released in v0.0.48. |
-| Recipe placement into dated breakfast/lunch/dinner slots, with click/tap and keyboard alternatives. New assignments carry the recipe's serving count. | Initial browser tests and a temporary live assignment confirmed placement and saved servings. However, your later Windows Chrome report showed that the native mouse-drag path was not reliably verified. | Original implementation released; mouse-drag correction remains local. |
+| Recipe placement into dated breakfast/lunch/dinner slots, with click/tap and keyboard alternatives. New assignments carry the recipe's serving count. | Initial browser tests and a temporary live assignment confirmed placement and saved servings. Your later Windows Chrome report prompted a correction, followed by local and live mouse-drag verification. | Mouse-drag correction released in v0.0.49. |
 | Bulk serving changes from today onward, including meals outside the visible fortnight, without changing source recipes or earlier meals. A new collection-level `PUT /meal-plans` route supports this. | Browser tests checked today/future/past behavior, invalid values, failure/retry and navigation persistence. Backend tests checked pagination and validation. Live verification updated an isolated temporary meal in year 9998, after checking that no existing meals occupied that range; existing plans were unchanged. The live “all meals from today” button was not used on your real meal plan. | Released in v0.0.48. |
 | Assignment servings persisted through normal updates and date/meal-type changes. | Backend tests checked creation/update persistence and preservation when moving a record; live reads confirmed the temporary assignment's serving count. | Released in v0.0.48. |
 
@@ -52,7 +53,7 @@ The exact trigger in your browser session was not isolated. Some automated nativ
 drags succeeded, including in installed Chrome, so passing those checks was insufficient
 evidence that your issue was resolved.
 
-The local correction now:
+The correction released in v0.0.49 now:
 
 - Tracks mouse/pen movement directly and captures the pointer instead of relying on native HTML drag events.
 - Starts dragging after six pixels of movement, shows a floating recipe label and highlights the actual dated meal target.
@@ -106,7 +107,7 @@ Cognito sign-in with your credentials and real deployed API requests.
 
 The camera tests substitute generated video for camera hardware while retaining the
 real decoder. They do **not** establish optical performance on a physical phone camera.
-The new mouse correction has not yet received live deployment verification.
+The mouse correction also passed live verification after deployment as v0.0.49.
 
 ## Deployment, data protection and documentation
 
@@ -116,6 +117,6 @@ The new mouse correction has not yet received live deployment verification.
 - Kept credentials out of repository files and test fixtures.
 - Updated product/data-model/testing documentation, the affected barcode and meal-planner specifications, and the issue #4–#6 requirements/design/task/evidence documents. Added a separate drag follow-up record.
 
-The remaining release step is to commit and deploy the mouse-drag correction, then
-verify it live. `AGENTS.md` and `workflow.md` require a new explicit commit/deploy
-instruction for that follow-up; the instruction has not yet been given.
+The mouse-drag correction has been committed, deployed and verified live. Repository
+policy now permits autonomous commits, pushes and deployments within the requested
+scope, with required checks, hooks and release verification preserved.
