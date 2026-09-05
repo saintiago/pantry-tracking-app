@@ -1,0 +1,34 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AssumeCdkBootstrapRoles",
+      "Effect": "Allow",
+      "Action": "sts:AssumeRole",
+      "Resource": [
+        "arn:aws:iam::698643713254:role/cdk-hnb659fds-deploy-role-698643713254-eu-north-1",
+        "arn:aws:iam::698643713254:role/cdk-hnb659fds-file-publishing-role-698643713254-eu-north-1",
+        "arn:aws:iam::698643713254:role/cdk-hnb659fds-image-publishing-role-698643713254-eu-north-1",
+        "arn:aws:iam::698643713254:role/cdk-hnb659fds-lookup-role-698643713254-eu-north-1"
+      ]
+    },
+    {
+      "Sid": "ListWebsiteBucket",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket", "s3:GetBucketLocation"],
+      "Resource": "arn:aws:s3:::pantrystack-websitebucket75c24d94-fm6o3maqklsa"
+    },
+    {
+      "Sid": "PublishWebsite",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+      "Resource": "arn:aws:s3:::pantrystack-websitebucket75c24d94-fm6o3maqklsa/*"
+    },
+    {
+      "Sid": "RefreshCloudFront",
+      "Effect": "Allow",
+      "Action": ["cloudfront:CreateInvalidation", "cloudfront:GetInvalidation"],
+      "Resource": "arn:aws:cloudfront::698643713254:distribution/E1LY24O18STQ5Q"
+    }
+  ]
+}
