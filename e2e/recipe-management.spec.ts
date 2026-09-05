@@ -660,6 +660,9 @@ test.describe('Recipe Management', () => {
     await page.getByRole('textbox', { name: 'Instructions' }).fill('Do stuff');
     await page.getByLabel('Prep time (min)').fill('-5');
     await page.getByLabel('Ingredient 1 name').fill('Flour');
+    await expect(page.getByRole('listbox')).toBeVisible();
+    await page.getByLabel('Ingredient 1 name').press('Escape');
+    await expect(page.getByRole('listbox')).toBeHidden();
     await page.getByLabel('Ingredient 1 quantity').fill('100');
     await page.getByLabel('Ingredient 1 unit').selectOption('g');
     await page.getByLabel('Portions').fill('2');

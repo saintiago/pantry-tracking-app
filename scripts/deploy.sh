@@ -6,23 +6,28 @@ set -euo pipefail
 #   First deploy:  ./scripts/deploy.sh          (deploys infra + frontend)
 #   Frontend only: ./scripts/deploy.sh --frontend-only
 #
-# After the first deploy, CDK outputs are cached in scripts/.env.deploy
+# CI: ./scripts/deploy.sh --ci (non-interactive CDK deployment)
+# After the first deploy, CDK outputs are cached in scripts/cdk-outputs.json
 # so you don't need to look them up again.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-ENV_FILE="$SCRIPT_DIR/.env.deploy"
 FRONTEND_ONLY=false
+APPROVAL=broadening
 
-if [[ "${1:-}" == "--frontend-only" ]]; then
-  FRONTEND_ONLY=true
-fi
+for arg in "$@"; do
+  case "$arg" in
+    --frontend-only) FRONTEND_ONLY=true ;;
+    --ci) APPROVAL=never ;;
+    *) echo "Unknown option: $arg" >&2; exit 1 ;;
+  esac
+done
 
 # ─── Step 1: Deploy infrastructure (skip with --frontend-only) ───────
 if [[ "$FRONTEND_ONLY" == false ]]; then
   echo "🚀 Deploying CDK stack..."
   cd "$ROOT_DIR/infrastructure"
-  npx cdk deploy --require-approval broadening --outputs-file "$SCRIPT_DIR/cdk-outputs.json"
+  npx cdk deploy --require-approval "$APPROVAL" --outputs-file "$SCRIPT_DIR/cdk-outputs.json"
   echo "✅ Infrastructure deployed"
 fi
 
@@ -58,7 +63,7 @@ npm run build
 
 # Inject app version into built sw.js so each deploy gets a unique cache name
 APP_VERSION=$(node -e "console.log(require('./package.json').version)")
-sed -i "s/__VERSION__/$APP_VERSION/g" "$ROOT_DIR/frontend/build/sw.js"
+node -e 'const fs = require("fs"); const file = "build/sw.js"; fs.writeFileSync(file, fs.readFileSync(file, "utf8").replaceAll("__VERSION__", process.argv[1]));' "$APP_VERSION"
 echo "✅ Frontend built (v$APP_VERSION)"
 
 # ─── Step 4: Upload to S3 ────────────────────────────────────────────
@@ -88,7 +93,8 @@ echo "✅ Uploaded to S3"
 
 # ─── Step 5: Invalidate CloudFront cache ─────────────────────────────
 echo "🔄 Invalidating CloudFront cache..."
-aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*" > /dev/null 2>&1
+INVALIDATION_ID=$(aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*" --query 'Invalidation.Id' --output text)
+aws cloudfront wait invalidation-completed --distribution-id "$DISTRIBUTION_ID" --id "$INVALIDATION_ID"
 echo "✅ Cache invalidated"
 
 # ─── Done ─────────────────────────────────────────────────────────────

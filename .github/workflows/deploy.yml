@@ -1,0 +1,68 @@
+name: Deploy production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Never interrupt an in-flight infrastructure deployment.
+concurrency:
+  group: pantry-production
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run type-check
+      - run: npm run build --workspace frontend
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e -- e2e/meal-planner.spec.ts --workers=2
+
+  deploy:
+    needs: verify
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: eu-north-1
+      AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Check deployment configuration
+        run: |
+          if [[ -z "$AWS_DEPLOY_ROLE_ARN" ]]; then
+            echo '::error::Set the repository variable AWS_DEPLOY_ROLE_ARN. See docs/github-deployment.md.'
+            exit 1
+          fi
+      - run: npm ci
+      - name: Authenticate to AWS using OIDC
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5.1.1
+        with:
+          role-to-assume: ${{ env.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          allowed-account-ids: '698643713254'
+          role-session-name: GitHubActions-${{ github.run_id }}
+      - name: Deploy infrastructure and frontend
+        run: bash scripts/deploy.sh --ci
+      - name: Report website URL
+        run: |
+          node -e 'const fs = require("fs"); const { PantryStack } = require("./scripts/cdk-outputs.json"); fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `Deployed to ${PantryStack.CloudFrontUrl}\n`);'
