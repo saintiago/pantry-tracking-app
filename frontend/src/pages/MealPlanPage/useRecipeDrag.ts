@@ -27,10 +27,10 @@ export function useRecipeDrag(
   const [drag, setDrag] = useState<Drag | null>(null);
 
   const findTarget = (x: number, y: number) => {
-    const button = document
-      .elementFromPoint(x, y)
-      ?.closest<HTMLButtonElement>('button[data-meal-date]');
-    return button && !button.disabled && rootRef.current?.contains(button) ? button : null;
+    const button = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-meal-date]');
+    return button && button.dataset.dropDisabled !== 'true' && rootRef.current?.contains(button)
+      ? button
+      : null;
   };
 
   const updateTarget = (gesture: Gesture) => {

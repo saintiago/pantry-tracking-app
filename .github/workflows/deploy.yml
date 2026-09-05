@@ -28,7 +28,7 @@ jobs:
       - run: npm run type-check
       - run: npm run build --workspace frontend
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e -- e2e/meal-planner.spec.ts --workers=2
+      - run: npm run test:e2e -- e2e/meal-planner*.spec.ts --workers=2
 
   deploy:
     needs: verify

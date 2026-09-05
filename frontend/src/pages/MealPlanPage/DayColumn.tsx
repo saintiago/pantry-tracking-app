@@ -36,44 +36,55 @@ const DayColumn: React.FC<DayColumnProps> = ({
         <span style={styles.dayLabel}>{getDayLabel(date)}</span>
         <span style={styles.dayNumber}>{getDayNumber(date)}</span>
       </div>
-      {onDropRecipe &&
-        (['breakfast', 'lunch', 'dinner'] as const).map((mealType) => (
-          <button
-            key={mealType}
-            type="button"
-            aria-label={`Plan ${mealType} on ${date}`}
-            disabled={saving}
-            data-meal-date={date}
-            data-meal-type={mealType}
-            data-drag-over={dragTarget === `${date}/${mealType}` ? 'true' : undefined}
-            onClick={() => {
-              if (selectedRecipeId) onDropRecipe(selectedRecipeId, date, mealType);
-            }}
-            style={{
-              ...styles.addButton,
-              fontSize: '0.75rem',
-              backgroundColor:
-                dragTarget === `${date}/${mealType}`
-                  ? '#d8ebd3'
-                  : selectedRecipeId
-                    ? '#eef5ed'
-                    : '#faf8fc',
-              outline: dragTarget === `${date}/${mealType}` ? '2px solid #4c7c43' : undefined,
-            }}
-          >
-            {mealType}
-          </button>
-        ))}
-      <div style={styles.cards}>
-        {assignments.map((assignment) => (
-          <RecipeCard
-            key={assignment.planId}
-            assignment={assignment}
-            isRemoving={removingPlanIds.has(assignment.planId)}
-            onRemove={onRemove}
-          />
-        ))}
-      </div>
+      {(['breakfast', 'lunch', 'dinner'] as const).map((mealType) => (
+        <section
+          key={mealType}
+          aria-label={`${mealType} on ${date}`}
+          data-meal-date={onDropRecipe ? date : undefined}
+          data-meal-type={mealType}
+          data-drop-disabled={saving ? 'true' : undefined}
+          data-drag-over={dragTarget === `${date}/${mealType}` ? 'true' : undefined}
+          style={{
+            ...styles.mealSlot,
+            backgroundColor:
+              dragTarget === `${date}/${mealType}`
+                ? '#d8ebd3'
+                : selectedRecipeId
+                  ? '#eef5ed'
+                  : '#faf8fc',
+            outline: dragTarget === `${date}/${mealType}` ? '2px solid #4c7c43' : undefined,
+          }}
+        >
+          {onDropRecipe ? (
+            <button
+              type="button"
+              aria-label={`Plan ${mealType} on ${date}`}
+              disabled={saving}
+              data-drag-over={dragTarget === `${date}/${mealType}` ? 'true' : undefined}
+              onClick={() => {
+                if (selectedRecipeId) onDropRecipe(selectedRecipeId, date, mealType);
+              }}
+              style={styles.mealButton}
+            >
+              {mealType}
+            </button>
+          ) : (
+            <div style={styles.mealLabel}>{mealType}</div>
+          )}
+          <div style={styles.cards}>
+            {assignments
+              .filter((assignment) => assignment.mealType === mealType)
+              .map((assignment) => (
+                <RecipeCard
+                  key={assignment.planId}
+                  assignment={assignment}
+                  isRemoving={removingPlanIds.has(assignment.planId)}
+                  onRemove={onRemove}
+                />
+              ))}
+          </div>
+        </section>
+      ))}
       <button
         type="button"
         onClick={handleAddClick}
@@ -116,6 +127,33 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     color: '#1f2937',
     lineHeight: 1,
+  },
+  mealSlot: {
+    display: 'flex',
+    flexDirection: 'column',
+    border: '1px dashed #d1d5db',
+    borderRadius: 8,
+    padding: '0.25rem',
+    minWidth: 0,
+  },
+  mealButton: {
+    width: '100%',
+    minHeight: 36,
+    padding: '0.25rem',
+    border: 'none',
+    borderRadius: 6,
+    backgroundColor: 'transparent',
+    color: '#6b7280',
+    fontSize: '0.75rem',
+    textTransform: 'capitalize',
+    cursor: 'pointer',
+  },
+  mealLabel: {
+    padding: '0.5rem 0.25rem',
+    textAlign: 'center',
+    fontSize: '0.75rem',
+    color: '#6b7280',
+    textTransform: 'capitalize',
   },
   cards: {
     display: 'flex',

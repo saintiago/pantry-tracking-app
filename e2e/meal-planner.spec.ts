@@ -243,6 +243,54 @@ test.describe('Meal Planner', () => {
     await loginAndGoToMealPlan(page);
   });
 
+  for (const mealType of ['breakfast', 'lunch', 'dinner']) {
+    test(`issue 8: dragging into ${mealType} populates that section and persists`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 1440, height: 1000 });
+      const date = addDaysIso(weekStart, 1);
+      const slot = page.getByRole('region', { name: `${mealType} on ${date}`, exact: true });
+      const recipe = page
+        .getByRole('complementary')
+        .getByRole('button', { name: 'Pancakes', exact: true });
+      await recipe.dragTo(slot.getByRole('button', { name: `Plan ${mealType} on ${date}` }));
+      await expect(slot.getByText('Pancakes', { exact: true })).toBeVisible();
+      await expect(page.locator('[data-date]').getByText('Pancakes', { exact: true })).toHaveCount(
+        1,
+      );
+      for (const other of ['breakfast', 'lunch', 'dinner'].filter((meal) => meal !== mealType)) {
+        await expect(
+          page
+            .getByRole('region', { name: `${other} on ${date}`, exact: true })
+            .getByText('Pancakes'),
+        ).toHaveCount(0);
+      }
+      await page.getByRole('button', { name: 'Next week', exact: true }).click();
+      await page.getByRole('button', { name: 'Previous week', exact: true }).click();
+      await expect(slot.getByText('Pancakes', { exact: true })).toBeVisible();
+      await slot.getByRole('button', { name: 'Remove assignment' }).click();
+      await expect(slot.getByText('Pancakes', { exact: true })).toHaveCount(0);
+      await expect(slot.getByRole('button', { name: `Plan ${mealType} on ${date}` })).toBeVisible();
+    });
+  }
+
+  test('issue 8: an existing recipe remains part of the drop target without losing other meals', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    const breakfast = page.getByRole('region', { name: `breakfast on ${weekStart}`, exact: true });
+    const lunch = page.getByRole('region', { name: `lunch on ${weekStart}`, exact: true });
+    await expect(breakfast.getByText('Pasta Carbonara')).toBeVisible();
+    await expect(lunch.getByText('Tomato Soup')).toBeVisible();
+    const recipe = page
+      .getByRole('complementary')
+      .getByRole('button', { name: 'Pancakes', exact: true });
+    await recipe.dragTo(breakfast.getByText('Pasta Carbonara'));
+    await expect(breakfast.getByText('Pancakes')).toBeVisible();
+    await expect(breakfast.getByRole('button', { name: 'Remove assignment' })).toHaveCount(2);
+    await expect(lunch.getByText('Tomato Soup')).toBeVisible();
+  });
+
   // ── 1. View current week ─────────────────────────────────────────────────
 
   test('shows 14 day columns with Mon–Sun labels and an Add button each (Req 1.1)', async ({
