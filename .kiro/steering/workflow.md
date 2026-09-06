@@ -11,6 +11,8 @@ inclusion: always
 
 ## Git & Deployment
 
+- Always pull the latest changes before starting a new task or feature, before making implementation decisions or editing files. Check the working tree and branch first, then run `git pull --ff-only` from the branch's upstream. Preserve local work; if the pull is blocked or no upstream is configured, resolve the situation without discarding changes before proceeding.
+- After pulling, read `CLAUDE.md`, this workflow, the steering documents relevant to the task, and any matching `.kiro/specs/<feature>/` documents so work follows the latest project guidance.
 - Complete requested work end to end, including commits, pushes and deployments when needed, without waiting for separate approval at each step.
 - Follow any narrower scope or restriction in the user's request.
 - Run required checks and commit hooks; resolve failures before releasing changes. Never bypass hooks with `--no-verify`.
