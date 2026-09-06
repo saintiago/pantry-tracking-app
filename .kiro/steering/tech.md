@@ -1,9 +1,11 @@
 # Tech Stack
 
 ## Monorepo Structure
+
 npm workspaces monorepo with three packages: `frontend`, `backend`, `infrastructure`.
 
 ## Frontend
+
 - React 18 with TypeScript
 - Vite for dev server and bundling (output to `frontend/build/`)
 - Jest + ts-jest + jsdom for testing (@testing-library/react, @testing-library/user-event)
@@ -13,6 +15,7 @@ npm workspaces monorepo with three packages: `frontend`, `backend`, `infrastruct
 - Inline styles (React.CSSProperties objects), no CSS framework
 
 ## Backend
+
 - AWS Lambda (Node.js) handlers in TypeScript
 - AWS SDK v3: DynamoDB (single-table design), S3, S3 presigner
 - aws-jwt-verify for token validation
@@ -20,11 +23,13 @@ npm workspaces monorepo with three packages: `frontend`, `backend`, `infrastruct
 - fast-check for property-based testing
 
 ## Infrastructure
+
 - AWS CDK v2 (TypeScript)
 - Services: DynamoDB, S3, Cognito, API Gateway REST, CloudFront, Lambda (NodejsFunction)
 - Single stack: `PantryStack`
 
 ## Code Quality
+
 - ESLint with @typescript-eslint (warn on unused vars and explicit any)
 - Prettier: single quotes, trailing commas, 100 char width, 2-space indent, semicolons
 - TypeScript strict mode, target ES2022
@@ -75,3 +80,10 @@ cd infrastructure && npx cdk deploy
 ## GitHub CLI
 
 The `gh` CLI tool is installed and authenticated for GitHub interactions (issues, PRs, releases, etc.). Use it directly for GitHub operations such as `gh issue view`, `gh pr create`, and `gh pr list`.
+
+## Shared palette
+
+`frontend/src/styles/palette.css` defines the approved September 2026 colors. Use
+`var(--color-...)` in inline React styles. Inventory theme tokens alias these values.
+Pastel backgrounds pair with charcoal text; #8D99AE is for muted icons, and #586477
+is the readable companion for small secondary text. Avoid independent hex palettes.

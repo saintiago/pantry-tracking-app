@@ -138,9 +138,7 @@ const RecipeFilterPanel: React.FC<RecipeFilterPanelProps> = ({
           />
           Only recipes I can make now
         </label>
-        {inventoryLoading && (
-          <span style={styles.loadingHint}>Loading inventory…</span>
-        )}
+        {inventoryLoading && <span style={styles.loadingHint}>Loading inventory…</span>}
       </div>
     </section>
   );
@@ -154,8 +152,8 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     gap: '0.5rem',
     padding: '0.75rem',
-    backgroundColor: '#f9fafb',
-    border: '1px solid #e5e7eb',
+    backgroundColor: 'var(--color-canvas)',
+    border: '1px solid var(--color-border)',
     borderRadius: 8,
   },
   header: {
@@ -167,14 +165,14 @@ const styles: Record<string, React.CSSProperties> = {
   title: {
     fontSize: '0.9375rem',
     fontWeight: 600,
-    color: '#374151',
+    color: 'var(--color-text)',
   },
   clearButton: {
     padding: '0.25rem 0.75rem',
     fontSize: '0.8125rem',
     fontWeight: 600,
-    color: '#1e40af',
-    backgroundColor: '#dbeafe',
+    color: 'var(--color-action)',
+    backgroundColor: 'var(--color-sky)',
     border: 'none',
     borderRadius: 6,
     cursor: 'pointer',
@@ -184,8 +182,8 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.25rem 0.75rem',
     fontSize: '0.8125rem',
     fontWeight: 600,
-    color: '#9ca3af',
-    backgroundColor: '#f3f4f6',
+    color: 'var(--color-secondary)',
+    backgroundColor: 'var(--color-canvas)',
     border: 'none',
     borderRadius: 6,
     cursor: 'not-allowed',
@@ -199,13 +197,13 @@ const styles: Record<string, React.CSSProperties> = {
   label: {
     fontSize: '0.875rem',
     fontWeight: 500,
-    color: '#374151',
+    color: 'var(--color-text)',
   },
   numberInput: {
     minHeight: 36,
     padding: '0.375rem 0.5rem',
     fontSize: '0.9375rem',
-    border: '1px solid #d1d5db',
+    border: '1px solid var(--color-border)',
     borderRadius: 6,
     outline: 'none',
     width: '100%',
@@ -213,7 +211,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   fieldError: {
     fontSize: '0.8125rem',
-    color: '#dc2626',
+    color: 'var(--color-danger-text)',
     margin: 0,
   },
   toggleRow: {
@@ -232,8 +230,8 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     padding: '0.25rem 0.75rem',
     borderRadius: 6,
-    backgroundColor: '#dbeafe',
-    color: '#1e40af',
+    backgroundColor: 'var(--color-sky)',
+    color: 'var(--color-action)',
   },
   toggleLabelActive: {
     display: 'flex',
@@ -245,8 +243,8 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     padding: '0.25rem 0.75rem',
     borderRadius: 6,
-    backgroundColor: '#1e40af',
-    color: '#ffffff',
+    backgroundColor: 'var(--color-mint)',
+    color: 'var(--color-text)',
   },
   checkbox: {
     width: 18,
@@ -256,7 +254,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   loadingHint: {
     fontSize: '0.8125rem',
-    color: '#6b7280',
+    color: 'var(--color-secondary)',
     fontStyle: 'italic',
   },
 };

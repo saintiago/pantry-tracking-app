@@ -7,8 +7,7 @@ interface SignupFormProps {
 }
 
 const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
-  const { signup, confirmSignUp, resendCode, isLoading, error, clearError } =
-    useAuth();
+  const { signup, confirmSignUp, resendCode, isLoading, error, clearError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -72,13 +71,15 @@ const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
         </p>
 
         {displayError && (
-          <div role="alert" style={styles.error}>{displayError}</div>
+          <div role="alert" style={styles.error}>
+            {displayError}
+          </div>
         )}
-        {resendMsg && (
-          <div style={styles.success}>{resendMsg}</div>
-        )}
+        {resendMsg && <div style={styles.success}>{resendMsg}</div>}
 
-        <label style={styles.label} htmlFor="confirm-code">Code</label>
+        <label style={styles.label} htmlFor="confirm-code">
+          Code
+        </label>
         <input
           id="confirm-code"
           type="text"
@@ -115,10 +116,14 @@ const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
       <h2 style={styles.heading}>Create an account</h2>
 
       {displayError && (
-        <div role="alert" style={styles.error}>{displayError}</div>
+        <div role="alert" style={styles.error}>
+          {displayError}
+        </div>
       )}
 
-      <label style={styles.label} htmlFor="signup-email">Email</label>
+      <label style={styles.label} htmlFor="signup-email">
+        Email
+      </label>
       <input
         id="signup-email"
         type="email"
@@ -130,7 +135,9 @@ const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
         placeholder="you@example.com"
       />
 
-      <label style={styles.label} htmlFor="signup-password">Password</label>
+      <label style={styles.label} htmlFor="signup-password">
+        Password
+      </label>
       <input
         id="signup-password"
         type="password"
@@ -144,7 +151,9 @@ const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
 
       <PasswordStrength password={password} />
 
-      <label style={styles.label} htmlFor="signup-confirm-password">Confirm password</label>
+      <label style={styles.label} htmlFor="signup-confirm-password">
+        Confirm password
+      </label>
       <input
         id="signup-confirm-password"
         type="password"
@@ -189,16 +198,16 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: '0.5rem',
   },
   error: {
-    backgroundColor: '#fef2f2',
-    color: '#b91c1c',
+    backgroundColor: 'var(--color-danger)',
+    color: 'var(--color-danger-text)',
     padding: '0.75rem',
     borderRadius: 8,
     fontSize: '0.875rem',
     textAlign: 'center',
   },
   success: {
-    backgroundColor: '#f0fdf4',
-    color: '#166534',
+    backgroundColor: 'var(--color-mint)',
+    color: 'var(--color-action)',
     padding: '0.75rem',
     borderRadius: 8,
     fontSize: '0.875rem',
@@ -208,7 +217,7 @@ const styles: Record<string, React.CSSProperties> = {
   input: {
     padding: '0.75rem',
     borderRadius: 8,
-    border: '1px solid #d1d5db',
+    border: '1px solid var(--color-border)',
     fontSize: '1rem',
     minHeight: 44,
   },
@@ -217,8 +226,8 @@ const styles: Record<string, React.CSSProperties> = {
     minWidth: 44,
     padding: '0.75rem',
     borderRadius: 8,
-    backgroundColor: '#4a90d9',
-    color: '#ffffff',
+    backgroundColor: 'var(--color-mint)',
+    color: 'var(--color-text)',
     fontSize: '1rem',
     fontWeight: 600,
     border: 'none',
@@ -228,13 +237,13 @@ const styles: Record<string, React.CSSProperties> = {
   switchText: {
     textAlign: 'center',
     fontSize: '0.875rem',
-    color: '#6b7280',
+    color: 'var(--color-secondary)',
     marginTop: '0.5rem',
   },
   switchLink: {
     background: 'none',
     border: 'none',
-    color: '#4a90d9',
+    color: 'var(--color-action)',
     fontWeight: 600,
     cursor: 'pointer',
     padding: 0,
@@ -246,7 +255,7 @@ const styles: Record<string, React.CSSProperties> = {
   verifyText: {
     textAlign: 'center',
     fontSize: '0.9375rem',
-    color: '#374151',
+    color: 'var(--color-text)',
     lineHeight: 1.6,
   },
 };

@@ -1,3 +1,4 @@
+import { departmentFor, departmentColor } from '../../pages/ShoppingListPage/departments';
 import React, { useMemo, useState } from 'react';
 import type { StorageLocation } from '../../api/locations/locations';
 import { getUnitLabel, resolveUnit } from '../../types/units';
@@ -350,6 +351,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ summary, onClick }) 
       className={feedbackClass}
       style={{
         ...styles.categoryCard,
+        backgroundColor: departmentColor(departmentFor(summary.category, summary.category)),
         boxShadow: isHovered ? 'var(--inv-shadow-md)' : 'var(--inv-shadow-sm)',
         transform: isHovered ? 'scale(1.025)' : 'scale(1)',
         transition:
@@ -409,7 +411,7 @@ export const BackButton: React.FC<BackButtonProps> = ({ onClick }) => {
       style={{
         ...styles.backButton,
         backgroundColor: isHovered ? 'var(--inv-lavender)' : 'var(--inv-lavender-light)',
-        color: isHovered ? '#ffffff' : '#6b50a0',
+        color: isHovered ? 'var(--color-surface)' : 'var(--color-action)',
         transform: isHovered ? 'scale(1.02)' : 'scale(1)',
         transition:
           'transform 0.18s var(--inv-spring, cubic-bezier(0.34,1.56,0.64,1)), background-color 0.15s ease, color 0.15s ease',
@@ -1010,18 +1012,18 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.5rem 1rem',
     fontSize: '0.875rem',
     fontWeight: 600,
-    color: '#b87040',
+    color: 'var(--color-warning-text)',
     backgroundColor: 'var(--inv-amber-light)',
     borderWidth: 1,
     borderStyle: 'solid',
-    borderColor: '#f0c4a0',
+    borderColor: 'var(--color-peach)',
     borderRadius: 'var(--inv-radius-full)' as unknown as number,
     cursor: 'pointer',
   },
   lowStockToggleActive: {
     backgroundColor: 'var(--inv-amber)',
-    color: '#ffffff',
-    borderColor: '#d4905c',
+    color: 'var(--color-text)',
+    borderColor: 'var(--color-warning-text)',
   },
   emptyText: {
     textAlign: 'center' as const,
@@ -1051,7 +1053,7 @@ const styles: Record<string, React.CSSProperties> = {
     height: 48,
     minWidth: 48,
     borderRadius: 'var(--inv-radius-xs)' as unknown as number,
-    backgroundColor: '#f5ede8',
+    backgroundColor: 'var(--color-canvas)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1101,7 +1103,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '2px 8px',
     borderRadius: 'var(--inv-radius-full)' as unknown as number,
     backgroundColor: 'var(--inv-sage-light)',
-    color: '#3a7a50',
+    color: 'var(--color-action)',
   },
   cardDetails: {
     display: 'flex',
@@ -1139,7 +1141,7 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'space-between',
     padding: '0.75rem 1rem',
     backgroundColor: 'var(--inv-lavender-light)',
-    border: '1px solid #c4b5d4',
+    border: '1px solid var(--color-lavender)',
     borderRadius: 'var(--inv-radius-md)' as unknown as number,
     marginBottom: '0.75rem',
   },
@@ -1181,7 +1183,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '2px 8px',
     borderRadius: 'var(--inv-radius-full)' as unknown as number,
     backgroundColor: 'var(--inv-amber-light)',
-    color: '#b87040',
+    color: 'var(--color-warning-text)',
   },
   categoryCardStats: {
     display: 'flex',
@@ -1281,7 +1283,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: 'none',
     borderRadius: 6,
     background: 'var(--inv-primary)',
-    color: '#fff',
+    color: 'var(--color-text)',
     cursor: 'pointer',
   },
   thresholdCancelButton: {
@@ -1309,7 +1311,7 @@ const styles: Record<string, React.CSSProperties> = {
     paddingTop: '0.5rem',
     paddingBottom: '0.5rem',
     borderLeft: '2px solid var(--inv-border)',
-    backgroundColor: 'var(--inv-surface-alt, #f7f2ee)',
+    backgroundColor: 'var(--inv-surface-alt, var(--color-canvas))',
     borderBottomLeftRadius: 'var(--inv-radius-md)' as unknown as number,
     borderBottomRightRadius: 'var(--inv-radius-md)' as unknown as number,
   },

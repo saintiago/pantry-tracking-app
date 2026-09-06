@@ -1,8 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  fetchRecipeWithAvailability,
-  scaleIngredients,
-} from '../../api/recipes/recipes';
+import { fetchRecipeWithAvailability, scaleIngredients } from '../../api/recipes/recipes';
 import type { RecipeWithAvailability } from '../../api/recipes/recipes';
 import CookingMode from '../../components/CookingMode/CookingMode';
 import useWakeLock from '../../hooks/useWakeLock';
@@ -22,12 +19,7 @@ interface CookingPageProps {
   onExit: () => void;
 }
 
-const CookingPage: React.FC<CookingPageProps> = ({
-  session,
-  onStepChange,
-  onFinish,
-  onExit,
-}) => {
+const CookingPage: React.FC<CookingPageProps> = ({ session, onStepChange, onFinish, onExit }) => {
   const [data, setData] = useState<RecipeWithAvailability | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -84,12 +76,7 @@ const CookingPage: React.FC<CookingPageProps> = ({
     return (
       <div style={styles.page}>
         <div style={styles.pageHeader}>
-          <button
-            onClick={onExit}
-            style={styles.backButton}
-            type="button"
-            aria-label="Go back"
-          >
+          <button onClick={onExit} style={styles.backButton} type="button" aria-label="Go back">
             ← Back
           </button>
         </div>
@@ -97,11 +84,7 @@ const CookingPage: React.FC<CookingPageProps> = ({
           {error || 'Recipe not found'}
         </div>
         {error && (
-          <button
-            type="button"
-            onClick={onFinish}
-            style={styles.endSessionButton}
-          >
+          <button type="button" onClick={onFinish} style={styles.endSessionButton}>
             End Cooking Session
           </button>
         )}
@@ -178,22 +161,22 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     padding: '0.5rem 0.75rem',
     background: 'none',
-    border: '1px solid #e5e7eb',
+    border: '1px solid var(--color-border)',
     borderRadius: 8,
     cursor: 'pointer',
     fontSize: '0.9375rem',
-    color: '#374151',
+    color: 'var(--color-text)',
   },
   loadingState: {
     padding: '2rem 1rem',
     textAlign: 'center',
-    color: '#6b7280',
+    color: 'var(--color-secondary)',
     fontSize: '1rem',
   },
   errorBanner: {
     padding: '0.75rem 1rem',
-    backgroundColor: '#fef2f2',
-    color: '#991b1b',
+    backgroundColor: 'var(--color-danger)',
+    color: 'var(--color-danger-text)',
     borderRadius: 8,
     fontSize: '0.9375rem',
     fontWeight: 600,
@@ -206,9 +189,9 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.625rem 1rem',
     fontSize: '0.9375rem',
     fontWeight: 600,
-    color: '#dc2626',
-    backgroundColor: '#fef2f2',
-    border: '1px solid #fca5a5',
+    color: 'var(--color-danger-text)',
+    backgroundColor: 'var(--color-danger)',
+    border: '1px solid var(--color-danger)',
     borderRadius: 8,
     cursor: 'pointer',
   },

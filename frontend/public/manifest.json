@@ -3,7 +3,7 @@
   "short_name": "Pantry",
   "start_url": "/",
   "display": "standalone",
-  "theme_color": "#4a90d9",
+  "theme_color": "#D8F3DC",
   "background_color": "#ffffff",
   "description": "Manage your household inventory, plan meals, and generate shopping lists.",
   "icons": [

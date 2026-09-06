@@ -59,3 +59,9 @@ filters, linked duplicates, basket persistence/review, pagination and account is
 Cover desktop/mobile browser interactions, purchase mutation success/failure and
 retry/empty states. Run complete tests, types, lint, builds and commit hooks. Push
 and verify the production workflow, published assets and live browser behavior.
+
+## Approved companion extension
+
+See [second-brain.md](second-brain.md) for the September 2026 requirements and
+implementation contract, which supersedes initial manual-restock and purchase-form
+limitations. Release verification is recorded in [verification.md](verification.md).

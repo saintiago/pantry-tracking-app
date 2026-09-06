@@ -154,11 +154,7 @@ const StorageLocationManager: React.FC<StorageLocationManagerProps> = ({
                   autoFocus
                   style={styles.input}
                 />
-                <button
-                  onClick={handleRename}
-                  aria-label="Save rename"
-                  style={styles.actionButton}
-                >
+                <button onClick={handleRename} aria-label="Save rename" style={styles.actionButton}>
                   Save
                 </button>
                 <button
@@ -252,7 +248,7 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: 44,
     padding: '0.5rem 0.75rem',
     fontSize: '1rem',
-    border: '1px solid #d1d5db',
+    border: '1px solid var(--color-border)',
     borderRadius: 6,
     outline: 'none',
   },
@@ -262,8 +258,8 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.5rem 1rem',
     fontSize: '1rem',
     fontWeight: 600,
-    color: '#ffffff',
-    backgroundColor: '#4a90d9',
+    color: 'var(--color-text)',
+    backgroundColor: 'var(--color-mint)',
     border: 'none',
     borderRadius: 6,
     cursor: 'pointer',
@@ -274,7 +270,7 @@ const styles: Record<string, React.CSSProperties> = {
     margin: '0.75rem 0 0',
   },
   listItem: {
-    borderBottom: '1px solid #e5e7eb',
+    borderBottom: '1px solid var(--color-border)',
     padding: '0.5rem 0',
   },
   locationRow: {
@@ -296,9 +292,9 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: 44,
     padding: '0.375rem 0.75rem',
     fontSize: '0.875rem',
-    color: '#374151',
-    backgroundColor: '#f3f4f6',
-    border: '1px solid #d1d5db',
+    color: 'var(--color-text)',
+    backgroundColor: 'var(--color-canvas)',
+    border: '1px solid var(--color-border)',
     borderRadius: 6,
     cursor: 'pointer',
   },
@@ -308,8 +304,8 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.375rem 0.75rem',
     fontSize: '0.875rem',
     fontWeight: 600,
-    color: '#ffffff',
-    backgroundColor: '#dc2626',
+    color: 'var(--color-text)',
+    backgroundColor: 'var(--color-danger)',
     border: 'none',
     borderRadius: 6,
     cursor: 'pointer',
@@ -327,7 +323,7 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: 44,
   },
   errorText: {
-    color: '#dc2626',
+    color: 'var(--color-danger-text)',
     fontSize: '0.875rem',
     margin: '0.25rem 0 0',
   },

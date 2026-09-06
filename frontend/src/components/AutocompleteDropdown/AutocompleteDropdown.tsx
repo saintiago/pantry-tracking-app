@@ -65,7 +65,7 @@ const AutocompleteDropdown: React.FC<AutocompleteDropdownProps> = ({
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node;
       const inputElement = document.getElementById(inputId);
-      
+
       if (
         dropdownRef.current &&
         !dropdownRef.current.contains(target) &&
@@ -168,7 +168,10 @@ const AutocompleteDropdown: React.FC<AutocompleteDropdownProps> = ({
             id={getItemId(index)}
             role="option"
             aria-selected={index === focusedIndex}
-            onMouseDown={(e) => { e.preventDefault(); onSelect(index); }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onSelect(index);
+            }}
             onMouseEnter={() => onFocusChange(index)}
             style={{
               ...styles.dropdownItem,
@@ -188,7 +191,10 @@ const AutocompleteDropdown: React.FC<AutocompleteDropdownProps> = ({
             id={getItemId(index)}
             role="option"
             aria-selected={index === focusedIndex}
-            onMouseDown={(e) => { e.preventDefault(); onSelect(index); }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onSelect(index);
+            }}
             onMouseEnter={() => onFocusChange(index)}
             style={{
               ...styles.dropdownItem,
@@ -208,8 +214,8 @@ export default AutocompleteDropdown;
 const styles: Record<string, React.CSSProperties> = {
   dropdown: {
     position: 'absolute',
-    backgroundColor: '#ffffff',
-    border: '1px solid #d1d5db',
+    backgroundColor: 'var(--color-surface)',
+    border: '1px solid var(--color-border)',
     borderRadius: 6,
     boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
     maxHeight: 200,
@@ -221,12 +227,12 @@ const styles: Record<string, React.CSSProperties> = {
   dropdownItem: {
     padding: '0.5rem 0.75rem',
     cursor: 'pointer',
-    borderBottom: '1px solid #f3f4f6',
+    borderBottom: '1px solid var(--color-canvas)',
     minHeight: 44,
     display: 'flex',
     alignItems: 'center',
   },
   dropdownItemFocused: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: 'var(--color-canvas)',
   },
 };

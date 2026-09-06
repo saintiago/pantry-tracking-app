@@ -28,7 +28,7 @@ const OnlineIndicator: React.FC = () => {
         alignItems: 'center',
         gap: '6px',
         fontSize: '0.75rem',
-        color: isOnline ? '#16a34a' : '#dc2626',
+        color: isOnline ? 'var(--color-action)' : 'var(--color-danger-text)',
       }}
     >
       <span
@@ -36,7 +36,7 @@ const OnlineIndicator: React.FC = () => {
           width: 8,
           height: 8,
           borderRadius: '50%',
-          backgroundColor: isOnline ? '#16a34a' : '#dc2626',
+          backgroundColor: isOnline ? 'var(--color-action)' : 'var(--color-danger-text)',
         }}
       />
       {isOnline ? 'Online' : 'Offline'}

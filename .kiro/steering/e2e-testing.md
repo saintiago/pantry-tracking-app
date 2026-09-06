@@ -1,6 +1,6 @@
 ---
 inclusion: fileMatch
-fileMatchPattern: "e2e/**"
+fileMatchPattern: 'e2e/**'
 ---
 
 # E2E Testing Guide
@@ -24,6 +24,7 @@ All backend API calls are intercepted via `page.route()` in each test file. `VIT
 ## Vite Plugin Details
 
 The `mockAuthPlugin` in `frontend/vite.config.ts`:
+
 - Uses `enforce: 'pre'` to run before other plugins
 - Uses the `load` hook to intercept module loading by resolved file path
 - Normalizes paths with `.split(path.sep).join('/')` for Windows compatibility
@@ -49,7 +50,7 @@ Scope modal selectors to the dialog to avoid strict mode violations with invento
 function modal(page: Page): Locator {
   return page.getByRole('dialog', { name: 'Add Item' });
 }
-await modal(page).getByLabel('Product Name')
+await modal(page).getByLabel('Product Name');
 ```
 
 ## Coverage Expectation
@@ -113,3 +114,12 @@ e2e/
 - Windows path separators — the Vite plugin normalizes `\` to `/` for path matching.
 - `VITE_API_URL` must be set to a non-empty dummy URL (e.g. `https://mock-api.test`) so API fetches don't hit the Vite dev server.
 - Vite dev server reuse — if component changes aren't picked up, kill the server and rerun.
+
+## Shopping companion coverage
+
+`shopping-list.spec.ts` covers mint week/day/recipe filters, department grouping,
+reserve math, shared basket state, manual edit/remove/undo, full purchase fields and
+partial completion, preferences/package rounding, store shopping, budget/link/export
+preview, deferral/unavailable, errors/reconnect and desktop/320/390px palette layouts.
+Use role/name locators for full AddItem fields: required-marker label text differs
+from the accessible name. Mock `/recipes/tags` when navigating across all app tabs.

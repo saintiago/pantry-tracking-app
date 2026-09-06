@@ -48,11 +48,12 @@ const DayColumn: React.FC<DayColumnProps> = ({
             ...styles.mealSlot,
             backgroundColor:
               dragTarget === `${date}/${mealType}`
-                ? '#d8ebd3'
+                ? 'var(--color-mint)'
                 : selectedRecipeId
-                  ? '#eef5ed'
-                  : '#faf8fc',
-            outline: dragTarget === `${date}/${mealType}` ? '2px solid #4c7c43' : undefined,
+                  ? 'var(--color-success)'
+                  : 'var(--color-canvas)',
+            outline:
+              dragTarget === `${date}/${mealType}` ? '2px solid var(--color-action)' : undefined,
           }}
         >
           {onDropRecipe ? (
@@ -113,25 +114,25 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     gap: '0.125rem',
     paddingBottom: '0.5rem',
-    borderBottom: '1px solid #e5e7eb',
+    borderBottom: '1px solid var(--color-border)',
   },
   dayLabel: {
     fontSize: '0.75rem',
     fontWeight: 600,
-    color: '#6b7280',
+    color: 'var(--color-secondary)',
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
   },
   dayNumber: {
     fontSize: '1.25rem',
     fontWeight: 700,
-    color: '#1f2937',
+    color: 'var(--color-text)',
     lineHeight: 1,
   },
   mealSlot: {
     display: 'flex',
     flexDirection: 'column',
-    border: '1px dashed #d1d5db',
+    border: '1px dashed var(--color-border)',
     borderRadius: 8,
     padding: '0.25rem',
     minWidth: 0,
@@ -143,7 +144,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: 'none',
     borderRadius: 6,
     backgroundColor: 'transparent',
-    color: '#6b7280',
+    color: 'var(--color-secondary)',
     fontSize: '0.75rem',
     textTransform: 'capitalize',
     cursor: 'pointer',
@@ -152,7 +153,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.5rem 0.25rem',
     textAlign: 'center',
     fontSize: '0.75rem',
-    color: '#6b7280',
+    color: 'var(--color-secondary)',
     textTransform: 'capitalize',
   },
   cards: {
@@ -169,9 +170,9 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: 36,
     fontSize: '1.25rem',
     lineHeight: 1,
-    color: '#6b7280',
+    color: 'var(--color-secondary)',
     backgroundColor: 'transparent',
-    border: '1px dashed #d1d5db',
+    border: '1px dashed var(--color-border)',
     borderRadius: 8,
     cursor: 'pointer',
     padding: '0.25rem',

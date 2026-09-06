@@ -50,9 +50,10 @@ const Tooltip: React.FC<TooltipProps> = ({ content, children, position = 'top' }
             : `translateX(-50%) scale(0.88) translateY(${isTop ? '4px' : '-4px'})`,
           opacity: visible ? 1 : 0,
           pointerEvents: 'none',
-          transition: 'opacity 0.16s ease, transform 0.2s var(--inv-spring, cubic-bezier(0.34,1.56,0.64,1))',
-          backgroundColor: '#4a3f3a',
-          color: '#fffaf8',
+          transition:
+            'opacity 0.16s ease, transform 0.2s var(--inv-spring, cubic-bezier(0.34,1.56,0.64,1))',
+          backgroundColor: 'var(--color-text)',
+          color: 'var(--color-surface)',
           borderRadius: 10,
           fontSize: '0.75rem',
           padding: '6px 10px',

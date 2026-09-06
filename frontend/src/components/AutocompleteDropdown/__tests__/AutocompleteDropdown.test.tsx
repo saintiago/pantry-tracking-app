@@ -88,7 +88,7 @@ describe('AutocompleteDropdown', () => {
         category: 'Test',
       }));
       render(<AutocompleteDropdown {...defaultProps} items={manyItems} />);
-      
+
       // Should only render first 10
       expect(screen.getByText('Item 0')).toBeInTheDocument();
       expect(screen.getByText('Item 9')).toBeInTheDocument();
@@ -100,7 +100,7 @@ describe('AutocompleteDropdown', () => {
     it('should call onSelect when item is clicked', () => {
       const onSelect = jest.fn();
       render(<AutocompleteDropdown {...defaultProps} items={mockItems} onSelect={onSelect} />);
-      
+
       fireEvent.mouseDown(screen.getByText('Banana'));
       expect(onSelect).toHaveBeenCalledWith(1);
     });
@@ -108,22 +108,18 @@ describe('AutocompleteDropdown', () => {
     it('should call onFocusChange when mouse enters item', () => {
       const onFocusChange = jest.fn();
       render(
-        <AutocompleteDropdown
-          {...defaultProps}
-          items={mockItems}
-          onFocusChange={onFocusChange}
-        />,
+        <AutocompleteDropdown {...defaultProps} items={mockItems} onFocusChange={onFocusChange} />,
       );
-      
+
       fireEvent.mouseEnter(screen.getByText('Carrot'));
       expect(onFocusChange).toHaveBeenCalledWith(2);
     });
 
     it('should apply focused styling to focused item', () => {
       render(<AutocompleteDropdown {...defaultProps} items={mockItems} focusedIndex={1} />);
-      
+
       const bananaItem = screen.getByTestId('dropdown-item-1');
-      expect(bananaItem).toHaveStyle({ backgroundColor: '#f3f4f6' });
+      expect(bananaItem).toHaveStyle({ backgroundColor: 'var(--color-canvas)' });
     });
   });
 
@@ -153,7 +149,7 @@ describe('AutocompleteDropdown', () => {
           onFocusChange={onFocusChange}
         />,
       );
-      
+
       fireEvent.keyDown(document.getElementById('test-input')!, { key: 'ArrowDown' });
       expect(onFocusChange).toHaveBeenCalledWith(1);
     });
@@ -168,7 +164,7 @@ describe('AutocompleteDropdown', () => {
           onFocusChange={onFocusChange}
         />,
       );
-      
+
       fireEvent.keyDown(document.getElementById('test-input')!, { key: 'ArrowDown' });
       expect(onFocusChange).toHaveBeenCalledWith(0);
     });
@@ -183,7 +179,7 @@ describe('AutocompleteDropdown', () => {
           onFocusChange={onFocusChange}
         />,
       );
-      
+
       fireEvent.keyDown(document.getElementById('test-input')!, { key: 'ArrowUp' });
       expect(onFocusChange).toHaveBeenCalledWith(1);
     });
@@ -198,7 +194,7 @@ describe('AutocompleteDropdown', () => {
           onFocusChange={onFocusChange}
         />,
       );
-      
+
       fireEvent.keyDown(document.getElementById('test-input')!, { key: 'ArrowUp' });
       expect(onFocusChange).toHaveBeenCalledWith(2);
     });
@@ -213,7 +209,7 @@ describe('AutocompleteDropdown', () => {
           onFocusChange={onFocusChange}
         />,
       );
-      
+
       fireEvent.keyDown(document.getElementById('test-input')!, { key: 'Tab' });
       expect(onFocusChange).toHaveBeenCalledWith(1);
     });
@@ -228,7 +224,7 @@ describe('AutocompleteDropdown', () => {
           onFocusChange={onFocusChange}
         />,
       );
-      
+
       fireEvent.keyDown(document.getElementById('test-input')!, { key: 'Tab' });
       expect(onFocusChange).toHaveBeenCalledWith(0);
     });
@@ -243,7 +239,7 @@ describe('AutocompleteDropdown', () => {
           onFocusChange={onFocusChange}
         />,
       );
-      
+
       fireEvent.keyDown(document.getElementById('test-input')!, { key: 'Tab', shiftKey: true });
       expect(onFocusChange).toHaveBeenCalledWith(1);
     });
@@ -258,7 +254,7 @@ describe('AutocompleteDropdown', () => {
           onFocusChange={onFocusChange}
         />,
       );
-      
+
       fireEvent.keyDown(document.getElementById('test-input')!, { key: 'Tab', shiftKey: true });
       expect(onFocusChange).toHaveBeenCalledWith(2);
     });
@@ -273,7 +269,7 @@ describe('AutocompleteDropdown', () => {
           onSelect={onSelect}
         />,
       );
-      
+
       fireEvent.keyDown(document.getElementById('test-input')!, { key: 'Enter' });
       expect(onSelect).toHaveBeenCalledWith(1);
     });
@@ -288,7 +284,7 @@ describe('AutocompleteDropdown', () => {
           onSelect={onSelect}
         />,
       );
-      
+
       fireEvent.keyDown(document.getElementById('test-input')!, { key: ' ' });
       expect(onSelect).toHaveBeenCalledWith(1);
     });
@@ -296,7 +292,7 @@ describe('AutocompleteDropdown', () => {
     it('should close dropdown with Escape key', () => {
       const onClose = jest.fn();
       render(<AutocompleteDropdown {...defaultProps} items={mockItems} onClose={onClose} />);
-      
+
       fireEvent.keyDown(document.getElementById('test-input')!, { key: 'Escape' });
       expect(onClose).toHaveBeenCalled();
     });
@@ -304,16 +300,12 @@ describe('AutocompleteDropdown', () => {
     it('should not handle keyboard events when input is not focused', () => {
       const onFocusChange = jest.fn();
       render(
-        <AutocompleteDropdown
-          {...defaultProps}
-          items={mockItems}
-          onFocusChange={onFocusChange}
-        />,
+        <AutocompleteDropdown {...defaultProps} items={mockItems} onFocusChange={onFocusChange} />,
       );
-      
+
       // Blur the input
       document.getElementById('test-input')!.blur();
-      
+
       fireEvent.keyDown(document, { key: 'ArrowDown' });
       expect(onFocusChange).not.toHaveBeenCalled();
     });
@@ -336,7 +328,7 @@ describe('AutocompleteDropdown', () => {
     it('should close dropdown when clicking outside', () => {
       const onClose = jest.fn();
       render(<AutocompleteDropdown {...defaultProps} items={mockItems} onClose={onClose} />);
-      
+
       fireEvent.mouseDown(document.body);
       expect(onClose).toHaveBeenCalled();
     });
@@ -344,7 +336,7 @@ describe('AutocompleteDropdown', () => {
     it('should not close dropdown when clicking inside dropdown', () => {
       const onClose = jest.fn();
       render(<AutocompleteDropdown {...defaultProps} items={mockItems} onClose={onClose} />);
-      
+
       const dropdown = screen.getByTestId('autocomplete-dropdown');
       fireEvent.mouseDown(dropdown);
       expect(onClose).not.toHaveBeenCalled();
@@ -353,7 +345,7 @@ describe('AutocompleteDropdown', () => {
     it('should not close dropdown when clicking on input', () => {
       const onClose = jest.fn();
       render(<AutocompleteDropdown {...defaultProps} items={mockItems} onClose={onClose} />);
-      
+
       const input = document.getElementById('test-input')!;
       fireEvent.mouseDown(input);
       expect(onClose).not.toHaveBeenCalled();
@@ -369,7 +361,11 @@ describe('AutocompleteDropdown', () => {
 
     it('should have aria-label', () => {
       render(
-        <AutocompleteDropdown {...defaultProps} items={mockItems} ariaLabel="Product suggestions" />,
+        <AutocompleteDropdown
+          {...defaultProps}
+          items={mockItems}
+          ariaLabel="Product suggestions"
+        />,
       );
       expect(screen.getByLabelText('Product suggestions')).toBeInTheDocument();
     });
@@ -406,13 +402,13 @@ describe('AutocompleteDropdown', () => {
       const { rerender } = render(
         <AutocompleteDropdown {...defaultProps} items={mockItems} focusedIndex={0} />,
       );
-      
+
       const item2 = screen.getByTestId('dropdown-item-2');
       const scrollIntoViewMock = jest.fn();
       item2.scrollIntoView = scrollIntoViewMock;
-      
+
       rerender(<AutocompleteDropdown {...defaultProps} items={mockItems} focusedIndex={2} />);
-      
+
       await waitFor(() => {
         expect(scrollIntoViewMock).toHaveBeenCalledWith({
           block: 'nearest',

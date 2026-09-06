@@ -35,7 +35,7 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     minHeight: '100vh',
     padding: '1rem',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: 'var(--color-canvas)',
   },
   card: {
     display: 'flex',
@@ -44,7 +44,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: '100%',
     maxWidth: 440,
     padding: '2rem 1.5rem',
-    backgroundColor: '#ffffff',
+    backgroundColor: 'var(--color-surface)',
     borderRadius: 12,
     boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
   },

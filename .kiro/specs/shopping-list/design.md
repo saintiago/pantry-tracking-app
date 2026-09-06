@@ -38,3 +38,9 @@ turns a positive shortage into an apparent zero. All controls have visible label
 the shopping lists remain close to the top on mobile.
 Errors do not silently replace known data with an empty list. Refresh commits a
 complete snapshot; request IDs prevent stale responses replacing newer periods.
+
+## Approved companion extension
+
+See [second-brain.md](second-brain.md) for the September 2026 requirements and
+implementation contract, which supersedes initial manual-restock and purchase-form
+limitations. Release verification is recorded in [verification.md](verification.md).

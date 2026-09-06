@@ -175,7 +175,7 @@ export function calculateShopping(data: ShoppingData, plans: MealPlan[], today: 
       meal: rows.get(`group:${group.groupId}`),
     }))
     .sort((a, b) => a.group.name.localeCompare(b.group.name));
-  return { ingredients, lowStock, warnings: [...warnings] };
+  return { ingredients, lowStock, warnings: [...warnings], remaining };
 }
 
 export interface BasketEntry {

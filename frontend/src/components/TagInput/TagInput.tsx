@@ -235,7 +235,7 @@ const dropdownItemBase: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   fontSize: '0.9375rem',
-  color: '#374151',
+  color: 'var(--color-text)',
 };
 
 const styles: Record<string, React.CSSProperties> = {
@@ -253,8 +253,8 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '0.25rem',
-    backgroundColor: '#dbeafe',
-    color: '#1e40af',
+    backgroundColor: 'var(--color-sky)',
+    color: 'var(--color-action)',
     borderRadius: 16,
     fontWeight: 600,
     fontSize: '0.875rem',
@@ -264,7 +264,7 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'none',
     border: 'none',
     cursor: 'pointer',
-    color: '#1e40af',
+    color: 'var(--color-action)',
     fontSize: '1rem',
     lineHeight: 1,
     padding: '0 0.1rem',
@@ -276,7 +276,7 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: 44,
     padding: '0.5rem 0.75rem',
     fontSize: '1rem',
-    border: '1px solid #d1d5db',
+    border: '1px solid var(--color-border)',
     borderRadius: 6,
     outline: 'none',
     boxSizing: 'border-box' as const,
@@ -286,8 +286,8 @@ const styles: Record<string, React.CSSProperties> = {
     top: '100%',
     left: 0,
     right: 0,
-    backgroundColor: '#ffffff',
-    border: '1px solid #d1d5db',
+    backgroundColor: 'var(--color-surface)',
+    border: '1px solid var(--color-border)',
     borderRadius: 6,
     boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
     maxHeight: 200,
@@ -300,10 +300,10 @@ const styles: Record<string, React.CSSProperties> = {
   dropdownItem: dropdownItemBase,
   dropdownItemHighlighted: {
     ...dropdownItemBase,
-    backgroundColor: '#e0e7ff',
+    backgroundColor: 'var(--color-lavender)',
   },
   errorText: {
-    color: '#dc2626',
+    color: 'var(--color-danger-text)',
     fontSize: '0.875rem',
   },
 };

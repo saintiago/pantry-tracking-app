@@ -64,19 +64,19 @@ describe('IngredientAvailability', () => {
   it('applies green chip color for available status', () => {
     render(<IngredientAvailability availability={[available]} missingCount={0} />);
     const chip = screen.getByText('available');
-    expect(chip).toHaveStyle({ backgroundColor: '#16a34a' });
+    expect(chip).toHaveStyle({ backgroundColor: 'var(--color-success)' });
   });
 
   it('applies amber chip color for partial status', () => {
     render(<IngredientAvailability availability={[partial]} missingCount={1} />);
     const chip = screen.getByText('have 2 / need 4 grams');
-    expect(chip).toHaveStyle({ backgroundColor: '#f59e0b' });
+    expect(chip).toHaveStyle({ backgroundColor: 'var(--color-warning)' });
   });
 
   it('applies red chip color for missing status', () => {
     render(<IngredientAvailability availability={[missing]} missingCount={1} />);
     const chip = screen.getByText('missing');
-    expect(chip).toHaveStyle({ backgroundColor: '#dc2626' });
+    expect(chip).toHaveStyle({ backgroundColor: 'var(--color-danger)' });
   });
 
   it('groups ingredients by section and renders a null handful without a number', () => {

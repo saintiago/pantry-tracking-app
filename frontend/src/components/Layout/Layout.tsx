@@ -2,7 +2,16 @@ import React from 'react';
 import OnlineIndicator from '../OnlineIndicator/OnlineIndicator';
 import { APP_VERSION } from '../../config';
 
-export type PageId = 'inventory' | 'recipes' | 'meal-plan' | 'shopping-list' | 'purchase' | 'add-item' | 'item-detail' | 'cooking';
+export type PageId =
+  | 'inventory'
+  | 'recipes'
+  | 'meal-plan'
+  | 'shopping-list'
+  | 'purchase'
+  | 'shopping-edit'
+  | 'add-item'
+  | 'item-detail'
+  | 'cooking';
 
 interface NavItem {
   id: PageId;
@@ -25,43 +34,61 @@ interface LayoutProps {
   onReturnToCooking?: () => void;
 }
 
-const Layout: React.FC<LayoutProps> = ({ activePage, onNavigate, children, cookingSession, onReturnToCooking }) => {
+const Layout: React.FC<LayoutProps> = ({
+  activePage,
+  onNavigate,
+  children,
+  cookingSession,
+  onReturnToCooking,
+}) => {
   const isInventory = activePage === 'inventory';
   const isCooking = activePage === 'cooking';
-  const activeColor = isInventory ? '#d4829a' : '#4a90d9';
+  const activeColor = 'var(--color-action)';
   const showCookingBanner = cookingSession != null && activePage !== 'cooking';
 
   return (
     <div className="layout" style={styles.layout}>
       {/* Header */}
-      <header style={{
-        ...styles.header,
-        backgroundColor: isInventory ? '#fffaf8' : '#ffffff',
-        borderBottom: `1px solid ${isInventory ? '#f0ddd5' : '#e5e7eb'}`,
-      }}>
+      <header
+        style={{
+          ...styles.header,
+          backgroundColor: 'var(--color-surface)',
+          borderBottom: `1px solid ${'var(--color-border)'}`,
+        }}
+      >
         <div style={styles.titleGroup}>
-          <h1 style={{
-            ...styles.title,
-            color: isInventory ? '#4a3f3a' : '#1a1a1a',
-          }}>Pantry Tracking App</h1>
+          <h1
+            style={{
+              ...styles.title,
+              color: 'var(--color-text)',
+            }}
+          >
+            Pantry Tracking App
+          </h1>
           <span style={styles.version}>v{APP_VERSION}</span>
         </div>
         <OnlineIndicator />
       </header>
 
       {/* Main content */}
-      <main style={{
-        ...styles.main,
-        backgroundColor: isInventory ? '#fdf6f0' : undefined,
-        paddingBottom: showCookingBanner ? '6.75rem' : '5rem',
-        ...(isCooking ? { overflow: 'hidden', position: 'relative', padding: 0 } : {}),
-      }}>{children}</main>
+      <main
+        style={{
+          ...styles.main,
+          backgroundColor: isInventory ? 'var(--color-canvas)' : undefined,
+          paddingBottom: showCookingBanner ? '6.75rem' : '5rem',
+          ...(isCooking ? { overflow: 'hidden', position: 'relative', padding: 0 } : {}),
+        }}
+      >
+        {children}
+      </main>
 
       {/* Return to Cooking banner */}
       {showCookingBanner && (
         <div style={styles.cookingBanner} data-testid="return-to-cooking-banner">
           <div style={styles.cookingBannerInner}>
-            <span style={styles.cookingBannerIcon} aria-hidden="true">🍳</span>
+            <span style={styles.cookingBannerIcon} aria-hidden="true">
+              🍳
+            </span>
             <span style={styles.cookingBannerText}>
               Cooking: &ldquo;{cookingSession!.recipeName}&rdquo;
             </span>
@@ -78,11 +105,14 @@ const Layout: React.FC<LayoutProps> = ({ activePage, onNavigate, children, cooki
       )}
 
       {/* Bottom navigation */}
-      <nav style={{
-        ...styles.nav,
-        backgroundColor: isInventory ? '#fffaf8' : '#ffffff',
-        borderTop: `1px solid ${isInventory ? '#f0ddd5' : '#e5e7eb'}`,
-      }} aria-label="Main navigation">
+      <nav
+        style={{
+          ...styles.nav,
+          backgroundColor: 'var(--color-surface)',
+          borderTop: `1px solid ${'var(--color-border)'}`,
+        }}
+        aria-label="Main navigation"
+      >
         {NAV_ITEMS.map((item) => {
           const isActive = activePage === item.id;
           return (
@@ -92,7 +122,8 @@ const Layout: React.FC<LayoutProps> = ({ activePage, onNavigate, children, cooki
               aria-current={isActive ? 'page' : undefined}
               style={{
                 ...styles.navButton,
-                color: isActive ? activeColor : '#6b7280',
+                color: isActive ? activeColor : 'var(--color-secondary)',
+                backgroundColor: isActive ? 'var(--color-mint)' : 'var(--color-surface)',
                 borderTop: isActive ? `2px solid ${activeColor}` : '2px solid transparent',
               }}
             >
@@ -121,8 +152,8 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: '0.75rem 1rem',
-    backgroundColor: '#ffffff',
-    borderBottom: '1px solid #e5e7eb',
+    backgroundColor: 'var(--color-surface)',
+    borderBottom: '1px solid var(--color-border)',
     position: 'sticky',
     top: 0,
     zIndex: 10,
@@ -138,7 +169,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   version: {
     fontSize: '0.6875rem',
-    color: '#9ca3af',
+    color: 'var(--color-secondary)',
     fontWeight: 400,
   },
   main: {
@@ -155,8 +186,8 @@ const styles: Record<string, React.CSSProperties> = {
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#ffffff',
-    borderTop: '1px solid #e5e7eb',
+    backgroundColor: 'var(--color-surface)',
+    borderTop: '1px solid var(--color-border)',
     zIndex: 10,
     maxWidth: 1920,
     margin: '0 auto',
@@ -191,9 +222,9 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: '0.5rem 1rem',
-    backgroundColor: '#fdeef3',
-    borderTop: '1px solid #f5c6d5',
-    borderBottom: '1px solid #f5c6d5',
+    backgroundColor: 'var(--color-mint)',
+    borderTop: '1px solid var(--color-mint)',
+    borderBottom: '1px solid var(--color-mint)',
     zIndex: 9,
     maxWidth: 1920,
     margin: '0 auto',
@@ -214,7 +245,7 @@ const styles: Record<string, React.CSSProperties> = {
   cookingBannerText: {
     fontSize: '0.875rem',
     fontWeight: 600,
-    color: '#b5607a',
+    color: 'var(--color-action)',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
@@ -225,8 +256,8 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.5rem 0.75rem',
     fontSize: '0.8125rem',
     fontWeight: 700,
-    color: '#ffffff',
-    backgroundColor: '#d4829a',
+    color: 'var(--color-text)',
+    backgroundColor: 'var(--color-mint)',
     border: 'none',
     borderRadius: 8,
     cursor: 'pointer',

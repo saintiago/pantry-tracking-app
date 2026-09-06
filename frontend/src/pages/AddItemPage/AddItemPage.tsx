@@ -27,12 +27,11 @@ export interface AddItemPageProps {
   onBack: () => void;
   onSubmit: (item: AddItemData) => Promise<{ error?: string }>;
   locations: StorageLocation[];
-  prefillData?: {
-    name?: string;
-    brand?: string;
-    category?: string;
-    barcode?: string;
-  };
+  prefillData?: Partial<Omit<AddItemData, 'pictureFile'>>;
+  title?: string;
+  submitText?: string;
+  backLabel?: string;
+  returnAfterSave?: boolean;
 }
 
 interface FormErrors {
@@ -69,18 +68,35 @@ const INITIAL_FORM = {
 const AUTOFILL_STYLES = {
   // Prefilled highlight (blue): used when a field was populated by Autofill.
   prefilled: {
-    backgroundColor: '#e0f2fe',
-    borderColor: '#0284c7',
+    backgroundColor: 'var(--color-sky)',
+    borderColor: 'var(--color-action)',
   },
 };
 
-const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, prefillData }) => {
+const AddItemPage: React.FC<AddItemPageProps> = ({
+  onBack,
+  onSubmit,
+  locations,
+  prefillData,
+  title = 'Add Item',
+  submitText = 'Add new item',
+  backLabel = 'Go back',
+  returnAfterSave = true,
+}) => {
   const [form, setForm] = useState({
     ...INITIAL_FORM,
     name: prefillData?.name ?? '',
     brand: prefillData?.brand ?? '',
     category: prefillData?.category ?? '',
     barcode: prefillData?.barcode ?? '',
+    quantity: prefillData?.quantity !== undefined ? String(prefillData.quantity) : '',
+    unit: prefillData?.unit ?? 'piece',
+    locationId: prefillData?.locationId ?? '',
+    expirationDate: prefillData?.expirationDate ?? '',
+    locationDetails: prefillData?.locationDetails ?? '',
+    pictureUrl: prefillData?.pictureUrl ?? '',
+    whereToBuy: prefillData?.whereToBuy ?? '',
+    onlineStoreLink: prefillData?.onlineStoreLink ?? '',
   });
   const [pictureFile, setPictureFile] = useState<File | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -492,7 +508,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
           setSubmitError(result.error);
         } else {
           setSuccessMessage('Item added successfully!');
-          setTimeout(() => onBack(), 1200);
+          if (returnAfterSave) setTimeout(() => onBack(), 1200);
         }
       } catch {
         setSubmitError('An unexpected error occurred.');
@@ -500,19 +516,19 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
         setSubmitting(false);
       }
     },
-    [form, pictureFile, validate, onSubmit, onBack],
+    [form, pictureFile, validate, onSubmit, onBack, returnAfterSave],
   );
 
-  const submitLabel = submitting ? 'Adding…' : 'Add new item';
+  const submitLabel = submitting ? 'Adding…' : submitText;
 
   return (
     <div style={styles.page}>
       {/* Page header with back button */}
       <div style={styles.pageHeader}>
-        <button onClick={onBack} style={styles.backButton} type="button" aria-label="Go back">
+        <button onClick={onBack} style={styles.backButton} type="button" aria-label={backLabel}>
           ← Back
         </button>
-        <h2 style={styles.pageTitle}>Add Item</h2>
+        <h2 style={styles.pageTitle}>{title}</h2>
       </div>
 
       {successMessage && (
@@ -563,7 +579,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
               renderItem={(item) => (
                 <div>
                   <div style={{ fontWeight: 600 }}>{item.name}</div>
-                  <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                  <div style={{ fontSize: '0.875rem', color: 'var(--color-secondary)' }}>
                     {item.category} {item.brand ? `• ${item.brand}` : ''}
                   </div>
                 </div>
@@ -755,7 +771,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({ onBack, onSubmit, locations, 
               renderItem={(item) => (
                 <div>
                   <div style={{ fontWeight: 600 }}>{item.barcode}</div>
-                  <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                  <div style={{ fontSize: '0.875rem', color: 'var(--color-secondary)' }}>
                     {item.name} {item.brand ? `• ${item.brand}` : ''}
                   </div>
                 </div>
@@ -925,11 +941,11 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     padding: '0.5rem 0.75rem',
     background: 'none',
-    border: '1px solid #e5e7eb',
+    border: '1px solid var(--color-border)',
     borderRadius: 8,
     cursor: 'pointer',
     fontSize: '0.9375rem',
-    color: '#374151',
+    color: 'var(--color-text)',
   },
   pageTitle: {
     fontSize: '1.25rem',
@@ -949,13 +965,13 @@ const styles: Record<string, React.CSSProperties> = {
   label: {
     fontSize: '0.875rem',
     fontWeight: 600,
-    color: '#374151',
+    color: 'var(--color-text)',
   },
   input: {
     minHeight: 44,
     padding: '0.5rem 0.75rem',
     fontSize: '1rem',
-    border: '1px solid #d1d5db',
+    border: '1px solid var(--color-border)',
     borderRadius: 6,
     outline: 'none',
     width: '100%',
@@ -965,12 +981,12 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: 44,
     padding: '0.5rem 0.75rem',
     fontSize: '1rem',
-    border: '1px solid #d1d5db',
+    border: '1px solid var(--color-border)',
     borderRadius: 6,
     outline: 'none',
     width: '100%',
     boxSizing: 'border-box',
-    backgroundColor: '#ffffff',
+    backgroundColor: 'var(--color-surface)',
   },
   fileInput: {
     minHeight: 44,
@@ -979,29 +995,29 @@ const styles: Record<string, React.CSSProperties> = {
   },
   fieldError: {
     fontSize: '0.8125rem',
-    color: '#dc2626',
+    color: 'var(--color-danger-text)',
   },
   errorBanner: {
     padding: '0.75rem 1rem',
-    backgroundColor: '#fef2f2',
-    border: '1px solid #fca5a5',
+    backgroundColor: 'var(--color-danger)',
+    border: '1px solid var(--color-danger)',
     borderRadius: 8,
-    color: '#dc2626',
+    color: 'var(--color-danger-text)',
     fontSize: '0.875rem',
     marginBottom: '0.5rem',
   },
   successBanner: {
     padding: '0.75rem 1rem',
-    backgroundColor: '#f0fdf4',
-    border: '1px solid #86efac',
+    backgroundColor: 'var(--color-mint)',
+    border: '1px solid var(--color-mint)',
     borderRadius: 8,
-    color: '#16a34a',
+    color: 'var(--color-action)',
     fontSize: '0.875rem',
     marginBottom: '0.5rem',
   },
   loadingIndicator: {
     fontSize: '0.8125rem',
-    color: '#6b7280',
+    color: 'var(--color-secondary)',
     marginTop: '0.25rem',
   },
   actionBar: {
@@ -1012,8 +1028,8 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     gap: '0.75rem',
     padding: '0.75rem 1rem',
-    backgroundColor: '#ffffff',
-    borderTop: '1px solid #e5e7eb',
+    backgroundColor: 'var(--color-surface)',
+    borderTop: '1px solid var(--color-border)',
     zIndex: 20,
     maxWidth: 1920,
     margin: '0 auto',
@@ -1027,9 +1043,9 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.625rem 1rem',
     fontSize: '1rem',
     fontWeight: 600,
-    color: '#374151',
-    backgroundColor: '#f3f4f6',
-    border: '1px solid #d1d5db',
+    color: 'var(--color-text)',
+    backgroundColor: 'var(--color-canvas)',
+    border: '1px solid var(--color-border)',
     borderRadius: 8,
     cursor: 'pointer',
   },
@@ -1040,8 +1056,8 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.625rem 1rem',
     fontSize: '1rem',
     fontWeight: 700,
-    color: '#ffffff',
-    backgroundColor: '#16a34a',
+    color: 'var(--color-text)',
+    backgroundColor: 'var(--color-mint)',
     border: 'none',
     borderRadius: 8,
     cursor: 'pointer',

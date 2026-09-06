@@ -47,6 +47,7 @@ pantry-tracking-app/
 ```
 
 ## Conventions
+
 - Frontend pages go in `frontend/src/pages/` as `<Name>Page.tsx`
 - Shared frontend components go in `frontend/src/components/`
 - Feature-specific frontend modules get their own folder (e.g., `frontend/src/auth/`)
@@ -62,3 +63,12 @@ pantry-tracking-app/
 - Frontend uses simple state-based page routing via Layout component (no router library)
 - **Prefer full-page navigation over modals/overlays.** New features that require a form or detail view must use a dedicated `<Name>Page.tsx` registered as a `PageId` in `App.tsx`, following the pattern established by `AddItemPage` and `ItemDetailPage`. Modals are only acceptable for simple confirmations (e.g., delete confirmation dialogs).
 - Environment config is injected at build time via Vite `define` and read from `config.ts`
+
+## Shopping companion extension
+
+`ShoppingListPage/companion.ts` contains pure reserve/package/manual/carry calculations
+and validated local persistence. `departments.ts` owns suggested store departments.
+`ShoppingRows.tsx` renders shared list rows; `ShoppingEditPage.tsx` is the full-page
+manual/preference editor (`shopping-edit` PageId). `PurchasePage` reuses `AddItemPage`
+for all inventory fields and handles completion/partial fulfillment. Shared app
+colors live in `styles/palette.css`.

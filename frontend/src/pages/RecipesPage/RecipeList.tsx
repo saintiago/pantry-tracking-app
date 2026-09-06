@@ -112,7 +112,9 @@ const RecipeList: React.FC<RecipeListProps> = ({
       {/* Tag cloud filter */}
       {tagsLoading ? (
         <div style={styles.tagCloudSpinner} role="status" aria-label="Loading tags…">
-          <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading tags…</span>
+          <span style={{ color: 'var(--color-secondary)', fontSize: '0.875rem' }}>
+            Loading tags…
+          </span>
         </div>
       ) : allTags.length > 0 ? (
         <div style={styles.tagCloud} role="group" aria-label="Filter by tag">
@@ -174,7 +176,10 @@ const RecipeList: React.FC<RecipeListProps> = ({
                     <span style={styles.recipeName}>
                       {recipe.name}
                       {activeCookingSession?.recipeId === recipe.recipeId && (
-                        <span style={styles.cookingIndicator} aria-label="Currently cooking"> 🍳</span>
+                        <span style={styles.cookingIndicator} aria-label="Currently cooking">
+                          {' '}
+                          🍳
+                        </span>
                       )}
                     </span>
                     {recipeTags.length > 0 && (
@@ -237,8 +242,8 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.5rem 1rem',
     fontSize: '0.9375rem',
     fontWeight: 600,
-    color: '#ffffff',
-    backgroundColor: '#16a34a',
+    color: 'var(--color-text)',
+    backgroundColor: 'var(--color-mint)',
     border: 'none',
     borderRadius: 8,
     cursor: 'pointer',
@@ -248,7 +253,7 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: 44,
     padding: '0.5rem 0.75rem',
     fontSize: '1rem',
-    border: '1px solid #d1d5db',
+    border: '1px solid var(--color-border)',
     borderRadius: 6,
     outline: 'none',
     width: '100%',
@@ -260,8 +265,8 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '0.4rem',
   },
   tagCloudButtonInactive: {
-    backgroundColor: '#dbeafe',
-    color: '#1e40af',
+    backgroundColor: 'var(--color-sky)',
+    color: 'var(--color-action)',
     border: 'none',
     borderRadius: 16,
     padding: '0.25rem 0.75rem',
@@ -271,8 +276,8 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: 32,
   },
   tagCloudButtonActive: {
-    backgroundColor: '#1e40af',
-    color: '#ffffff',
+    backgroundColor: 'var(--color-mint)',
+    color: 'var(--color-text)',
     border: 'none',
     borderRadius: 16,
     padding: '0.25rem 0.75rem',
@@ -306,9 +311,9 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: 52,
     padding: '0.75rem 1rem',
     fontSize: '1rem',
-    color: '#1f2937',
-    backgroundColor: '#ffffff',
-    border: '1px solid #e5e7eb',
+    color: 'var(--color-text)',
+    backgroundColor: 'var(--color-surface)',
+    border: '1px solid var(--color-border)',
     borderRadius: 8,
     cursor: 'pointer',
     textAlign: 'left',
@@ -333,8 +338,8 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '0.3rem',
   },
   tagChip: {
-    backgroundColor: '#dbeafe',
-    color: '#1e40af',
+    backgroundColor: 'var(--color-sky)',
+    color: 'var(--color-action)',
     borderRadius: 16,
     fontWeight: 600,
     fontSize: '0.75rem',
@@ -345,8 +350,8 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.2rem 0.6rem',
     fontSize: '0.75rem',
     fontWeight: 600,
-    color: '#ffffff',
-    backgroundColor: '#dc2626',
+    color: 'var(--color-text)',
+    backgroundColor: 'var(--color-danger)',
     borderRadius: 12,
   },
   badgeGroup: {
@@ -360,8 +365,8 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.2rem 0.6rem',
     fontSize: '0.75rem',
     fontWeight: 600,
-    color: '#374151',
-    backgroundColor: '#e5e7eb',
+    color: 'var(--color-text)',
+    backgroundColor: 'var(--color-border)',
     borderRadius: 12,
   },
   centered: {
@@ -376,12 +381,12 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: 'center',
   },
   statusText: {
-    color: '#6b7280',
+    color: 'var(--color-secondary)',
     fontSize: '0.9375rem',
     margin: 0,
   },
   errorText: {
-    color: '#dc2626',
+    color: 'var(--color-danger-text)',
     fontSize: '0.9375rem',
     margin: 0,
   },

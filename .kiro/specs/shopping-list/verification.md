@@ -31,3 +31,29 @@ its outcome and the authenticated live-browser verification.
 
 Basket persistence is intentionally per account, device and selected planning
 period. Cross-device sharing and full offline data synchronization are later work.
+
+## Companion and palette extension — September 6, 2026
+
+- Type checking, ESLint and the full unit/property suites pass. The extension adds
+  calculation tests for reserve allocation, compatible/manual merging, package
+  rounding, partial carry completion, real-lot conversions, purchase cadence and
+  malformed storage. Final counts are recorded by the mandatory commit hook.
+- Full browser regression: 202 tests passed. The final hook reruns this suite,
+  including expanded full-purchase barcode/link/photo assertions. Shopping includes
+  cancel/retry, partial purchases, package conversions, manual edit/remove/undo,
+  alternative stores, persistence failures, budget preview, copy/export, filters,
+  department grouping and cross-tab/mobile palette verification.
+- Desktop (1440px), mobile (390px and 320px) screenshots inspected. No shopping
+  horizontal overflow; dark text appears on the approved pastel surfaces.
+- Purchase and preference navigation preserves the selected trip and view. Explicit
+  package conversions follow real lot quantity/expiration; completed inventory
+  writes are never retried because of a local storage failure.
+
+Release gate: the main-branch Deploy production workflow must pass its verification
+job and finish deployment/CloudFront invalidation. Check the released version in
+the authenticated live browser, the three planning lists, mint week selections,
+Shopping mode, the complete purchase form, and the manual entry form. Record the
+workflow/commit and observed production outcome in the delivery response.
+
+Scope: manual entries/preferences/history remain device-local. Order preview is
+a budgeted draft with saved product links, not live pricing or retailer checkout.

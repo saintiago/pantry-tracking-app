@@ -67,11 +67,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup }) => {
 
       <p style={styles.switchText}>
         Don&apos;t have an account?{' '}
-        <button
-          type="button"
-          onClick={onSwitchToSignup}
-          style={styles.switchLink}
-        >
+        <button type="button" onClick={onSwitchToSignup} style={styles.switchLink}>
           Sign up
         </button>
       </p>
@@ -94,8 +90,8 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: '0.5rem',
   },
   error: {
-    backgroundColor: '#fef2f2',
-    color: '#b91c1c',
+    backgroundColor: 'var(--color-danger)',
+    color: 'var(--color-danger-text)',
     padding: '0.75rem',
     borderRadius: 8,
     fontSize: '0.875rem',
@@ -108,7 +104,7 @@ const styles: Record<string, React.CSSProperties> = {
   input: {
     padding: '0.75rem',
     borderRadius: 8,
-    border: '1px solid #d1d5db',
+    border: '1px solid var(--color-border)',
     fontSize: '1rem',
     minHeight: 44,
   },
@@ -117,8 +113,8 @@ const styles: Record<string, React.CSSProperties> = {
     minWidth: 44,
     padding: '0.75rem',
     borderRadius: 8,
-    backgroundColor: '#4a90d9',
-    color: '#ffffff',
+    backgroundColor: 'var(--color-mint)',
+    color: 'var(--color-text)',
     fontSize: '1rem',
     fontWeight: 600,
     border: 'none',
@@ -128,13 +124,13 @@ const styles: Record<string, React.CSSProperties> = {
   switchText: {
     textAlign: 'center',
     fontSize: '0.875rem',
-    color: '#6b7280',
+    color: 'var(--color-secondary)',
     marginTop: '0.5rem',
   },
   switchLink: {
     background: 'none',
     border: 'none',
-    color: '#4a90d9',
+    color: 'var(--color-action)',
     fontWeight: 600,
     cursor: 'pointer',
     padding: 0,

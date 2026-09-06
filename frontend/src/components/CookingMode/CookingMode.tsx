@@ -80,8 +80,7 @@ const CookingMode: React.FC<CookingModeProps> = ({
     setShowFinishConfirm(false);
   }, []);
 
-  const progressPercent =
-    totalSteps > 0 ? ((currentStepIndex + 1) / totalSteps) * 100 : 100;
+  const progressPercent = totalSteps > 0 ? ((currentStepIndex + 1) / totalSteps) * 100 : 100;
 
   const stepsPanel = (
     <div style={styles.panel}>
@@ -141,7 +140,9 @@ const CookingMode: React.FC<CookingModeProps> = ({
             <span style={getStepNumberStyle(i, currentStepIndex)}>{i + 1}</span>
             <span style={styles.stepText}>{step}</span>
             {i < currentStepIndex && (
-              <span style={styles.checkmark} aria-hidden="true">✓</span>
+              <span style={styles.checkmark} aria-hidden="true">
+                ✓
+              </span>
             )}
           </li>
         ))}
@@ -171,7 +172,9 @@ const CookingMode: React.FC<CookingModeProps> = ({
         >
           ← Back
         </button>
-        <h2 style={styles.recipeName} title={recipeName}>{recipeName}</h2>
+        <h2 style={styles.recipeName} title={recipeName}>
+          {recipeName}
+        </h2>
         <div style={styles.headerRight}>
           {/* Compact portions scaler */}
           <div style={styles.portionsControls} aria-label="Portions">
@@ -211,7 +214,14 @@ const CookingMode: React.FC<CookingModeProps> = ({
       <ResizableSplit top={stepsPanel} bottom={ingredientsPanel} />
 
       {/* Progress bar */}
-      <div style={styles.progressBar} role="progressbar" aria-valuenow={currentStepIndex + 1} aria-valuemin={0} aria-valuemax={totalSteps} aria-label="Recipe progress">
+      <div
+        style={styles.progressBar}
+        role="progressbar"
+        aria-valuenow={currentStepIndex + 1}
+        aria-valuemin={0}
+        aria-valuemax={totalSteps}
+        aria-label="Recipe progress"
+      >
         <div
           style={{
             ...styles.progressFill,
@@ -236,10 +246,7 @@ const CookingMode: React.FC<CookingModeProps> = ({
 };
 
 /** Get the visual style for a step based on its position relative to current */
-function getStepStyle(
-  index: number,
-  currentStepIndex: number,
-): React.CSSProperties {
+function getStepStyle(index: number, currentStepIndex: number): React.CSSProperties {
   const base: React.CSSProperties = { ...stepStyles.stepItem };
   if (index < currentStepIndex) {
     return { ...base, ...stepStyles.completed };
@@ -250,10 +257,7 @@ function getStepStyle(
   return base;
 }
 
-function getStepNumberStyle(
-  index: number,
-  currentStepIndex: number,
-): React.CSSProperties {
+function getStepNumberStyle(index: number, currentStepIndex: number): React.CSSProperties {
   const base: React.CSSProperties = { ...stepStyles.stepNumber };
   if (index < currentStepIndex) {
     return { ...base, ...stepStyles.stepNumberCompleted };
@@ -271,7 +275,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     height: '100%',
-    backgroundColor: '#ffffff',
+    backgroundColor: 'var(--color-surface)',
     overflow: 'hidden',
   },
   header: {
@@ -279,7 +283,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: '0.75rem 1rem',
-    borderBottom: '1px solid #e5e7eb',
+    borderBottom: '1px solid var(--color-border)',
     flexShrink: 0,
     minHeight: 56,
     gap: '0.5rem',
@@ -292,11 +296,11 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     padding: '0.5rem 0.75rem',
     background: 'none',
-    border: '1px solid #e5e7eb',
+    border: '1px solid var(--color-border)',
     borderRadius: 8,
     cursor: 'pointer',
     fontSize: '0.9375rem',
-    color: '#374151',
+    color: 'var(--color-text)',
     flexShrink: 0,
   },
   recipeName: {
@@ -307,7 +311,7 @@ const styles: Record<string, React.CSSProperties> = {
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
-    color: '#111827',
+    color: 'var(--color-text)',
   },
   headerRight: {
     display: 'flex',
@@ -327,18 +331,18 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     padding: '0.25rem',
-    background: '#ffffff',
-    border: '1px solid #d1d5db',
+    background: 'var(--color-surface)',
+    border: '1px solid var(--color-border)',
     borderRadius: 6,
     cursor: 'pointer',
     fontSize: '1.125rem',
     fontWeight: 700,
-    color: '#374151',
+    color: 'var(--color-text)',
   },
   portionsValue: {
     fontSize: '0.9375rem',
     fontWeight: 700,
-    color: '#111827',
+    color: 'var(--color-text)',
     minWidth: 24,
     textAlign: 'center',
   },
@@ -348,9 +352,9 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.5rem 0.75rem',
     fontSize: '0.875rem',
     fontWeight: 600,
-    color: '#dc2626',
-    backgroundColor: '#fef2f2',
-    border: '1px solid #fca5a5',
+    color: 'var(--color-danger-text)',
+    backgroundColor: 'var(--color-danger)',
+    border: '1px solid var(--color-danger)',
     borderRadius: 8,
     cursor: 'pointer',
   },
@@ -370,11 +374,11 @@ const styles: Record<string, React.CSSProperties> = {
   stepHeaderTitle: {
     fontSize: '1rem',
     fontWeight: 700,
-    color: '#111827',
+    color: 'var(--color-text)',
   },
   stepCounter: {
     fontSize: '0.875rem',
-    color: '#6b7280',
+    color: 'var(--color-secondary)',
   },
   stepNav: {
     display: 'flex',
@@ -387,11 +391,11 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.5rem 0.75rem',
     fontSize: '0.875rem',
     fontWeight: 600,
-    backgroundColor: '#f3f4f6',
-    border: '1px solid #d1d5db',
+    backgroundColor: 'var(--color-canvas)',
+    border: '1px solid var(--color-border)',
     borderRadius: 8,
     cursor: 'pointer',
-    color: '#374151',
+    color: 'var(--color-text)',
   },
   stepNavButtonDisabled: {
     opacity: 0.4,
@@ -409,22 +413,22 @@ const styles: Record<string, React.CSSProperties> = {
     flex: 1,
     fontSize: '1.125rem',
     lineHeight: 1.7,
-    color: '#111827',
+    color: 'var(--color-text)',
   },
   checkmark: {
     flexShrink: 0,
     fontSize: '1.25rem',
-    color: '#16a34a',
+    color: 'var(--color-action)',
     fontWeight: 700,
   },
   progressBar: {
     height: 4,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: 'var(--color-border)',
     flexShrink: 0,
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#d4829a',
+    backgroundColor: 'var(--color-mint)',
     transition: 'width 0.2s ease',
   },
 };
@@ -443,11 +447,11 @@ const stepStyles: Record<string, React.CSSProperties> = {
     transition: 'background-color 0.15s ease',
   },
   completed: {
-    backgroundColor: '#f0fdf4',
+    backgroundColor: 'var(--color-mint)',
   },
   current: {
-    backgroundColor: '#fef3c7',
-    borderLeft: '3px solid #f59e0b',
+    backgroundColor: 'var(--color-warning)',
+    borderLeft: '3px solid var(--color-warning-text)',
     fontWeight: 700,
   },
   stepNumber: {
@@ -457,18 +461,18 @@ const stepStyles: Record<string, React.CSSProperties> = {
     minWidth: 28,
     height: 28,
     borderRadius: '50%',
-    backgroundColor: '#e5e7eb',
+    backgroundColor: 'var(--color-border)',
     fontSize: '0.875rem',
     fontWeight: 600,
-    color: '#374151',
+    color: 'var(--color-text)',
     flexShrink: 0,
   },
   stepNumberCompleted: {
-    backgroundColor: '#16a34a',
-    color: '#ffffff',
+    backgroundColor: 'var(--color-mint)',
+    color: 'var(--color-text)',
   },
   stepNumberCurrent: {
-    backgroundColor: '#f59e0b',
-    color: '#ffffff',
+    backgroundColor: 'var(--color-warning)',
+    color: 'var(--color-text)',
   },
 };

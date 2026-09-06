@@ -239,7 +239,7 @@ interface SyncQueueItem {
 | DELETE | /recipes/{recipeId}           | Recipe          | Yes  | Delete recipe                                           |
 | GET    | /meal-plans                   | MealPlan        | Yes  | Get meal plans (query: startDate, endDate)              |
 | POST   | /meal-plans                   | MealPlan        | Yes  | Create meal assignment                                  |
-| PUT    | /meal-plans                   | MealPlan        | Yes  | Set servings on all assignments from startDate onward |
+| PUT    | /meal-plans                   | MealPlan        | Yes  | Set servings on all assignments from startDate onward   |
 | PUT    | /meal-plans/{planId}          | MealPlan        | Yes  | Update assignment                                       |
 | DELETE | /meal-plans/{planId}          | MealPlan        | Yes  | Remove assignment                                       |
 | POST   | /shopping-list/generate       | ShoppingList    | Yes  | Generate shopping list for date range                   |
@@ -538,3 +538,23 @@ Database: `PantryAppDB`, Version: 2
 | syncQueue        | id         | byStatus, byTimestamp                                               |
 | storageLocations | locationId | byName, bySyncVersion                                               |
 | metadata         | string key | —                                                                   |
+
+## Shopping companion local state
+
+`pantry-companion-v1:<userId>` stores manual entries, product preferences, deferred
+items, generated carry-forward rows, up to 500 purchases, optional budgets and
+explicit purchased-lot conversions. Existing `pantry-shopping-v1` period basket
+keys remain compatible. These are device-local, not DynamoDB entities or shared
+household data. No new backend endpoints are introduced.
+
+PurchasePage uses POST /inventory and the returned itemId before completing the
+local list. Full AddItemData fields are editable. Explicit incompatible-unit or
+renamed-product conversions track the actual lot's remaining quantity and expiration
+for shopping calculations; they do not rewrite inventory or recipe records. A failed
+local save after successful POST never triggers another POST. Photos are validated
+JPG/PNG/WebP up to 250 KB and encoded into the existing pictureUrl field.
+
+Threshold remains the inventory warning trigger. Optional shopping reserve is stored
+in the row's canonical unit (g/ml/etc). Purchase quantity covers meal shortfall plus
+reserve deficit after allocated usable stock, plus explicit manual additions. See
+`../specs/shopping-list/second-brain.md` for the complete contract.

@@ -14,7 +14,14 @@ const rules: Rule[] = [
 ];
 
 const strengthLabels = ['', 'Weak', 'Fair', 'Good', 'Strong', 'Very strong'];
-const strengthColors = ['#d1d5db', '#ef4444', '#f59e0b', '#eab308', '#22c55e', '#16a34a'];
+const strengthColors = [
+  'var(--color-border)',
+  'var(--color-danger-text)',
+  'var(--color-warning-text)',
+  'var(--color-warning)',
+  'var(--color-success)',
+  'var(--color-action)',
+];
 
 interface PasswordStrengthProps {
   password: string;
@@ -37,7 +44,7 @@ const PasswordStrength: React.FC<PasswordStrengthProps> = ({ password }) => {
             key={i}
             style={{
               ...styles.barSegment,
-              backgroundColor: i < score ? color : '#e5e7eb',
+              backgroundColor: i < score ? color : 'var(--color-border)',
             }}
           />
         ))}
@@ -45,7 +52,13 @@ const PasswordStrength: React.FC<PasswordStrengthProps> = ({ password }) => {
       <span style={{ ...styles.label, color }}>{label}</span>
       <ul style={styles.ruleList}>
         {rules.map((rule, i) => (
-          <li key={i} style={{ ...styles.ruleItem, color: passed[i] ? '#16a34a' : '#9ca3af' }}>
+          <li
+            key={i}
+            style={{
+              ...styles.ruleItem,
+              color: passed[i] ? 'var(--color-action)' : 'var(--color-secondary)',
+            }}
+          >
             {passed[i] ? '✓' : '○'} {rule.label}
           </li>
         ))}
@@ -59,7 +72,14 @@ const styles: Record<string, React.CSSProperties> = {
   barTrack: { display: 'flex', gap: 3, height: 5, borderRadius: 3 },
   barSegment: { flex: 1, borderRadius: 3, transition: 'background-color 0.2s' },
   label: { fontSize: '0.75rem', fontWeight: 600 },
-  ruleList: { listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 2 },
+  ruleList: {
+    listStyle: 'none',
+    margin: 0,
+    padding: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 2,
+  },
   ruleItem: { fontSize: '0.75rem', transition: 'color 0.2s' },
 };
 

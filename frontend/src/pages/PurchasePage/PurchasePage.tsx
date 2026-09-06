@@ -2,7 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { fetchLocations } from '../../api/locations/locations';
 import type { StorageLocation } from '../../api/locations/locations';
 import { addInventoryItem } from '../../api/inventory/inventory';
-import { readState } from '../ShoppingListPage/shopping';
+import AddItemPage from '../AddItemPage/AddItemPage';
+import type { AddItemData } from '../AddItemPage/AddItemPage';
+import { baseUnit, readState, amount } from '../ShoppingListPage/shopping';
+import { completePurchase, readCompanion } from '../ShoppingListPage/companion';
+import type { ShoppingLine } from '../ShoppingListPage/companion';
 
 export interface PurchaseRequest {
   id: string;
@@ -11,17 +15,10 @@ export interface PurchaseRequest {
   unit: string;
   quantity: number;
   storageKey: string;
+  companionKey?: string;
+  line?: ShoppingLine;
+  prefill?: Partial<AddItemData>;
 }
-const control: React.CSSProperties = {
-  minHeight: 44,
-  padding: '10px 12px',
-  border: '1px solid #d9cfdf',
-  borderRadius: 10,
-  font: 'inherit',
-  boxSizing: 'border-box',
-  width: '100%',
-};
-
 export default function PurchasePage({
   purchase,
   onBack,
@@ -29,161 +26,174 @@ export default function PurchasePage({
   purchase: PurchaseRequest;
   onBack: () => void;
 }) {
-  const [quantity, setQuantity] = useState(purchase.quantity > 0 ? String(purchase.quantity) : '');
-  const [category, setCategory] = useState(purchase.category);
-  const [expiration, setExpiration] = useState('');
-  const [location, setLocation] = useState('');
   const [locations, setLocations] = useState<StorageLocation[]>([]);
   const [error, setError] = useState('');
-  const [locationError, setLocationError] = useState('');
-  const [reload, setReload] = useState(0);
-  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [retry, setRetry] = useState(0);
   const [done, setDone] = useState(false);
+  const [covered, setCovered] = useState('');
   useEffect(() => {
     let cancelled = false;
-    setLocationError('');
+    setLoading(true);
+    setError('');
     fetchLocations()
       .then((items) => {
-        if (!cancelled) {
-          setLocations(items);
-          if (items.length === 1) setLocation(items[0].locationId);
-        }
+        if (!cancelled) setLocations(items);
       })
       .catch(() => {
-        if (!cancelled) setLocationError('Could not load storage locations.');
+        if (!cancelled) setError('Could not load storage locations.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [reload]);
+  }, [retry]);
+  async function submit(actual: AddItemData): Promise<{ error?: string }> {
+    if (actual.quantity <= 0) return { error: 'Enter a positive purchased quantity.' };
+    const original = baseUnit(purchase.line?.unit ?? purchase.unit);
+    const selected = baseUnit(actual.unit);
+    let fulfilled = (actual.quantity * selected.factor) / original.factor;
+    if (original.unit !== selected.unit) {
+      fulfilled = Number(covered);
+      if (!covered || !Number.isFinite(fulfilled) || fulfilled <= 0)
+        return {
+          error: 'Units differ. Enter how much of the shopping requirement this purchase covers.',
+        };
+    }
+    let purchasedItemId: string | undefined;
+    try {
+      const { pictureFile, ...data } = actual;
+      if (pictureFile) {
+        if (
+          pictureFile.size > 250000 ||
+          !['image/jpeg', 'image/png', 'image/webp'].includes(pictureFile.type)
+        )
+          return { error: 'Use a JPG, PNG or WebP photo smaller than 250 KB.' };
+        data.pictureUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result));
+          reader.onerror = reject;
+          reader.readAsDataURL(pictureFile);
+        });
+      }
+      const response = await addInventoryItem(data as unknown as Record<string, unknown>);
+      purchasedItemId = response.item.itemId;
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : 'Purchase could not be saved.' };
+    }
+    // The inventory mutation succeeded. Never repeat it if local persistence fails.
+    setDone(true);
+    try {
+      const basket = readState(purchase.storageKey);
+      delete basket.checked[purchase.id];
+      delete basket.extras[purchase.id];
+      localStorage.setItem(purchase.storageKey, JSON.stringify(basket));
+      if (purchase.companionKey && purchase.line) {
+        const state = readCompanion(purchase.companionKey);
+        const next = completePurchase(
+          state,
+          purchase.line,
+          fulfilled,
+          actual,
+          new Date().toISOString(),
+        );
+        if (
+          purchasedItemId &&
+          (original.unit !== selected.unit ||
+            actual.name.trim().toLowerCase() !== purchase.name.trim().toLowerCase())
+        ) {
+          next.mappings = {
+            ...next.mappings,
+            [purchasedItemId]: {
+              name: purchase.line.name,
+              groupId: purchase.id.startsWith('group:') ? purchase.id.slice(6) : undefined,
+              unit: purchase.line.unit,
+              purchasedUnit: actual.unit,
+              ratio: fulfilled / actual.quantity,
+            },
+          };
+        }
+        const old = next.preferences[purchase.id] ?? {};
+        next.preferences[purchase.id] = {
+          ...old,
+          store: actual.whereToBuy ?? old.store,
+          brand: actual.brand ?? old.brand,
+          barcode: actual.barcode ?? old.barcode,
+          link: actual.onlineStoreLink ?? old.link,
+          locationId: actual.locationId,
+        };
+        localStorage.setItem(purchase.companionKey, JSON.stringify(next));
+      }
+    } catch {
+      setError(
+        'Purchase saved, but the shopping list could not be updated on this device. Review its remaining quantities.',
+      );
+    }
+    return {};
+  }
+  if (done)
+    return (
+      <section style={{ maxWidth: 650, margin: 'auto', padding: 24 }}>
+        <h2>Purchase added to inventory</h2>
+        <p role="status">Saved successfully. Any remaining quantity stays on your shopping list.</p>
+        {error && <p role="alert">{error}</p>}
+        <button onClick={onBack}>Back to shopping list</button>
+      </section>
+    );
+  if (loading) return <p role="status">Loading storage locations…</p>;
+  if (error)
+    return (
+      <section>
+        <p role="alert">{error}</p>
+        <button onClick={() => setRetry((n) => n + 1)}>Retry locations</button>
+        <button onClick={onBack}>Back to shopping list</button>
+      </section>
+    );
   return (
-    <section
-      style={{ maxWidth: 560, margin: '0 auto', padding: 24, background: '#fff', borderRadius: 20 }}
-    >
-      <button
-        style={{ ...control, width: 'auto', background: '#f6f0fa' }}
-        disabled={saving}
-        onClick={onBack}
-      >
-        Back to shopping list
-      </button>
-      <h2>Add purchases to inventory</h2>
-      <p>
-        {purchase.name} · {purchase.unit}
+    <>
+      <p style={{ maxWidth: 650, margin: '16px auto' }}>
+        Shopping requirement: {amount(purchase.line?.quantity ?? purchase.quantity)}{' '}
+        {purchase.line?.unit ?? purchase.unit}. Edit the actual product, quantity, unit and storage
+        details below.
       </p>
-      {done ? (
-        <p role="status">Purchase added to inventory.{error && ` ${error}`}</p>
-      ) : (
-        <form
-          onSubmit={async (event) => {
-            event.preventDefault();
-            const actual = Number(quantity);
-            if (
-              !Number.isFinite(actual) ||
-              actual <= 0 ||
-              !category.trim() ||
-              !location ||
-              !expiration
-            ) {
-              setError(
-                'Enter a positive quantity, category, storage location and expiration date.',
-              );
-              return;
-            }
-            setSaving(true);
-            setError('');
-            try {
-              await addInventoryItem({
-                name: purchase.name,
-                category: category.trim(),
-                unit: purchase.unit,
-                quantity: actual,
-                locationId: location,
-                expirationDate: expiration,
-              });
-              setDone(true);
-              try {
-                const state = readState(purchase.storageKey);
-                delete state.checked[purchase.id];
-                delete state.extras[purchase.id];
-                localStorage.setItem(purchase.storageKey, JSON.stringify(state));
-              } catch {
-                setError(
-                  'The saved basket could not be cleared; untick this product when you return.',
-                );
-              }
-            } catch (err: unknown) {
-              setError(err instanceof Error ? err.message : 'Purchase could not be saved.');
-            } finally {
-              setSaving(false);
-            }
-          }}
-        >
-          <p>Confirm what you actually bought. This creates a new inventory lot.</p>
-          <label style={{ display: 'block', marginBottom: 16 }}>
-            Actual quantity ({purchase.unit})
-            <input
-              style={control}
-              type="number"
-              min="0.000000001"
-              step="any"
-              required
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-            />
-          </label>
-          <label style={{ display: 'block', marginBottom: 16 }}>
-            Category
-            <input
-              style={control}
-              required
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            />
-          </label>
-          <label style={{ display: 'block', marginBottom: 16 }}>
-            Storage location
-            <select
-              style={control}
-              required
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-            >
-              <option value="">Select location</option>
-              {locations.map((l) => (
-                <option key={l.locationId} value={l.locationId}>
-                  {l.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          {locationError && (
-            <div role="alert">
-              {locationError}
-              <button type="button" style={control} onClick={() => setReload((n) => n + 1)}>
-                Retry locations
-              </button>
-            </div>
-          )}
-          {!locationError && !locations.length && (
-            <p>Add a storage location in Inventory if you do not have one yet.</p>
-          )}
-          <label style={{ display: 'block', marginBottom: 16 }}>
-            Expiration date
-            <input
-              style={control}
-              type="date"
-              required
-              value={expiration}
-              onChange={(e) => setExpiration(e.target.value)}
-            />
-          </label>
-          {error && <p role="alert">{error}</p>}
-          <button style={{ ...control, background: '#e0ebdf' }} disabled={saving} type="submit">
-            {saving ? 'Adding…' : 'Add purchase'}
-          </button>
-        </form>
-      )}
-    </section>
+      <details style={{ maxWidth: 650, margin: '16px auto' }}>
+        <summary>Changing between packages and ingredient units?</summary>
+        <label>
+          Shopping quantity covered ({purchase.line?.unit ?? purchase.unit})
+          <input
+            aria-label="Shopping quantity covered"
+            type="number"
+            min="0"
+            step="any"
+            value={covered}
+            onChange={(e) => setCovered(e.target.value)}
+          />
+        </label>
+        <p>
+          Only needed for incompatible units, such as bottles and milliliters. Use the package label
+          to enter the conversion.
+        </p>
+      </details>
+      <AddItemPage
+        title="Add purchases to inventory"
+        submitText="Add purchase"
+        backLabel="Back to shopping list"
+        returnAfterSave={false}
+        onBack={onBack}
+        onSubmit={submit}
+        locations={locations}
+        prefillData={{
+          name: purchase.name,
+          category: purchase.category,
+          unit: purchase.unit,
+          quantity: purchase.quantity || undefined,
+          ...purchase.prefill,
+          locationId:
+            purchase.prefill?.locationId ?? (locations.length === 1 ? locations[0].locationId : ''),
+        }}
+      />
+    </>
   );
 }

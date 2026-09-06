@@ -10,9 +10,9 @@ interface IngredientAvailabilityProps {
 }
 
 const chipColors: Record<IngredientStatus['status'], string> = {
-  available: '#16a34a',
-  partial: '#f59e0b',
-  missing: '#dc2626',
+  available: 'var(--color-success)',
+  partial: 'var(--color-warning)',
+  missing: 'var(--color-danger)',
 };
 
 const IngredientAvailability: React.FC<IngredientAvailabilityProps> = ({
@@ -31,7 +31,12 @@ const IngredientAvailability: React.FC<IngredientAvailabilityProps> = ({
   return (
     <section aria-label="Ingredients">
       <h3 style={styles.title}>Ingredients</h3>
-      <p style={{ ...styles.summary, color: missingCount > 0 ? '#dc2626' : '#16a34a' }}>
+      <p
+        style={{
+          ...styles.summary,
+          color: missingCount > 0 ? 'var(--color-danger-text)' : 'var(--color-action)',
+        }}
+      >
         {missingCount > 0
           ? `${missingCount} ingredient(s) missing or partial`
           : 'All ingredients available'}
@@ -90,7 +95,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '1rem',
     fontWeight: 700,
     margin: 0,
-    color: '#111827',
+    color: 'var(--color-text)',
   },
   summary: {
     margin: '0.5rem 0',
@@ -105,7 +110,7 @@ const styles: Record<string, React.CSSProperties> = {
     margin: '0.75rem 0 0.1rem',
     fontSize: '0.9375rem',
     fontStyle: 'italic',
-    color: '#374151',
+    color: 'var(--color-text)',
   },
   row: {
     display: 'flex',
@@ -113,14 +118,14 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'flex-start',
     gap: '0.75rem',
     padding: '0.35rem 0',
-    borderBottom: '1px solid #f3f4f6',
+    borderBottom: '1px solid var(--color-canvas)',
   },
   ingredientText: {
     display: 'inline-flex',
     alignItems: 'baseline',
     gap: '0.35rem',
     minWidth: 0,
-    color: '#374151',
+    color: 'var(--color-text)',
   },
   quantity: {
     fontWeight: 600,
@@ -130,7 +135,7 @@ const styles: Record<string, React.CSSProperties> = {
     flexShrink: 0,
     padding: '2px 8px',
     borderRadius: 12,
-    color: '#fff',
+    color: 'var(--color-text)',
     fontSize: 12,
     fontWeight: 500,
     whiteSpace: 'nowrap',

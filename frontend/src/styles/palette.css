@@ -1,0 +1,19 @@
+/* Shared palette. Pastels are surfaces; readable dark companions are text. */
+:root {
+  --color-canvas: #fafafa;
+  --color-surface: #ffffff;
+  --color-text: #2b2d42;
+  --color-muted: #8d99ae;
+  --color-secondary: #586477;
+  --color-border: #dde1e7;
+  --color-mint: #d8f3dc;
+  --color-lavender: #e2e2ff;
+  --color-peach: #fceade;
+  --color-sky: #e0f2fe;
+  --color-success: #e2f0d9;
+  --color-warning: #fff2cc;
+  --color-danger: #ffe5e5;
+  --color-action: #365c42;
+  --color-danger-text: #873c3c;
+  --color-warning-text: #735a19;
+}

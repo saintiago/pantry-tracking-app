@@ -19,7 +19,14 @@ interface RecipeDetailProps {
   onStartCooking?: (recipeId: string, recipeName: string) => void;
 }
 
-const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipeId, onEdit, onBack, onDeleted, activeCookingSession, onStartCooking }) => {
+const RecipeDetail: React.FC<RecipeDetailProps> = ({
+  recipeId,
+  onEdit,
+  onBack,
+  onDeleted,
+  activeCookingSession,
+  onStartCooking,
+}) => {
   const [data, setData] = useState<RecipeWithAvailability | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -138,9 +145,7 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipeId, onEdit, onBack, o
   const isSameRecipe = hasActiveSession && activeCookingSession!.recipeId === recipe.recipeId;
   const isDifferentRecipe = hasActiveSession && activeCookingSession!.recipeId !== recipe.recipeId;
 
-  const cookButtonLabel = isSameRecipe
-    ? '🍳 Resume Cooking'
-    : '🍳 Cook';
+  const cookButtonLabel = isSameRecipe ? '🍳 Resume Cooking' : '🍳 Cook';
   const cookButtonDisabled = isDifferentRecipe;
   const handleCook = () => {
     if (onStartCooking) {
@@ -294,7 +299,11 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipeId, onEdit, onBack, o
           }}
           disabled={deleting || cookButtonDisabled}
           data-testid="cook-button"
-          title={isDifferentRecipe ? 'Finish your current cooking session before starting a new one' : undefined}
+          title={
+            isDifferentRecipe
+              ? 'Finish your current cooking session before starting a new one'
+              : undefined
+          }
         >
           {cookButtonLabel}
         </button>
@@ -336,11 +345,11 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     padding: '0.5rem 0.75rem',
     background: 'none',
-    border: '1px solid #e5e7eb',
+    border: '1px solid var(--color-border)',
     borderRadius: 8,
     cursor: 'pointer',
     fontSize: '0.9375rem',
-    color: '#374151',
+    color: 'var(--color-text)',
   },
   pageTitle: {
     fontSize: '1.25rem',
@@ -354,13 +363,13 @@ const styles: Record<string, React.CSSProperties> = {
   loadingState: {
     padding: '2rem 1rem',
     textAlign: 'center',
-    color: '#6b7280',
+    color: 'var(--color-secondary)',
     fontSize: '1rem',
   },
   errorBanner: {
     padding: '0.75rem 1rem',
-    backgroundColor: '#fef2f2',
-    color: '#991b1b',
+    backgroundColor: 'var(--color-danger)',
+    color: 'var(--color-danger-text)',
     borderRadius: 8,
     fontSize: '0.9375rem',
     fontWeight: 600,
@@ -380,11 +389,11 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '1rem',
     fontWeight: 700,
     margin: 0,
-    color: '#111827',
+    color: 'var(--color-text)',
   },
   instructions: {
     fontSize: '0.9375rem',
-    color: '#374151',
+    color: 'var(--color-text)',
     lineHeight: 1.6,
     margin: 0,
     whiteSpace: 'pre-wrap',
@@ -398,7 +407,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   sourceLink: {
     fontSize: '0.9375rem',
-    color: '#2563eb',
+    color: 'var(--color-action)',
     textDecoration: 'underline',
   },
   actionBar: {
@@ -409,8 +418,8 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     gap: '0.75rem',
     padding: '0.75rem 1rem',
-    backgroundColor: '#ffffff',
-    borderTop: '1px solid #e5e7eb',
+    backgroundColor: 'var(--color-surface)',
+    borderTop: '1px solid var(--color-border)',
     zIndex: 20,
     maxWidth: 1920,
     margin: '0 auto',
@@ -424,9 +433,9 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.625rem 1rem',
     fontSize: '1rem',
     fontWeight: 600,
-    color: '#dc2626',
-    backgroundColor: '#fef2f2',
-    border: '1px solid #fca5a5',
+    color: 'var(--color-danger-text)',
+    backgroundColor: 'var(--color-danger)',
+    border: '1px solid var(--color-danger)',
     borderRadius: 8,
     cursor: 'pointer',
   },
@@ -437,8 +446,8 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.625rem 1rem',
     fontSize: '1rem',
     fontWeight: 700,
-    color: '#ffffff',
-    backgroundColor: '#2563eb',
+    color: 'var(--color-text)',
+    backgroundColor: 'var(--color-mint)',
     border: 'none',
     borderRadius: 8,
     cursor: 'pointer',
@@ -454,49 +463,49 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.625rem 0.5rem',
     fontSize: '0.9375rem',
     fontWeight: 700,
-    color: '#ffffff',
-    backgroundColor: '#d4829a',
+    color: 'var(--color-text)',
+    backgroundColor: 'var(--color-mint)',
     border: 'none',
     borderRadius: 8,
     cursor: 'pointer',
   },
   cookButtonDisabled: {
-    backgroundColor: '#e5e7eb',
-    color: '#9ca3af',
+    backgroundColor: 'var(--color-border)',
+    color: 'var(--color-secondary)',
     cursor: 'not-allowed',
   },
   cookButtonResume: {
-    backgroundColor: '#7eb890',
+    backgroundColor: 'var(--color-mint)',
   },
   timeSection: {
     display: 'flex',
     flexWrap: 'wrap' as const,
     gap: '0.75rem',
     padding: '0.75rem 1rem',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: 'var(--color-canvas)',
     borderRadius: 8,
     alignItems: 'center',
   },
   timeItem: {
     fontSize: '0.9375rem',
-    color: '#374151',
+    color: 'var(--color-text)',
   },
   totalTime: {
     fontWeight: 700,
-    color: '#111827',
+    color: 'var(--color-text)',
   },
   portionsSection: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: '0.75rem 1rem',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: 'var(--color-canvas)',
     borderRadius: 8,
   },
   portionsLabel: {
     fontSize: '0.9375rem',
     fontWeight: 600,
-    color: '#374151',
+    color: 'var(--color-text)',
   },
   portionsControls: {
     display: 'flex',
@@ -510,18 +519,18 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     padding: '0.5rem',
-    background: '#ffffff',
-    border: '1px solid #d1d5db',
+    background: 'var(--color-surface)',
+    border: '1px solid var(--color-border)',
     borderRadius: 8,
     cursor: 'pointer',
     fontSize: '1.25rem',
     fontWeight: 700,
-    color: '#374151',
+    color: 'var(--color-text)',
   },
   portionsValue: {
     fontSize: '1rem',
     fontWeight: 700,
-    color: '#111827',
+    color: 'var(--color-text)',
     minWidth: 32,
     textAlign: 'center' as const,
   },
@@ -537,9 +546,9 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     justifyContent: 'space-between',
     fontSize: '0.9375rem',
-    color: '#374151',
+    color: 'var(--color-text)',
     padding: '0.25rem 0',
-    borderBottom: '1px solid #f3f4f6',
+    borderBottom: '1px solid var(--color-canvas)',
   },
   tagsSection: {
     display: 'flex',
@@ -547,8 +556,8 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '0.4rem',
   },
   tagChip: {
-    backgroundColor: '#dbeafe',
-    color: '#1e40af',
+    backgroundColor: 'var(--color-sky)',
+    color: 'var(--color-action)',
     borderRadius: 16,
     fontWeight: 600,
     fontSize: '0.875rem',

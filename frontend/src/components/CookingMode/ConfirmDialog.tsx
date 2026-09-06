@@ -43,11 +43,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   );
 
   return (
-    <div
-      style={styles.backdrop}
-      onClick={onCancel}
-      data-testid="confirm-dialog-backdrop"
-    >
+    <div style={styles.backdrop} onClick={onCancel} data-testid="confirm-dialog-backdrop">
       <div
         role="alertdialog"
         aria-modal="true"
@@ -95,7 +91,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '1rem',
   },
   dialog: {
-    backgroundColor: '#ffffff',
+    backgroundColor: 'var(--color-surface)',
     borderRadius: 12,
     padding: '1.5rem',
     maxWidth: 360,
@@ -106,7 +102,7 @@ const styles: Record<string, React.CSSProperties> = {
   message: {
     margin: 0,
     fontSize: '1rem',
-    color: '#1a1a1a',
+    color: 'var(--color-text)',
     lineHeight: 1.6,
     marginBottom: '1.25rem',
   },
@@ -121,9 +117,9 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.625rem 1rem',
     fontSize: '0.9375rem',
     fontWeight: 600,
-    color: '#d4829a',
-    backgroundColor: '#fdeef3',
-    border: '1px solid #f5c6d5',
+    color: 'var(--color-mint)',
+    backgroundColor: 'var(--color-mint)',
+    border: '1px solid var(--color-mint)',
     borderRadius: 8,
     cursor: 'pointer',
   },
@@ -133,9 +129,9 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.625rem 1rem',
     fontSize: '0.9375rem',
     fontWeight: 600,
-    color: '#6b7280',
-    backgroundColor: '#f3f4f6',
-    border: '1px solid #d1d5db',
+    color: 'var(--color-secondary)',
+    backgroundColor: 'var(--color-canvas)',
+    border: '1px solid var(--color-border)',
     borderRadius: 8,
     cursor: 'pointer',
   },

@@ -11,6 +11,8 @@ import type { CookingSession } from './pages/CookingPage/CookingPage';
 import MealPlanPage from './pages/MealPlanPage/MealPlanPage';
 import ShoppingListPage from './pages/ShoppingListPage/ShoppingListPage';
 import PurchasePage from './pages/PurchasePage/PurchasePage';
+import ShoppingEditPage from './pages/ShoppingListPage/ShoppingEditPage';
+import type { ShoppingEditRequest } from './pages/ShoppingListPage/ShoppingEditPage';
 import type { PurchaseRequest } from './pages/PurchasePage/PurchasePage';
 import type { AddItemData } from './pages/AddItemPage/AddItemPage';
 import type { InventoryItem } from './components/InventoryList/InventoryList';
@@ -45,7 +47,7 @@ const LoadingSpinner: React.FC = () => (
       justifyContent: 'center',
       minHeight: '100vh',
       padding: '1rem',
-      backgroundColor: '#f5f5f5',
+      backgroundColor: 'var(--color-canvas)',
     }}
     role="status"
     aria-label="Loading"
@@ -58,7 +60,7 @@ const LoadingSpinner: React.FC = () => (
         width: '100%',
         maxWidth: 440,
         padding: '2rem 1.5rem',
-        backgroundColor: '#ffffff',
+        backgroundColor: 'var(--color-surface)',
         borderRadius: 12,
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
       }}
@@ -70,8 +72,8 @@ const LoadingSpinner: React.FC = () => (
         style={{
           width: 40,
           height: 40,
-          border: '4px solid #e5e7eb',
-          borderTopColor: '#4a90d9',
+          border: '4px solid var(--color-border)',
+          borderTopColor: 'var(--color-action)',
           borderRadius: '50%',
           animation: 'spin 0.8s linear infinite',
         }}
@@ -84,6 +86,7 @@ const LoadingSpinner: React.FC = () => (
 const AuthenticatedApp: React.FC = () => {
   const [activePage, setActivePage] = useState<PageId>('inventory');
   const [inventoryKey, setInventoryKey] = useState(0);
+  const [shoppingEdit, setShoppingEdit] = useState<ShoppingEditRequest | null>(null);
   const [purchase, setPurchase] = useState<PurchaseRequest | null>(null);
   const [addItemPageProps, setAddItemPageProps] = useState<AddItemPageState | null>(null);
   const [itemDetailPageProps, setItemDetailPageProps] = useState<ItemDetailPageState | null>(null);
@@ -135,9 +138,23 @@ const AuthenticatedApp: React.FC = () => {
   };
 
   const renderPage = () => {
+    if (activePage === 'shopping-edit' && shoppingEdit)
+      return (
+        <ShoppingEditPage
+          request={shoppingEdit}
+          onBack={() => {
+            setShoppingEdit(null);
+            setActivePage('shopping-list');
+          }}
+        />
+      );
     if (activePage === 'shopping-list')
       return (
         <ShoppingListPage
+          onEdit={(request) => {
+            setShoppingEdit(request);
+            setActivePage('shopping-edit');
+          }}
           onPurchase={(item) => {
             setPurchase(item);
             setActivePage('purchase');

@@ -34,7 +34,7 @@ frontend/src/
   auth/         Cognito client + auth components
   components/   Shared UI: Layout, InventoryList, OnlineIndicator, TagInput, AutocompleteDropdown, BarcodeScanner, StorageLocationManager
   pages/        InventoryPage, AddItemPage, ItemDetailPage, RecipesPage, MealPlanPage, ShoppingListPage
-  styles/       global.css (reset only — all component styles are inline React.CSSProperties)
+  styles/       palette.css (shared tokens), global.css (reset), inventory-theme.css (inventory tokens/animations)
   types/        units.ts (UnitType, UNIT_METADATA, VALID_UNITS, resolveUnit)
   utils/        quantity.ts (formatQuantity)
   App.tsx       Auth gating + page routing via PageId state (no router library)
@@ -50,12 +50,13 @@ frontend/src/
 - **Fix all issues, pre-existing or not**: don't skip a bug, test failure, or broken config just because it predates your change. If something is broken, fix it.
 - **Autonomous delivery**: Complete requested work, including commits, pushes and deployments when needed, without separate approval at each step. Run required checks and hooks, verify releases, and report the outcome. Follow any narrower scope or restriction in the user's request.
 
-## Design tokens (current — being redesigned)
+## Design tokens
 
-- Primary: `#4a90d9` (blue) | Text: `#1a1a1a` | BG: `#f5f5f5` | Card: `#ffffff`
-- Border: `#e5e7eb` | Input border: `#d1d5db` | Muted: `#6b7280`
-- Low stock: `#fef3c7` / `#92400e` | Success: `#16a34a` | Error: `#dc2626`
-- Radii: 6px inputs, 8–10px cards, 16px chips, 20px toggle
+Shared CSS variables in `frontend/src/styles/palette.css`, used by inline styles.
+Canvas #FAFAFA, surface #FFFFFF, text #2B2D42, muted/icon #8D99AE;
+small secondary text #586477 for contrast. Mint #D8F3DC for selected filters/produce,
+lavender #E2E2FF for dairy, peach #FCEADE for pantry, sky #E0F2FE for frozen/drinks.
+Status surfaces: success #E2F0D9, warning #FFF2CC, danger #FFE5E5; always dark text.
 
 ## Common commands
 
@@ -86,7 +87,7 @@ npm run test:e2e               # Playwright headless
 
 ## Active design initiative
 
-Redesigning the UI: warm pastel aesthetic (blush/lavender/sage), game-like interaction feedback (shake on error, bounce on success, hover scale+shadow on desktop, form field pulse on validation error). Piloting on Inventory page first.
+The app uses the approved neutral/pastel palette across all pages. Shopping companion behavior and storage contracts are documented in `.kiro/specs/shopping-list/second-brain.md`.
 
 ## Tool & workflow gotchas
 

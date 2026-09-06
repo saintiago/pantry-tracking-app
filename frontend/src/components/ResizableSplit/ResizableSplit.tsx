@@ -46,46 +46,45 @@ const ResizableSplit: React.FC<ResizableSplitProps> = ({
   minRatioRef.current = minRatio;
   maxRatioRef.current = maxRatio;
 
-  const handlePointerDown = useCallback(
-    () => {
-      draggingRef.current = true;
+  const handlePointerDown = useCallback(() => {
+    draggingRef.current = true;
 
-      const onPointerMove = (e: PointerEvent) => {
-        if (!draggingRef.current || !containerRef.current || !topPanelRef.current || !bottomPanelRef.current) return;
+    const onPointerMove = (e: PointerEvent) => {
+      if (
+        !draggingRef.current ||
+        !containerRef.current ||
+        !topPanelRef.current ||
+        !bottomPanelRef.current
+      )
+        return;
 
-        const rect = containerRef.current.getBoundingClientRect();
-        const rawRatio = (e.clientY - rect.top) / rect.height;
-        const clamped = Math.max(minRatioRef.current, Math.min(maxRatioRef.current, rawRatio));
+      const rect = containerRef.current.getBoundingClientRect();
+      const rawRatio = (e.clientY - rect.top) / rect.height;
+      const clamped = Math.max(minRatioRef.current, Math.min(maxRatioRef.current, rawRatio));
 
-        // Direct DOM update for smooth 60 fps — no React re-render during drag.
-        // Both panels must be updated so flex proportions stay consistent.
-        topPanelRef.current.style.flex = String(clamped);
-        bottomPanelRef.current.style.flex = String(1 - clamped);
-        ratioRef.current = clamped;
-      };
+      // Direct DOM update for smooth 60 fps — no React re-render during drag.
+      // Both panels must be updated so flex proportions stay consistent.
+      topPanelRef.current.style.flex = String(clamped);
+      bottomPanelRef.current.style.flex = String(1 - clamped);
+      ratioRef.current = clamped;
+    };
 
-      const onPointerUp = () => {
-        draggingRef.current = false;
-        document.removeEventListener('pointermove', onPointerMove);
-        document.removeEventListener('pointerup', onPointerUp);
-        document.removeEventListener('pointercancel', onPointerUp);
-        // Persist final ratio to React state
-        setRatio(ratioRef.current);
-      };
+    const onPointerUp = () => {
+      draggingRef.current = false;
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', onPointerUp);
+      document.removeEventListener('pointercancel', onPointerUp);
+      // Persist final ratio to React state
+      setRatio(ratioRef.current);
+    };
 
-      document.addEventListener('pointermove', onPointerMove);
-      document.addEventListener('pointerup', onPointerUp);
-      document.addEventListener('pointercancel', onPointerUp);
-    },
-    [],
-  );
+    document.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerup', onPointerUp);
+    document.addEventListener('pointercancel', onPointerUp);
+  }, []);
 
   return (
-    <div
-      ref={containerRef}
-      style={styles.container}
-      data-testid="resizable-split"
-    >
+    <div ref={containerRef} style={styles.container} data-testid="resizable-split">
       <div
         ref={topPanelRef}
         style={{ ...styles.panel, flex: ratio }}
@@ -149,9 +148,9 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: HANDLE_HEIGHT,
     flexShrink: 0,
     cursor: 'row-resize',
-    backgroundColor: '#f3f4f6',
-    borderTop: '1px solid #e5e7eb',
-    borderBottom: '1px solid #e5e7eb',
+    backgroundColor: 'var(--color-canvas)',
+    borderTop: '1px solid var(--color-border)',
+    borderBottom: '1px solid var(--color-border)',
     touchAction: 'none',
     userSelect: 'none',
   },
@@ -167,7 +166,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: 32,
     height: 3,
     borderRadius: 2,
-    backgroundColor: '#d1d5db',
+    backgroundColor: 'var(--color-border)',
     pointerEvents: 'none',
   },
 };
