@@ -16,5 +16,8 @@ inclusion: always
 - Complete requested work end to end, including commits, pushes and deployments when needed, without waiting for separate approval at each step.
 - Follow any narrower scope or restriction in the user's request.
 - Run required checks and commit hooks; resolve failures before releasing changes. Never bypass hooks with `--no-verify`.
-- Verify deployed behavior and report the commit, released version and verification results.
-- Documentation-only changes do not require an application deployment.
+- **Default delivery workflow: implement → validate → commit → push to `main` → wait for deployment → manually verify in the browser.** Complete this workflow autonomously unless the user explicitly requests a narrower scope.
+- Deploy by pushing to `main`, which triggers `.github/workflows/deploy.yml`. Wait for the workflow associated with the pushed commit to finish successfully; resolve deployment failures before calling the work complete. Do not use a separate local deployment as the default path.
+- After deployment, open the live production app in the browser and manually exercise the changed user flows using the visible UI. Inspect the rendered result, including relevant loading/error states, persistence, and mobile layout. Automated tests, scripted browser assertions, build success, or a successful deployment alone do not replace this manual browser verification.
+- Verify the released version and report the commit, deployment outcome, and what was actually checked in the browser. Clearly state any verification blocked by missing access or credentials; do not claim unverified behavior passed.
+- Commit and push documentation-only changes too; no separate application deployment is required beyond the pipeline triggered by the push.
