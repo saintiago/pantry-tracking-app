@@ -1,25 +1,14 @@
-# Implementation Plan: Shopping List (Stage 6)
+# Implementation tasks
 
-## Overview
+- [x] Inspect current contracts and save approved requirements/design.
+- [x] Implement and test pure aggregation, allocation and basket rules.
+- [x] Implement paginated loading, filters, two lists and persistence.
+- [x] Implement dedicated purchase entry and app navigation.
+- [x] Verify browser behavior and desktop/mobile layout.
 
-Automated shopping list generation from meal plans. Covers Shopping List Lambda with ingredient aggregation and inventory subtraction, plus frontend components.
+## Release procedure
 
-- [ ] 1. Implement Shopping List Lambda
-  - [ ] 1.1 Create Shopping List Lambda with list generation
-    - Implement POST /shopping-list/generate with date range selection (week, month, custom)
-    - Aggregate ingredients from all recipes in meal plans for the date range
-    - Subtract available inventory quantities from required quantities across all storage locations
-    - Exclude fully available items from list (when inventory >= required)
-    - Implement PUT /shopping-list for manual edits (add/remove items)
-
-  - [ ]* 1.2 Write property tests for shopping list
-    - **Property 17: Shopping List Ingredient Aggregation**
-    - **Property 18: Shopping List Inventory Subtraction**
-
-- [ ] 2. Implement frontend shopping list module
-  - [ ] 2.1 Create ShoppingListGenerator and ShoppingList components
-    - Implement date range selector (week, month, custom)
-    - Display calculated shopping list with item names and required quantities
-    - Support manual add/remove of items from the generated list
-
-- [ ] 3. Deploy and verify shopping list generation works
+Run commit hooks without bypasses, push to main, and verify the Deploy production
+run attached to the commit. Verify the new version and Shopping List using the
+existing authenticated production browser session. Report commit, version, workflow
+and live verification in the delivery response. See verification.md for local checks.

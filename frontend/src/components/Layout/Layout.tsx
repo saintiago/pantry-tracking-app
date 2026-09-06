@@ -2,7 +2,7 @@ import React from 'react';
 import OnlineIndicator from '../OnlineIndicator/OnlineIndicator';
 import { APP_VERSION } from '../../config';
 
-export type PageId = 'inventory' | 'recipes' | 'meal-plan' | 'shopping-list' | 'add-item' | 'item-detail' | 'cooking';
+export type PageId = 'inventory' | 'recipes' | 'meal-plan' | 'shopping-list' | 'purchase' | 'add-item' | 'item-detail' | 'cooking';
 
 interface NavItem {
   id: PageId;

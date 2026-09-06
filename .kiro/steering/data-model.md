@@ -439,6 +439,15 @@ retry after a partial network failure; concurrent deletions are not recreated.
 
 ### Shopping List
 
+September 2026 first release: the Shopping List page derives its two lists from
+existing authenticated inventory, recipes and meal-plans reads. Inventory reads
+follow every item page; the inventory handler returns every group page. Shopping
+basket checkmarks and extra quantities are stored per user and planning period in
+localStorage (`pantry-shopping-v1:<userId>:<start>:<end>`), not DynamoDB. Purchase entry
+uses the existing POST /inventory contract. The generation/update endpoints below
+are reserved future contracts and are not implemented in this release. See
+`.kiro/specs/shopping-list/requirements.md` and `design.md`.
+
 ```typescript
 // POST /shopping-list/generate
 interface GenerateShoppingListRequest {

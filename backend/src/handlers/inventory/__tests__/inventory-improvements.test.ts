@@ -148,3 +148,19 @@ it.each(['POST', 'PUT'])('rejects non-text Location Details on %s', async (httpM
   expect(result.statusCode).toBe(400);
   expect(mockSend).not.toHaveBeenCalled();
 });
+
+it('returns all inventory groups including low-stock groups beyond the first database page', async () => {
+  const cursor = { PK: 'USER#test-user', SK: 'GROUP#first' };
+  mockSend
+    .mockResolvedValueOnce({ Items: [] })
+    .mockResolvedValueOnce({ Items: [{ groupId: 'first' }], LastEvaluatedKey: cursor })
+    .mockResolvedValueOnce({
+      Items: [{ groupId: 'empty-low', isLowStock: true, totalQuantity: 0 }],
+    });
+  const result = await handler(event({ path: '/inventory', resource: '/inventory' }));
+  expect(JSON.parse(result.body).groups).toEqual([
+    { groupId: 'first' },
+    { groupId: 'empty-low', isLowStock: true, totalQuantity: 0 },
+  ]);
+  expect(mockSend.mock.calls[2][0].ExclusiveStartKey).toEqual(cursor);
+});

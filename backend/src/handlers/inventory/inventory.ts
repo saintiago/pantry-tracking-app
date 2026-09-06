@@ -223,16 +223,23 @@ async function listInventory(
   );
 
   const items = result.Items ?? [];
-  const groupResult = await docClient.send(
-    new QueryCommand({
-      TableName: TABLE_NAME,
-      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
-      ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':skPrefix': 'GROUP#' },
-    }),
-  );
+  const allGroups: Record<string, unknown>[] = [];
+  let groupCursor: Record<string, unknown> | undefined;
+  do {
+    const groupResult = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+        ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':skPrefix': 'GROUP#' },
+        ...(groupCursor ? { ExclusiveStartKey: groupCursor } : {}),
+      }),
+    );
+    allGroups.push(...(groupResult?.Items ?? []));
+    groupCursor = groupResult?.LastEvaluatedKey;
+  } while (groupCursor);
   const responseBody: Record<string, unknown> = {
     items: items.map(stripDatabaseKeys),
-    groups: (groupResult?.Items ?? []).map(stripDatabaseKeys),
+    groups: allGroups.map(stripDatabaseKeys),
   };
 
   if (result.LastEvaluatedKey) {

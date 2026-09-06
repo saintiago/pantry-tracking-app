@@ -148,6 +148,7 @@ test('Location Details are editable, survive reopening, and can be cleared', asy
   await expect(page.getByLabel('Location Details')).toHaveValue('Shelf 2A');
   await page.getByLabel('Location Details').fill('Top shelf');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByTestId('category-card-Grains')).toBeVisible();
   expect(items[1].locationDetails).toBe('Top shelf');
   await open();
   await expect(page.getByLabel('Location Details')).toHaveValue('Top shelf');

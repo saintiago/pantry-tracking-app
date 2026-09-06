@@ -10,6 +10,8 @@ import CookingPage from './pages/CookingPage/CookingPage';
 import type { CookingSession } from './pages/CookingPage/CookingPage';
 import MealPlanPage from './pages/MealPlanPage/MealPlanPage';
 import ShoppingListPage from './pages/ShoppingListPage/ShoppingListPage';
+import PurchasePage from './pages/PurchasePage/PurchasePage';
+import type { PurchaseRequest } from './pages/PurchasePage/PurchasePage';
 import type { AddItemData } from './pages/AddItemPage/AddItemPage';
 import type { InventoryItem } from './components/InventoryList/InventoryList';
 import type { StorageLocation } from './api/locations/locations';
@@ -32,7 +34,6 @@ interface ItemDetailPageState {
 
 const mainPages: Partial<Record<PageId, React.FC>> = {
   'meal-plan': MealPlanPage,
-  'shopping-list': ShoppingListPage,
 };
 
 const LoadingSpinner: React.FC = () => (
@@ -83,6 +84,7 @@ const LoadingSpinner: React.FC = () => (
 const AuthenticatedApp: React.FC = () => {
   const [activePage, setActivePage] = useState<PageId>('inventory');
   const [inventoryKey, setInventoryKey] = useState(0);
+  const [purchase, setPurchase] = useState<PurchaseRequest | null>(null);
   const [addItemPageProps, setAddItemPageProps] = useState<AddItemPageState | null>(null);
   const [itemDetailPageProps, setItemDetailPageProps] = useState<ItemDetailPageState | null>(null);
   const [cookingSession, setCookingSession] = useState<CookingSession | null>(null);
@@ -133,6 +135,25 @@ const AuthenticatedApp: React.FC = () => {
   };
 
   const renderPage = () => {
+    if (activePage === 'shopping-list')
+      return (
+        <ShoppingListPage
+          onPurchase={(item) => {
+            setPurchase(item);
+            setActivePage('purchase');
+          }}
+        />
+      );
+    if (activePage === 'purchase' && purchase)
+      return (
+        <PurchasePage
+          purchase={purchase}
+          onBack={() => {
+            setPurchase(null);
+            setActivePage('shopping-list');
+          }}
+        />
+      );
     if (activePage === 'add-item' && addItemPageProps) {
       return (
         <AddItemPage
