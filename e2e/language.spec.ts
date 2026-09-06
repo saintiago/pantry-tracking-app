@@ -242,6 +242,63 @@ test('shopping, manual department options and calendar use the selected language
   await page.screenshot({ path: testInfo.outputPath('mobile-language.png'), fullPage: true });
 });
 
+test('inventory counts and shopping placeholders translate without changing user store names', async ({
+  page,
+  context,
+}) => {
+  await setup(context, { language: 'es' });
+  const items = ['No store item', 'Named store item'].map((name, index) => ({
+    itemId: `i${index}`,
+    groupId: `g${index}`,
+    name,
+    category: index ? 'Bread' : 'Pantry',
+    quantity: 0,
+    unit: 'piece',
+    location: 'p1',
+    expirationDate: '2099-01-01',
+    whereToBuy: index ? 'Any store' : '',
+  }));
+  const groups = items.map((item) => ({
+    ...item,
+    totalQuantity: 0,
+    threshold: 1,
+    isLowStock: true,
+  }));
+  await page.route('https://mock-api.test/inventory**', (route) =>
+    route.fulfill({ json: { items, groups } }),
+  );
+  await login(page);
+  await expect(page.getByTestId('category-card-Pantry')).toContainText('1 producto');
+  await page.getByRole('button', { name: /Lista de la compra/ }).click();
+  const filter = page.getByRole('combobox', { name: 'Filtrar por tienda' });
+  await expect(
+    filter.getByRole('option', { name: 'Cualquier tienda', exact: true }),
+  ).toBeAttached();
+  await expect(filter.getByRole('option', { name: 'Any store', exact: true })).toBeAttached();
+  await page.getByRole('button', { name: 'Modo de compra', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Cualquier tienda', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Any store', exact: true })).toBeVisible();
+  await filter.selectOption({ label: 'Cualquier tienda' });
+  await expect(page.getByRole('heading', { name: 'Any store', exact: true })).toHaveCount(0);
+  await choose(page, 'Italiano');
+  await expect(page.getByRole('heading', { name: 'Qualsiasi negozio', exact: true })).toBeVisible();
+  await page
+    .getByRole('combobox', { name: 'Filtra per negozio' })
+    .selectOption({ label: 'Any store' });
+  await expect(page.getByRole('heading', { name: 'Any store', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Qualsiasi negozio', exact: true })).toHaveCount(
+    0,
+  );
+  await page.getByRole('button', { name: 'Anteprima ordine', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Testo della lista della spesa' })).toHaveValue(
+    /^Any store \/.*Named store item/,
+  );
+  await page.getByRole('button', { name: /Inventario/, exact: false }).click();
+  await expect(page.getByTestId('category-card-Pantry')).toContainText('1 prodotto');
+  await choose(page, 'English');
+  await expect(page.getByTestId('category-card-Pantry')).toHaveText(/1 item\b/);
+});
+
 test('blocked local storage keeps the app usable and explains the persistence failure', async ({
   page,
   context,

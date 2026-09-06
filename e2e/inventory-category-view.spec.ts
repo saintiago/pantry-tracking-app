@@ -199,7 +199,9 @@ test.describe('Inventory Category View', () => {
     await login(page);
   });
 
-  test('inventory page shows category cards instead of individual items on load', async ({ page }) => {
+  test('inventory page shows category cards instead of individual items on load', async ({
+    page,
+  }) => {
     // Category cards should be visible
     await expect(page.getByTestId('category-card-Dairy')).toBeVisible();
     await expect(page.getByTestId('category-card-Snacks')).toBeVisible();
@@ -218,11 +220,13 @@ test.describe('Inventory Category View', () => {
 
     // Snacks: 1 item, quantity 5 pieces
     const snacksCard = page.getByTestId('category-card-Snacks');
-    await expect(snacksCard).toContainText('1 items');
+    await expect(snacksCard).toContainText('1 item');
     await expect(snacksCard).toContainText('5 pieces');
   });
 
-  test('clicking a category card navigates to item list showing only items from that category', async ({ page }) => {
+  test('clicking a category card navigates to item list showing only items from that category', async ({
+    page,
+  }) => {
     await page.getByTestId('category-card-Dairy').click();
 
     // Dairy items visible
@@ -233,7 +237,9 @@ test.describe('Inventory Category View', () => {
     await expect(page.getByText('Chips')).not.toBeVisible();
   });
 
-  test('back button is visible in item list view and clicking it returns to category summary', async ({ page }) => {
+  test('back button is visible in item list view and clicking it returns to category summary', async ({
+    page,
+  }) => {
     // No back button in category-summary view
     await expect(page.getByLabel('Back to categories')).not.toBeVisible();
 
@@ -260,7 +266,9 @@ test.describe('Inventory Category View', () => {
     await expect(page.getByTestId('category-card-Snacks')).not.toBeVisible();
   });
 
-  test('text filter applied in category view carries over and filters items in item list view', async ({ page }) => {
+  test('text filter applied in category view carries over and filters items in item list view', async ({
+    page,
+  }) => {
     // Type a filter that matches only "Milk" within Dairy
     await page.getByLabel('Filter by product name').fill('Mil');
 
@@ -277,7 +285,9 @@ test.describe('Inventory Category View', () => {
 
   /* ── Grouping in the item-list view ──────────────────────────── */
 
-  test('grouped row renders total quantity, child count and a low-stock badge, collapsed by default', async ({ page }) => {
+  test('grouped row renders total quantity, child count and a low-stock badge, collapsed by default', async ({
+    page,
+  }) => {
     await loadGroupedInventory(page);
     const groupedRow = await openDairyMilkGroup(page);
 
@@ -295,7 +305,9 @@ test.describe('Inventory Category View', () => {
     await expect(page.getByTestId('item-card-milk-3')).not.toBeVisible();
   });
 
-  test('clicking the grouped row expands to reveal child items, then collapses again', async ({ page }) => {
+  test('clicking the grouped row expands to reveal child items, then collapses again', async ({
+    page,
+  }) => {
     await loadGroupedInventory(page);
     const groupedRow = await openDairyMilkGroup(page);
 

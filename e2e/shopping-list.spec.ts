@@ -280,16 +280,14 @@ test('full purchase form edits all inventory fields, retries and retains a parti
   await page
     .getByRole('textbox', { name: 'Online Store Link', exact: true })
     .fill('https://www.carrefour.es/supermercado');
-  await page
-    .locator('input[type=file]')
-    .setInputFiles({
-      name: 'rice.png',
-      mimeType: 'image/png',
-      buffer: Buffer.from(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jK1sAAAAASUVORK5CYII=',
-        'base64',
-      ),
-    });
+  await page.locator('input[type=file]').setInputFiles({
+    name: 'rice.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jK1sAAAAASUVORK5CYII=',
+      'base64',
+    ),
+  });
   await page.getByRole('textbox', { name: 'Where to Buy', exact: true }).fill('Carrefour');
   await page.getByRole('button', { name: 'Add purchase', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('Could not save purchase');
@@ -380,7 +378,7 @@ test('preferences round packages, organize Shopping mode and produce an honest b
   await page.getByRole('button', { name: 'Shopping mode', exact: true }).click();
   const shop = page.getByRole('region', { name: 'Shopping by store', exact: true });
   await expect(shop.getByRole('article', { name: 'Rice shopping item' })).toHaveCount(1);
-  await page.getByLabel('Filter by store').selectOption('Carrefour');
+  await page.getByLabel('Filter by store').selectOption({ label: 'Carrefour' });
   await expect(shop).not.toContainText('Dish soap');
   await page.getByRole('button', { name: 'Order preview', exact: true }).click();
   await page.getByLabel('Shopping budget (€)').fill('4');

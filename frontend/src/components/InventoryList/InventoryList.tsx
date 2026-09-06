@@ -340,6 +340,7 @@ interface CategoryCardProps {
 
 export const CategoryCard: React.FC<CategoryCardProps> = ({ summary, onClick }) => {
   useLanguage();
+  const itemCount = t(summary.itemCount === 1 ? '{0} item' : '{0} items', summary.itemCount);
   const { isHovered, hoverProps } = useHoverState();
   const { feedbackClass, triggerSuccess } = useInteractionFeedback();
 
@@ -362,12 +363,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ summary, onClick }) 
       tabIndex={0}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      aria-label={t(
-        '{0}, {1} items, {2}',
-        summary.category,
-        summary.itemCount,
-        formatQuantityByUnit(summary.quantityByUnit),
-      )}
+      aria-label={`${summary.category}, ${itemCount}, ${formatQuantityByUnit(summary.quantityByUnit)}`}
       className={feedbackClass}
       style={{
         ...styles.categoryCard,
@@ -392,9 +388,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ summary, onClick }) 
         )}
       </div>
       <div style={styles.categoryCardStats}>
-        <span>
-          {summary.itemCount} {t('items')}
-        </span>
+        <span>{itemCount}</span>
         <span style={styles.categoryCardDot}>·</span>
         <span>{formatQuantityByUnit(summary.quantityByUnit)}</span>
       </div>

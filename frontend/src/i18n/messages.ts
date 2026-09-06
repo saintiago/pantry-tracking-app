@@ -537,6 +537,10 @@ export const messages: Record<string, { es: string; it: string }> = {
     es: 'Cancelar',
     it: 'Annulla',
   },
+  '{0} item': {
+    es: '{0} producto',
+    it: '{0} prodotto',
+  },
   '{0} items': {
     es: '{0} productos',
     it: '{0} prodotti',

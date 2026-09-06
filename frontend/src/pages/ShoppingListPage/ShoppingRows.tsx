@@ -8,6 +8,7 @@ import { packageSuggestion, isDeferred } from './companion';
 import type { CompanionState, ShoppingLine } from './companion';
 import { DEPARTMENTS, departmentColor } from './departments';
 import { addDays } from '../MealPlanPage/weekUtils';
+import { storeLabel } from './storeLabel';
 
 export const card: React.CSSProperties = {
   padding: 18,
@@ -160,7 +161,7 @@ export default function ShoppingRows(props: Props) {
           <p style={small}>{t('General restock')}</p>
         )}
         <p style={small}>
-          {line.sources.map((source) => t(source)).join(' · ')} · {line.store}
+          {line.sources.map((source) => t(source)).join(' · ')} · {storeLabel(line.store)}
           {line.carried ? t(' · Still outstanding from an earlier list') : ''}
         </p>
         {line.notes && <p style={small}>{line.notes}</p>}
@@ -369,8 +370,8 @@ export default function ShoppingRows(props: Props) {
       )}
       {mode === 'shopping'
         ? [...new Set(pending.map((l) => l.store))].sort().map((store) => (
-            <section key={store} aria-label={`Shop at ${store}`}>
-              <h4 style={{ margin: '16px 0 4px' }}>{store}</h4>
+            <section key={store} aria-label={t('Shop at {0}', storeLabel(store))}>
+              <h4 style={{ margin: '16px 0 4px' }}>{storeLabel(store)}</h4>
               {departments(pending.filter((l) => l.store === store))}
             </section>
           ))

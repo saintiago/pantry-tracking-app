@@ -270,7 +270,8 @@ export function buildLines(
   for (const line of lines.values()) {
     const pref = state.preferences[line.id];
     const lot = data.items.find((i) => `group:${i.groupId}` === line.id);
-    line.store = pref?.store || line.store || lot?.whereToBuy || 'Any store';
+    // Keep absence distinct from a user-written store literally named "Any store".
+    line.store = pref?.store || line.store || lot?.whereToBuy || '';
     line.department = pref?.department ?? line.department;
   }
   return [...lines.values()].sort((a, b) => a.name.localeCompare(b.name));

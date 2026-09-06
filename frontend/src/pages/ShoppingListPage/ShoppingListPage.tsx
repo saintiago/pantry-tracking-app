@@ -37,6 +37,7 @@ import ShoppingRows, {
 } from './ShoppingRows';
 import type { ShoppingEditRequest } from './ShoppingEditPage';
 import type { PurchaseRequest } from '../PurchasePage/PurchasePage';
+import { storeLabel } from './storeLabel';
 const input: React.CSSProperties = { ...button, width: '100%', boxSizing: 'border-box' };
 const dateLabel = (date: string) =>
   new Date(`${date}T12:00:00`).toLocaleDateString(getLanguage(), {
@@ -283,7 +284,7 @@ export default function ShoppingListPage({
       prefill: {
         brand: pref.brand ?? lot?.brand,
         barcode: pref.barcode ?? lot?.barcode,
-        whereToBuy: line.store === 'Any store' ? '' : line.store,
+        whereToBuy: line.store,
         onlineStoreLink: safeProductLink(pref.link ?? lot?.onlineStoreLink),
         locationId: pref.locationId ?? lot?.location,
         locationDetails: lot?.locationDetails,
@@ -325,7 +326,8 @@ export default function ShoppingListPage({
     );
   }
   const matches = (line: ShoppingLine) =>
-    normalize(line.name).includes(normalize(search)) && (!store || line.store === store);
+    normalize(line.name).includes(normalize(search)) &&
+    (!store || JSON.stringify(line.store) === store);
   const visible = lines.filter(matches);
   const active = visible.filter((l) => !isDeferred(companion, l.id, today, key));
   const deferred = visible.filter((l) => isDeferred(companion, l.id, today, key));
@@ -535,7 +537,9 @@ export default function ShoppingListPage({
         >
           <option value="">{t('All stores')}</option>
           {[...new Set(lines.map((l) => l.store))].sort().map((s) => (
-            <option key={s}>{s}</option>
+            <option key={s} value={JSON.stringify(s)}>
+              {storeLabel(s)}
+            </option>
           ))}
         </select>
       </label>
@@ -700,7 +704,7 @@ export default function ShoppingListPage({
                 )}
               {[...new Set(shopLines.map((l) => l.store))].sort().map((s) => (
                 <section key={s}>
-                  <h4>{s}</h4>
+                  <h4>{storeLabel(s)}</h4>
                   {shopLines
                     .filter((l) => l.store === s)
                     .map((line) => {
@@ -749,7 +753,7 @@ export default function ShoppingListPage({
                   const text = shopLines
                     .map(
                       (l) =>
-                        `${l.store} / ${t(l.department)}: ${l.name} — ${amount(l.quantity)} ${getUnitLabel(l.unit, l.quantity)}`,
+                        `${storeLabel(l.store)} / ${t(l.department)}: ${l.name} — ${amount(l.quantity)} ${getUnitLabel(l.unit, l.quantity)}`,
                     )
                     .join('\n');
                   try {
@@ -769,7 +773,7 @@ export default function ShoppingListPage({
                 value={shopLines
                   .map(
                     (l) =>
-                      `${l.store} / ${t(l.department)}: ${l.name} — ${amount(l.quantity)} ${getUnitLabel(l.unit, l.quantity)}`,
+                      `${storeLabel(l.store)} / ${t(l.department)}: ${l.name} — ${amount(l.quantity)} ${getUnitLabel(l.unit, l.quantity)}`,
                   )
                   .join('\n')}
                 style={{ ...input, marginTop: 12, minHeight: 120 }}

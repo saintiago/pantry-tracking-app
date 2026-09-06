@@ -33,3 +33,8 @@ Unit keys, department option values, IDs, inventory groups, ingredient matching,
 in storage, and other API contracts remain language-neutral. Localized display functions
 leave these values unchanged. Existing saved content and imported product text remain
 original; this feature does not perform machine translation.
+
+Shopping lines represent an unspecified store with an empty string and translate its
+placeholder only when rendering. A user-written store named `Any store` stays unchanged.
+Store filter values encode the original string so the all-stores option and an
+unspecified store remain distinct when the language changes.
