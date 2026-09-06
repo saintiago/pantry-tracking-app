@@ -12,7 +12,10 @@ The `storage` event synchronizes tabs of the same account on the same browser.
 
 Account language uses Cognito's standard `locale` attribute via authenticated
 `getUserAttributes` / `updateAttributes`; read the fresh profile rather than a stale ID
-token claim. The existing app client has default standard-attribute read/write permissions.
+token claim. Restore the session with `getSession` on the same `CognitoUser` instance
+used for the attribute operation: `getCurrentUser` creates a new instance each time.
+Recheck the current account after session restoration to prevent an account-switch race.
+The existing app client has default standard-attribute read/write permissions.
 No DynamoDB migration or additional endpoint is needed.
 
 Device key: `pantry-language-v1:<userId>`; logged-out key: `pantry-language-v1:guest`.

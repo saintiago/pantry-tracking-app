@@ -213,7 +213,7 @@ test('errors retranslate after switching and account-save failure can be retried
 test('shopping, manual department options and calendar use the selected language on mobile', async ({
   page,
   context,
-}) => {
+}, testInfo) => {
   await page.setViewportSize({ width: 320, height: 740 });
   await setup(context, { language: 'es' });
   await login(page);
@@ -239,7 +239,7 @@ test('shopping, manual department options and calendar use the selected language
   await expect
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
     .toBe(true);
-  await page.screenshot({ path: '.tmp-language/mobile-language.png', fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath('mobile-language.png'), fullPage: true });
 });
 
 test('blocked local storage keeps the app usable and explains the persistence failure', async ({

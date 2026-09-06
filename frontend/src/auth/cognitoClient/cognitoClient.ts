@@ -120,13 +120,25 @@ export function signOut(): void {
   }
 }
 
+async function getAuthenticatedProfileUser(): Promise<CognitoUser> {
+  const current = getUserPool().getCurrentUser();
+  if (!current) throw new Error('Not authenticated');
+  // Each getCurrentUser call returns a new instance. Restore the session on the one
+  // that will read/update attributes, since those methods require its in-memory session.
+  await new Promise<void>((resolve, reject) => {
+    current.getSession((error: Error | null, session: CognitoUserSession | null) => {
+      if (error || !session?.isValid()) reject(error ?? new Error('Not authenticated'));
+      else resolve();
+    });
+  });
+  if (current.getUsername() !== getUserPool().getCurrentUser()?.getUsername())
+    throw new Error('Not authenticated');
+  return current;
+}
+
 /** Read the current profile, rather than a possibly stale locale claim in an ID token. */
 export async function getAccountLanguage(): Promise<string | undefined> {
-  const current = getUserPool().getCurrentUser();
-  const session = await getCurrentSession();
-  if (!session) throw new Error('Not authenticated');
-  if (!current || current.getUsername() !== getUserPool().getCurrentUser()?.getUsername())
-    throw new Error('Not authenticated');
+  const current = await getAuthenticatedProfileUser();
   return new Promise((resolve, reject) => {
     current.getUserAttributes((error, attributes) => {
       if (error) reject(error);
@@ -137,11 +149,7 @@ export async function getAccountLanguage(): Promise<string | undefined> {
 
 export async function saveAccountLanguage(language: 'en' | 'es' | 'it'): Promise<void> {
   if (!['en', 'es', 'it'].includes(language)) throw new Error('Unsupported language');
-  const current = getUserPool().getCurrentUser();
-  const session = await getCurrentSession();
-  if (!session) throw new Error('Not authenticated');
-  if (!current || current.getUsername() !== getUserPool().getCurrentUser()?.getUsername())
-    throw new Error('Not authenticated');
+  const current = await getAuthenticatedProfileUser();
   return new Promise((resolve, reject) => {
     current.updateAttributes(
       [new CognitoUserAttribute({ Name: 'locale', Value: language })],
