@@ -17,7 +17,10 @@ interface RecipeDetailProps {
   onBack: () => void;
   onDeleted: () => void;
   activeCookingSession?: CookingSession | null;
-  onStartCooking?: (recipeId: string, recipeName: string) => void;
+  onStartCooking?: (recipeId: string, recipeName: string, portions?: number) => void;
+  backLabel?: string;
+  plannedMeal?: { date: string; mealType: string; servings: number };
+  onSaveServings?: (value: number) => Promise<void>;
 }
 
 const RecipeDetail: React.FC<RecipeDetailProps> = ({
@@ -27,11 +30,15 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
   onDeleted,
   activeCookingSession,
   onStartCooking,
+  backLabel,
+  plannedMeal,
+  onSaveServings,
 }) => {
   useLanguage();
   const [data, setData] = useState<RecipeWithAvailability | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [savingPortions, setSavingPortions] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [selectedPortions, setSelectedPortions] = useState<number>(1);
 
@@ -58,8 +65,8 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
   }, [recipeId]);
 
   useEffect(() => {
-    if (data) setSelectedPortions(data.recipe.portions ?? 1);
-  }, [data?.recipe.recipeId]);
+    if (data) setSelectedPortions(plannedMeal?.servings ?? data.recipe.portions ?? 1);
+  }, [data?.recipe.recipeId, plannedMeal?.servings]);
 
   const handleIncrement = useCallback(() => {
     setSelectedPortions((p) => p + 1);
@@ -95,9 +102,9 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
             onClick={onBack}
             style={styles.backButton}
             type="button"
-            aria-label={t('Go back')}
+            aria-label={t(backLabel ?? 'Go back')}
           >
-            {t('← Back')}{' '}
+            {t(backLabel ?? '← Back')}{' '}
           </button>
         </div>
         <div style={styles.loadingState} aria-live="polite">
@@ -115,9 +122,9 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
             onClick={onBack}
             style={styles.backButton}
             type="button"
-            aria-label={t('Go back')}
+            aria-label={t(backLabel ?? 'Go back')}
           >
-            {t('← Back')}{' '}
+            {t(backLabel ?? '← Back')}{' '}
           </button>
         </div>
         <div style={styles.errorBanner} role="alert">
@@ -129,7 +136,7 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
 
   if (!data) return null;
 
-  const { recipe, ingredientAvailability, missingCount } = data;
+  const { recipe, ingredientAvailability } = data;
 
   const totalTime = computeTotalTime(recipe.prepTime, recipe.cookTime);
 
@@ -149,7 +156,16 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
   const scaledAvailability = ingredientAvailability.map((item, i) => ({
     ...item,
     required: scaledQuantities[i] ?? item.required,
+    status:
+      scaledQuantities[i] == null
+        ? item.status
+        : item.available >= scaledQuantities[i]!
+          ? ('available' as const)
+          : item.available > 0
+            ? ('partial' as const)
+            : ('missing' as const),
   }));
+  const missingCount = scaledAvailability.filter((item) => item.status !== 'available').length;
   const instructionSteps = Array.isArray(recipe.instructions)
     ? recipe.instructions
     : [recipe.instructions];
@@ -163,7 +179,7 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
   const cookButtonDisabled = isDifferentRecipe;
   const handleCook = () => {
     if (onStartCooking) {
-      onStartCooking(recipe.recipeId, recipe.name);
+      onStartCooking(recipe.recipeId, recipe.name, selectedPortions);
     }
   };
 
@@ -175,10 +191,10 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
           onClick={onBack}
           style={styles.backButton}
           type="button"
-          aria-label={t('Go back')}
+          aria-label={t(backLabel ?? 'Go back')}
           disabled={deleting}
         >
-          {t('← Back')}{' '}
+          {t(backLabel ?? '← Back')}{' '}
         </button>
         <h2 style={styles.pageTitle}>{recipe.name}</h2>
       </div>
@@ -190,6 +206,11 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
         </div>
       )}
 
+      {plannedMeal && (
+        <p aria-label={t('Planned meal')}>
+          {plannedMeal.date} · {t(plannedMeal.mealType)} · {plannedMeal.servings} {t('servings')}
+        </p>
+      )}
       {/* Content */}
       <div style={styles.content}>
         {/* Tags */}
@@ -253,6 +274,24 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
           </div>
         </section>
 
+        {onSaveServings && (
+          <button
+            disabled={savingPortions || selectedPortions === plannedMeal?.servings}
+            onClick={async () => {
+              setSavingPortions(true);
+              setError(null);
+              try {
+                await onSaveServings(selectedPortions);
+              } catch (err) {
+                setError(err instanceof Error ? err.message : 'Failed to update meal');
+              } finally {
+                setSavingPortions(false);
+              }
+            }}
+          >
+            {t('Save servings for this meal')}
+          </button>
+        )}
         <IngredientAvailability
           ingredients={displayedIngredients}
           availability={scaledAvailability}

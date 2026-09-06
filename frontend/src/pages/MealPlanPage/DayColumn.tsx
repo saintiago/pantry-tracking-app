@@ -9,7 +9,9 @@ interface DayColumnProps {
   assignments: Assignment[]; // Already sorted by sortAssignments
   removingPlanIds: Set<string>; // planIds currently being deleted
   onRemove: (planId: string) => void;
-  onAddClick: (date: string) => void; // called when Add_Recipe_Button is clicked
+  onOpen?: (planId: string) => void;
+  onMove?: (planId: string) => void;
+  onAddClick: (date: string, mealType?: Assignment['mealType']) => void;
   onDropRecipe?: (recipeId: string, date: string, mealType: Assignment['mealType']) => void;
   selectedRecipeId?: string;
   saving?: boolean;
@@ -21,6 +23,8 @@ const DayColumn: React.FC<DayColumnProps> = ({
   assignments,
   removingPlanIds,
   onRemove,
+  onOpen,
+  onMove,
   onAddClick,
   onDropRecipe,
   selectedRecipeId,
@@ -40,22 +44,22 @@ const DayColumn: React.FC<DayColumnProps> = ({
       </div>
       {(['breakfast', 'lunch', 'dinner'] as const).map((mealType) => (
         <section
-          key={t(mealType)}
+          key={mealType}
           aria-label={t('{0} on {1}', t(mealType), date)}
           data-meal-date={onDropRecipe ? date : undefined}
-          data-meal-type={t(mealType)}
+          data-meal-type={mealType}
           data-drop-disabled={saving ? 'true' : undefined}
-          data-drag-over={dragTarget === `${date}/${t(mealType)}` ? 'true' : undefined}
+          data-drag-over={dragTarget === `${date}/${mealType}` ? 'true' : undefined}
           style={{
             ...styles.mealSlot,
             backgroundColor:
-              dragTarget === `${date}/${t(mealType)}`
+              dragTarget === `${date}/${mealType}`
                 ? 'var(--color-mint)'
                 : selectedRecipeId
                   ? 'var(--color-success)'
-                  : 'var(--color-canvas)',
+                  : `var(--color-${mealType})`,
             outline:
-              dragTarget === `${date}/${t(mealType)}` ? '2px solid var(--color-action)' : undefined,
+              dragTarget === `${date}/${mealType}` ? '2px solid var(--color-action)' : undefined,
           }}
         >
           {onDropRecipe ? (
@@ -63,16 +67,19 @@ const DayColumn: React.FC<DayColumnProps> = ({
               type="button"
               aria-label={t('Plan {0} on {1}', t(mealType), date)}
               disabled={saving}
-              data-drag-over={dragTarget === `${date}/${t(mealType)}` ? 'true' : undefined}
+              data-drag-over={dragTarget === `${date}/${mealType}` ? 'true' : undefined}
               onClick={() => {
                 if (selectedRecipeId) onDropRecipe(selectedRecipeId, date, mealType);
+                else onAddClick(date, mealType);
               }}
               style={styles.mealButton}
             >
-              {t(mealType)}
+              {{ breakfast: '☀️', lunch: '🍝', dinner: '🌙' }[mealType]} {t(mealType)}
             </button>
           ) : (
-            <div style={styles.mealLabel}>{t(mealType)}</div>
+            <div style={styles.mealLabel}>
+              {{ breakfast: '☀️', lunch: '🍝', dinner: '🌙' }[mealType]} {t(mealType)}
+            </div>
           )}
           <div style={styles.cards}>
             {assignments
@@ -83,19 +90,23 @@ const DayColumn: React.FC<DayColumnProps> = ({
                   assignment={assignment}
                   isRemoving={removingPlanIds.has(assignment.planId)}
                   onRemove={onRemove}
+                  onOpen={onOpen}
+                  onMove={onMove}
                 />
               ))}
           </div>
         </section>
       ))}
-      <button
-        type="button"
-        onClick={handleAddClick}
-        aria-label={t('Add recipe')}
-        style={styles.addButton}
-      >
-        +
-      </button>
+      {!onDropRecipe && (
+        <button
+          type="button"
+          onClick={handleAddClick}
+          aria-label={t('Add recipe')}
+          style={styles.addButton}
+        >
+          +
+        </button>
+      )}
     </div>
   );
 };

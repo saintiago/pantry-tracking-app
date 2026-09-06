@@ -6,6 +6,8 @@ interface RecipeCardProps {
   assignment: Assignment;
   isRemoving: boolean;
   onRemove: (planId: string) => void;
+  onOpen?: (planId: string) => void;
+  onMove?: (planId: string) => void;
 }
 
 const MEAL_TYPE_LABELS: Record<Assignment['mealType'], string> = {
@@ -14,7 +16,13 @@ const MEAL_TYPE_LABELS: Record<Assignment['mealType'], string> = {
   dinner: 'Dinner',
 };
 
-const RecipeCard: React.FC<RecipeCardProps> = ({ assignment, isRemoving, onRemove }) => {
+const RecipeCard: React.FC<RecipeCardProps> = ({
+  assignment,
+  isRemoving,
+  onRemove,
+  onOpen,
+  onMove,
+}) => {
   useLanguage();
   const handleRemove = () => {
     onRemove(assignment.planId);
@@ -24,22 +32,62 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ assignment, isRemoving, onRemov
     <div style={styles.card}>
       <div style={styles.content}>
         <span style={styles.mealType}>{t(MEAL_TYPE_LABELS[assignment.mealType])}</span>
-        <span style={styles.recipeName}>{assignment.recipeName}</span>
+        <button
+          data-plan-open={assignment.planId}
+          onClick={() => onOpen?.(assignment.planId)}
+          style={{
+            ...styles.recipeName,
+            textAlign: 'left',
+            border: 0,
+            background: 'transparent',
+            padding: 0,
+            minHeight: 36,
+            cursor: 'pointer',
+          }}
+        >
+          {assignment.recipeName}
+        </button>
         {assignment.servings !== undefined && (
           <span>
             {assignment.servings} {t('servings')}
           </span>
         )}
       </div>
-      <button
-        type="button"
-        onClick={handleRemove}
-        disabled={isRemoving}
-        aria-label={t('Remove assignment')}
-        style={isRemoving ? styles.removeButtonDisabled : styles.removeButton}
-      >
-        ×
-      </button>
+      <details style={{ position: 'relative' }}>
+        <summary
+          aria-label={t('Meal actions for {0}', assignment.recipeName)}
+          style={{ cursor: 'pointer', padding: 6 }}
+        >
+          ⋯
+        </summary>
+        <div
+          style={{
+            position: 'absolute',
+            right: 0,
+            zIndex: 5,
+            padding: 8,
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 8,
+            minWidth: 120,
+          }}
+        >
+          {onMove && (
+            <button disabled={isRemoving} onClick={() => onMove(assignment.planId)}>
+              {t('Move to…')}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleRemove}
+            disabled={isRemoving}
+            aria-label={t('Remove assignment')}
+            style={isRemoving ? styles.removeButtonDisabled : styles.removeButton}
+          >
+            {t('Remove assignment')}
+          </button>
+        </div>
+      </details>
     </div>
   );
 };

@@ -10,9 +10,12 @@ export interface CookingSession {
   recipeId: string;
   recipeName: string;
   currentStepIndex: number;
+  portions?: number;
 }
 
 interface CookingPageProps {
+  onBackToPlanner?: () => void;
+  backLabel?: string;
   session: CookingSession;
   onStepChange: (index: number) => void;
   onFinish: () => void;
@@ -20,7 +23,14 @@ interface CookingPageProps {
   onExit: () => void;
 }
 
-const CookingPage: React.FC<CookingPageProps> = ({ session, onStepChange, onFinish, onExit }) => {
+const CookingPage: React.FC<CookingPageProps> = ({
+  session,
+  onStepChange,
+  onFinish,
+  onExit,
+  backLabel,
+  onBackToPlanner,
+}) => {
   useLanguage();
   const [data, setData] = useState<RecipeWithAvailability | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,7 +63,7 @@ const CookingPage: React.FC<CookingPageProps> = ({ session, onStepChange, onFini
   }, [session.recipeId]);
 
   useEffect(() => {
-    if (data) setSelectedPortions(data.recipe.portions ?? 1);
+    if (data) setSelectedPortions(session.portions ?? data.recipe.portions ?? 1);
   }, [data?.recipe.recipeId]);
 
   const handleIncrement = useCallback(() => {
@@ -99,7 +109,7 @@ const CookingPage: React.FC<CookingPageProps> = ({ session, onStepChange, onFini
     );
   }
 
-  const { recipe, ingredientAvailability, missingCount } = data;
+  const { recipe, ingredientAvailability } = data;
 
   const scaledQuantities = scaleIngredients(
     recipe.ingredients,
@@ -116,7 +126,16 @@ const CookingPage: React.FC<CookingPageProps> = ({ session, onStepChange, onFini
   const scaledAvailability = ingredientAvailability.map((item, i) => ({
     ...item,
     required: scaledQuantities[i] ?? item.required,
+    status:
+      scaledQuantities[i] == null
+        ? item.status
+        : item.available >= scaledQuantities[i]!
+          ? ('available' as const)
+          : item.available > 0
+            ? ('partial' as const)
+            : ('missing' as const),
   }));
+  const missingCount = scaledAvailability.filter((item) => item.status !== 'available').length;
 
   const instructionSteps = Array.isArray(recipe.instructions)
     ? recipe.instructions
@@ -125,6 +144,7 @@ const CookingPage: React.FC<CookingPageProps> = ({ session, onStepChange, onFini
   return (
     <div style={styles.page}>
       <CookingMode
+        backLabel={backLabel}
         recipeName={recipe.name}
         instructionSteps={instructionSteps}
         ingredients={displayedIngredients}
@@ -133,7 +153,7 @@ const CookingPage: React.FC<CookingPageProps> = ({ session, onStepChange, onFini
         selectedPortions={selectedPortions}
         onPortionsIncrement={handleIncrement}
         onPortionsDecrement={handleDecrement}
-        onExit={onExit}
+        onExit={onBackToPlanner ?? onExit}
         onFinish={onFinish}
         currentStepIndex={session.currentStepIndex}
         onStepChange={onStepChange}

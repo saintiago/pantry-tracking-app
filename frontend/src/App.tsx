@@ -36,10 +36,6 @@ interface ItemDetailPageState {
   ) => void;
 }
 
-const mainPages: Partial<Record<PageId, React.FC>> = {
-  'meal-plan': MealPlanPage,
-};
-
 const LoadingSpinner: React.FC = () => {
   useLanguage();
   return (
@@ -97,11 +93,38 @@ const AuthenticatedApp: React.FC = () => {
   const [addItemPageProps, setAddItemPageProps] = useState<AddItemPageState | null>(null);
   const [itemDetailPageProps, setItemDetailPageProps] = useState<ItemDetailPageState | null>(null);
   const [cookingSession, setCookingSession] = useState<CookingSession | null>(null);
+  const [plannerVisited, setPlannerVisited] = useState(false);
+  const [shoppingSelection, setShoppingSelection] = useState<{
+    start: string;
+    weeks: number;
+    days: string[];
+  } | null>(null);
+  const [cookingOrigin, setCookingOrigin] = useState<'recipes' | 'meal-plan'>('recipes');
 
-  const startCookingSession = useCallback((recipeId: string, recipeName: string) => {
-    setCookingSession({ recipeId, recipeName, currentStepIndex: 0 });
+  const startCookingSession = (recipeId: string, recipeName: string, portions?: number) => {
+    setCookingSession((previous) =>
+      previous?.recipeId === recipeId
+        ? previous
+        : { recipeId, recipeName, currentStepIndex: 0, portions },
+    );
+    setCookingOrigin(activePage === 'meal-plan' ? 'meal-plan' : 'recipes');
+    window.history.pushState({ ...window.history.state, cooking: true }, '');
     setActivePage('cooking');
-  }, []);
+  };
+
+  React.useEffect(() => {
+    const onPop = (event: PopStateEvent) => {
+      if (event.state?.cooking && cookingSession) setActivePage('cooking');
+      else if (activePage === 'cooking') setActivePage(cookingOrigin);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [activePage, cookingOrigin, cookingSession]);
+
+  const exitCooking = () => {
+    if (window.history.state?.cooking) window.history.back();
+    else setActivePage(cookingOrigin);
+  };
 
   const updateCookingStep = useCallback((index: number) => {
     setCookingSession((prev) => (prev ? { ...prev, currentStepIndex: index } : null));
@@ -109,10 +132,13 @@ const AuthenticatedApp: React.FC = () => {
 
   const finishCookingSession = useCallback(() => {
     setCookingSession(null);
-    setActivePage('recipes');
-  }, []);
+    if (window.history.state?.cooking) window.history.back();
+    else setActivePage(cookingOrigin);
+  }, [cookingOrigin]);
 
   const handleNavigate = (page: PageId) => {
+    if (page === 'meal-plan') setPlannerVisited(true);
+    if (page === 'shopping-list') setShoppingSelection(null);
     // Bump key when navigating back to inventory from another page — forces a fresh data fetch
     if (
       page === 'inventory' &&
@@ -157,6 +183,7 @@ const AuthenticatedApp: React.FC = () => {
     if (activePage === 'shopping-list')
       return (
         <ShoppingListPage
+          initialSelection={shoppingSelection ?? undefined}
           onEdit={(request) => {
             setShoppingEdit(request);
             setActivePage('shopping-edit');
@@ -224,13 +251,25 @@ const AuthenticatedApp: React.FC = () => {
           session={cookingSession}
           onStepChange={updateCookingStep}
           onFinish={finishCookingSession}
-          onExit={() => setActivePage('recipes')}
+          onExit={exitCooking}
+          onBackToPlanner={
+            cookingOrigin === 'meal-plan'
+              ? () => {
+                  if (window.history.state?.cooking && window.history.state?.plannerDetail)
+                    window.history.go(-2);
+                  else {
+                    window.history.replaceState({}, '');
+                    window.dispatchEvent(new PopStateEvent('popstate', { state: {} }));
+                    setActivePage('meal-plan');
+                  }
+                }
+              : undefined
+          }
+          backLabel={cookingOrigin === 'meal-plan' ? 'Back to meal planner' : undefined}
         />
       );
     }
-    const ActiveComponent = mainPages[activePage];
-    if (!ActiveComponent) return null;
-    return <ActiveComponent />;
+    return null;
   };
 
   return (
@@ -238,8 +277,24 @@ const AuthenticatedApp: React.FC = () => {
       activePage={activePage}
       onNavigate={handleNavigate}
       cookingSession={cookingSession}
-      onReturnToCooking={() => setActivePage('cooking')}
+      onReturnToCooking={() => {
+        window.history.pushState({ ...window.history.state, cooking: true }, '');
+        setActivePage('cooking');
+      }}
     >
+      {plannerVisited && (
+        <div style={{ display: activePage === 'meal-plan' ? 'block' : 'none' }}>
+          <MealPlanPage
+            active={activePage === 'meal-plan'}
+            activeCookingSession={cookingSession}
+            onStartCooking={startCookingSession}
+            onShopping={(selection) => {
+              setShoppingSelection(selection);
+              setActivePage('shopping-list');
+            }}
+          />
+        </div>
+      )}
       {renderPage()}
     </Layout>
   );

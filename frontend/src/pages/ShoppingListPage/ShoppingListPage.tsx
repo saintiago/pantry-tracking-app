@@ -65,7 +65,9 @@ const views = new Map<string, ShoppingView>();
 export default function ShoppingListPage({
   onPurchase,
   onEdit,
+  initialSelection,
 }: {
+  initialSelection?: { start: string; weeks: number; days: string[] };
   onPurchase: (purchase: PurchaseRequest) => void;
   onEdit: (request: ShoppingEditRequest) => void;
 }) {
@@ -74,14 +76,14 @@ export default function ShoppingListPage({
   const today = localToday();
   const currentWeek = getWeekStart(new Date(`${today}T12:00:00Z`));
   const view = views.get(user!.userId);
-  const [start, setStart] = useState(view?.start ?? currentWeek);
-  const [weeks, setWeeks] = useState(view?.weeks ?? 1);
+  const [start, setStart] = useState(initialSelection?.start ?? view?.start ?? currentWeek);
+  const [weeks, setWeeks] = useState(initialSelection?.weeks ?? view?.weeks ?? 1);
   const end = addDays(start, weeks * 7 - 1);
   const key = storageKey(user!.userId, start, end);
   const globalKey = companionKey(user!.userId);
-  const [days, setDays] = useState<string[]>(view?.days ?? []);
-  const [recipes, setRecipes] = useState<string[]>(view?.recipes ?? []);
-  const [past, setPast] = useState(view?.past ?? false);
+  const [days, setDays] = useState<string[]>(initialSelection?.days ?? view?.days ?? []);
+  const [recipes, setRecipes] = useState<string[]>(initialSelection ? [] : (view?.recipes ?? []));
+  const [past, setPast] = useState(initialSelection ? true : (view?.past ?? false));
   const [showStock, setShowStock] = useState(view?.showStock ?? false);
   const [search, setSearch] = useState(view?.search ?? '');
   const [mode, setMode] = useState<'planning' | 'shopping' | 'order'>(view?.mode ?? 'planning');

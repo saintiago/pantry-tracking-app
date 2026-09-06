@@ -90,32 +90,21 @@ async function setup(
   return { plans, requests };
 }
 
-test('all recipes appear under their categories to the left of two complete weeks', async ({
+test('recipes appear once alphabetically with category filters to the left of two complete weeks', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await setup(page);
   const library = page.getByRole('complementary', { name: 'Recipe library' });
-  await expect(
-    library
-      .getByRole('region', { name: 'breakfast', exact: true })
-      .getByRole('button', { name: 'Avocado toast' }),
-  ).toBeVisible();
-  await expect(
-    library
-      .getByRole('region', { name: 'dinner', exact: true })
-      .getByRole('button', { name: 'Tomato soup' }),
-  ).toBeVisible();
-  await expect(
-    library
-      .getByRole('region', { name: 'vegetarian', exact: true })
-      .getByRole('button', { name: 'Tomato soup' }),
-  ).toBeVisible();
-  await expect(
-    library
-      .getByRole('region', { name: 'Uncategorized' })
-      .getByRole('button', { name: 'Family recipe' }),
-  ).toBeVisible();
+  await expect(library.locator('[data-recipe-open]')).toHaveText([
+    'Avocado toast',
+    'Family recipe',
+    'Tomato soup',
+  ]);
+  await library.getByRole('button', { name: 'dinner', exact: true }).click();
+  await library.getByRole('button', { name: 'vegetarian', exact: true }).click();
+  await expect(library.locator('[data-recipe-open]')).toHaveText(['Tomato soup']);
+  await library.getByRole('button', { name: 'All', exact: true }).click();
   await expect(page.locator('[data-date]').first()).toHaveAttribute('data-date', '2026-08-31');
   await expect(page.locator('[data-date]').last()).toHaveAttribute('data-date', '2026-09-13');
   const left = (await library.boundingBox())!;
@@ -129,7 +118,9 @@ test('real drag and drop saves the recipe in the selected second-week meal slot'
 }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   const { requests } = await setup(page);
-  const source = page.getByRole('complementary').getByRole('button', { name: 'Avocado toast' });
+  const source = page
+    .getByRole('complementary')
+    .getByRole('button', { name: 'Place Avocado toast' });
   await source.dragTo(page.getByRole('button', { name: 'Plan dinner on 2026-09-08' }));
   const day = page.locator('[data-date="2026-09-08"]');
   await expect(day.getByText('Avocado toast', { exact: true })).toBeVisible();
@@ -152,7 +143,9 @@ test('real drag and drop saves the recipe in the selected second-week meal slot'
 
 test('keyboard selection and calendar activation add meals without dragging', async ({ page }) => {
   await setup(page);
-  const source = page.getByRole('complementary').getByRole('button', { name: 'Family recipe' });
+  const source = page
+    .getByRole('complementary')
+    .getByRole('button', { name: 'Place Family recipe' });
   await source.focus();
   await page.keyboard.press('Enter');
   await expect(source).toHaveAttribute('aria-pressed', 'true');
@@ -205,7 +198,9 @@ test('failed meal creation retains selection for retry and does not add a card',
 }) => {
   const options = { saveFail: true };
   await setup(page, options);
-  const source = page.getByRole('complementary').getByRole('button', { name: 'Family recipe' });
+  const source = page
+    .getByRole('complementary')
+    .getByRole('button', { name: 'Place Family recipe' });
   await source.click();
   await page.getByRole('button', { name: 'Plan lunch on 2026-09-07' }).click();
   await expect(page.getByRole('alert')).toContainText('Could not save meal');
@@ -232,7 +227,10 @@ test('mobile planner supports selection and keeps the page within the viewport',
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await setup(page);
-  await page.getByRole('complementary').getByRole('button', { name: 'Avocado toast' }).click();
+  await page
+    .getByRole('complementary')
+    .getByRole('button', { name: 'Place Avocado toast' })
+    .click();
   await page.getByRole('button', { name: 'Plan lunch on 2026-09-12' }).click();
   await expect(page.locator('[data-date="2026-09-12"]').getByText('Avocado toast')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(

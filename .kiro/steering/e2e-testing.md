@@ -77,6 +77,12 @@ No `.env.test` file needed. All config is in `playwright.config.ts`.
 
 ## Issue #4–#6 regression coverage
 
+- `meal-planner-navigation.spec.ts` covers the shared detail/cooking return flow,
+  planned servings save/retry, category unions, calendar views, move/remove actions,
+  mobile meal palette and contextual shopping. Titles open details; use the separate
+  `Place <recipe>` handle for pointer, keyboard and touch placement. Open the meal
+  action summary before removing an assignment.
+
 - `recipe-issue4-edge-cases.spec.ts` adds stateful edit/save coverage for sections,
   handful validation, deferred portion scaling, notes removal, and instruction
   renumbering. It checks compact ingredient layout at desktop and mobile widths.

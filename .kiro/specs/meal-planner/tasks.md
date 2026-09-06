@@ -1,3 +1,5 @@
+> Navigation extension: see [recipe-navigation.md](recipe-navigation.md) for the
+> approved September 2026 continuation and validation scope.
 > September 2026 update: the original one-week/lazy-library behavior below is historical.
 > The current issue #5 requirements and implementation are documented in
 > `../open-issues-4-6/requirements.md` and `design.md`. Two-week rendering, categorized

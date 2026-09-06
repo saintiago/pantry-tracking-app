@@ -1,5 +1,8 @@
 /* Shared palette. Pastels are surfaces; readable dark companions are text. */
 :root {
+  --color-breakfast: #fff2cc;
+  --color-lunch: #f4d1c1;
+  --color-dinner: #dee3f5;
   --color-canvas: #fafafa;
   --color-surface: #ffffff;
   --color-text: #2b2d42;

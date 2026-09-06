@@ -61,6 +61,12 @@ export function useRecipeDrag(
       const speed = gesture.y < 85 ? -12 : gesture.y > window.innerHeight - 105 ? 12 : 0;
       if (speed) window.scrollBy(0, speed);
       let scrolled = beforeY !== window.scrollY;
+      const main = rootRef.current?.closest('main');
+      if (main && speed) {
+        const before = main.scrollTop;
+        main.scrollTop += speed;
+        scrolled ||= before !== main.scrollTop;
+      }
       const calendar = rootRef.current?.querySelector<HTMLElement>('[data-meal-calendar]');
       if (calendar) {
         const bounds = calendar.getBoundingClientRect();

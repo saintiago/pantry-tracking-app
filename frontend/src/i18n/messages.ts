@@ -1,5 +1,33 @@
 // English source messages are stable translation keys. Interpolated user content stays unchanged.
 export const messages: Record<string, { es: string; it: string }> = {
+  'Shop for these meals': { es: 'Comprar para estas comidas', it: 'Fai la spesa per questi pasti' },
+  Day: { es: 'Día', it: 'Giorno' },
+  Week: { es: 'Semana', it: 'Settimana' },
+  'Back to meal planner': { es: 'Volver al plan de comidas', it: 'Torna al piano pasti' },
+  'Open a recipe by name. Drag its handle, or select the handle and tap a meal.': {
+    es: 'Abre una receta por su nombre. Arrastra su control o selecciónalo y toca una comida.',
+    it: 'Apri una ricetta dal nome. Trascina il controllo oppure selezionalo e tocca un pasto.',
+  },
+  'Place {0}': { es: 'Colocar {0}', it: 'Posiziona {0}' },
+  'Meal actions for {0}': { es: 'Acciones de comida para {0}', it: 'Azioni pasto per {0}' },
+  'Move to…': { es: 'Mover a…', it: 'Sposta a…' },
+  'Move {0}': { es: 'Mover {0}', it: 'Sposta {0}' },
+  'Save servings for this meal': {
+    es: 'Guardar raciones para esta comida',
+    it: 'Salva porzioni per questo pasto',
+  },
+  'Planned meal': { es: 'Comida planificada', it: 'Pasto pianificato' },
+  'Failed to update meal': {
+    es: 'No se pudo actualizar la comida',
+    it: 'Impossibile aggiornare il pasto',
+  },
+  'Recipe categories': { es: 'Categorías de recetas', it: 'Categorie delle ricette' },
+  'No matching recipes': {
+    es: 'No hay recetas coincidentes',
+    it: 'Nessuna ricetta corrispondente',
+  },
+  'Two weeks': { es: 'Dos semanas', it: 'Due settimane' },
+  'Selected day': { es: 'Día seleccionado', it: 'Giorno selezionato' },
   'Not authenticated': {
     es: 'No has iniciado sesión',
     it: 'Accesso non effettuato',

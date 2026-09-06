@@ -230,7 +230,7 @@ test('shopping, manual department options and calendar use the selected language
   ).toHaveText('Latticini e uova');
   await page.getByRole('button', { name: /Piano pasti/ }).click();
   await expect(page.getByRole('heading', { name: 'Pianificazione pasti' })).toBeVisible();
-  await expect(page.getByText('colazione', { exact: true }).first()).toBeVisible();
+  await expect(page.locator('[data-meal-type="breakfast"]').first()).toContainText('☀️ colazione');
   await page.locator('header button[aria-controls="language-options"]').click();
   await expect(page.locator('#language-options')).toBeInViewport();
   const menu = await page.locator('#language-options').boundingBox();

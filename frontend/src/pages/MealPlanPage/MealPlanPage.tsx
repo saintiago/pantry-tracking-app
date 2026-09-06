@@ -1,5 +1,9 @@
 import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import RecipeLibrary from './RecipeLibrary';
+import RecipeDetail from '../RecipesPage/RecipeDetail';
+import RecipeEditor from '../RecipesPage/RecipeEditor';
+import type { CookingSession } from '../CookingPage/CookingPage';
 import WeekCalendar from './WeekCalendar';
 import AddRecipeDialog from './AddRecipeDialog';
 import { addDays, getWeekDates, getWeekStart } from './weekUtils';
@@ -9,6 +13,7 @@ import {
   fetchMealPlans,
   fetchRecipesForPlanning,
   updateFutureServings,
+  updateMealPlan,
   type MealPlan,
   type PlannableRecipe,
 } from '../../api/meal-plans/meal-plans';
@@ -29,8 +34,67 @@ function toAssignment(mp: MealPlan): Assignment {
   };
 }
 
-const MealPlanPage: React.FC = () => {
+interface Props {
+  onShopping?: (selection: { start: string; weeks: number; days: string[] }) => void;
+  activeCookingSession?: CookingSession | null;
+  onStartCooking?: (id: string, name: string, portions?: number) => void;
+  active?: boolean;
+}
+const MealPlanPage: React.FC<Props> = ({
+  activeCookingSession,
+  onStartCooking,
+  active = true,
+  onShopping,
+}) => {
   useLanguage();
+  const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState<string[]>([]);
+  const [view, setView] = useState<'day' | 'week' | 'two-weeks'>('two-weeks');
+  const [selectedDay, setSelectedDay] = useState('');
+  const [detail, setDetail] = useState<{ recipeId: string; planId?: string } | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [moving, setMoving] = useState<MealPlan | null>(null);
+  const returnTarget = useRef<HTMLElement | null>(null);
+  const scrollPosition = useRef({ x: 0, y: 0, main: 0 });
+  const restorePlanner = useCallback(() => {
+    setDetail(null);
+    setEditing(false);
+    setMoving(null);
+    requestAnimationFrame(() => {
+      returnTarget.current?.focus({ preventScroll: true });
+      window.scrollTo(scrollPosition.current.x, scrollPosition.current.y);
+      const main = document.querySelector('main');
+      if (main) main.scrollTop = scrollPosition.current.main;
+    });
+  }, []);
+  const backToPlanner = () => {
+    if (window.history.state?.plannerDetail || window.history.state?.plannerMove)
+      window.history.back();
+    else restorePlanner();
+  };
+  useEffect(() => {
+    const onPop = (event: PopStateEvent) => {
+      if (event.state?.plannerDetail) {
+        setDetail(event.state.plannerDetail);
+        setEditing(false);
+      } else restorePlanner();
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [restorePlanner]);
+  const openRecipe = (recipeId: string, planId?: string) => {
+    returnTarget.current = document.activeElement as HTMLElement;
+    scrollPosition.current = {
+      x: window.scrollX,
+      y: window.scrollY,
+      main: document.querySelector('main')?.scrollTop ?? 0,
+    };
+    const next = { recipeId, planId };
+    window.history.pushState({ plannerDetail: next }, '');
+    setDetail(next);
+    window.scrollTo(0, 0);
+    document.querySelector('main')?.scrollTo(0, 0);
+  };
   const [recipes, setRecipes] = useState<PlannableRecipe[]>([]);
   const [recipeError, setRecipeError] = useState<string | null>(null);
   const [recipesLoading, setRecipesLoading] = useState(true);
@@ -72,7 +136,10 @@ const MealPlanPage: React.FC = () => {
   const [removingPlanIds, setRemovingPlanIds] = useState<Set<string>>(new Set());
 
   // Dialog state: null = closed, { date } = open for that date — Req 4.1
-  const [dialogDate, setDialogDate] = useState<{ date: string } | null>(null);
+  const [dialogDate, setDialogDate] = useState<{
+    date: string;
+    mealType?: Assignment['mealType'];
+  } | null>(null);
 
   // AbortController ref for in-flight week fetches so we can cancel on week change
   const fetchAbortRef = useRef<AbortController | null>(null);
@@ -80,7 +147,7 @@ const MealPlanPage: React.FC = () => {
   // ─── Fetch meal plans for the current weekStart ────────────────────────────
 
   const loadMealPlans = useCallback(
-    async (start: string) => {
+    async (start: string, preserve = false) => {
       // Cancel any previous in-flight fetch
       fetchAbortRef.current?.abort();
       const controller = new AbortController();
@@ -89,7 +156,7 @@ const MealPlanPage: React.FC = () => {
       const end = addDays(start, 13);
 
       // Clear prior data immediately and show loading — Req 2.2
-      setMealPlans([]);
+      if (!preserve) setMealPlans([]);
       setLoading(true);
       setError(null);
       setRemoveError(null);
@@ -120,6 +187,19 @@ const MealPlanPage: React.FC = () => {
     };
   }, [weekStart, loadMealPlans]);
 
+  const previouslyActive = useRef(active);
+  useEffect(() => {
+    if (active && !previouslyActive.current) {
+      void loadMealPlans(weekStart, true);
+      void fetchRecipesForPlanning()
+        .then((result) => setRecipes(result.recipes))
+        .catch((err) =>
+          setRecipeError(err instanceof Error ? err.message : 'Failed to load recipes'),
+        );
+    }
+    previouslyActive.current = active;
+  }, [active]);
+
   // ─── Retry — Req 2.6 ──────────────────────────────────────────────────────
   // WeekCalendar surfaces the error; it needs a retry callback.
   // We re-use loadMealPlans with the current weekStart.
@@ -140,8 +220,8 @@ const MealPlanPage: React.FC = () => {
 
   // ─── Add dialog — Req 4.1 ─────────────────────────────────────────────────
 
-  const handleAddClick = useCallback((date: string) => {
-    setDialogDate({ date });
+  const handleAddClick = useCallback((date: string, mealType?: Assignment['mealType']) => {
+    setDialogDate({ date, mealType });
     setRemoveError(null);
   }, []);
 
@@ -184,7 +264,9 @@ const MealPlanPage: React.FC = () => {
 
   // ─── Derived values ───────────────────────────────────────────────────────
 
-  const weekDates = [...getWeekDates(weekStart), ...getWeekDates(addDays(weekStart, 7))];
+  const allDates = [...getWeekDates(weekStart), ...getWeekDates(addDays(weekStart, 7))];
+  const day = allDates.includes(selectedDay) ? selectedDay : weekStart;
+  const weekDates = view === 'day' ? [day] : view === 'week' ? allDates.slice(0, 7) : allDates;
   const assignments: Assignment[] = mealPlans.map((plan) =>
     toAssignment({
       ...plan,
@@ -251,191 +333,317 @@ const MealPlanPage: React.FC = () => {
     }
   };
 
-  const categories = Array.from(
-    new Set(recipes.flatMap((recipe) => (recipe.tags?.length ? recipe.tags : ['Uncategorized']))),
-  ).sort((a, b) => a.localeCompare(b));
-
+  const detailPlan = detail?.planId ? mealPlans.find((p) => p.planId === detail.planId) : undefined;
+  const savePlan = async (planId: string, changes: Parameters<typeof updateMealPlan>[1]) => {
+    const result = await updateMealPlan(planId, changes);
+    setMealPlans((previous) => previous.map((p) => (p.planId === planId ? result.mealPlan : p)));
+  };
   // ─── Render ───────────────────────────────────────────────────────────────
 
   const recipeDrag = useRecipeDrag(handleDropRecipe);
 
   return (
-    <div style={styles.page} ref={recipeDrag.rootRef}>
-      {recipeDrag.drag && (
-        <div
-          data-testid="recipe-drag-preview"
-          aria-hidden="true"
-          style={{
-            position: 'fixed',
-            left: recipeDrag.drag.x + 12,
-            top: recipeDrag.drag.y + 12,
-            zIndex: 2000,
-            pointerEvents: 'none',
-            padding: '8px 12px',
-            borderRadius: 8,
-            backgroundColor: 'var(--color-lavender)',
-            border: '1px solid var(--color-muted)',
-            maxWidth: 220,
-            boxShadow: '0 3px 12px #0002',
-          }}
-        >
-          {recipeDrag.drag.name}
+    <>
+      {detail && (
+        <div style={{ padding: 16 }}>
+          {editing ? (
+            <>
+              <button onClick={backToPlanner}>{t('Back to meal planner')}</button>
+              <RecipeEditor
+                recipeId={detail.recipeId}
+                allTags={Array.from(new Set(recipes.flatMap((r) => r.tags ?? [])))}
+                tagsLoading={recipesLoading}
+                onSaved={() => {
+                  setEditing(false);
+                  void loadRecipes();
+                }}
+                onCancel={() => setEditing(false)}
+              />
+            </>
+          ) : (
+            <RecipeDetail
+              key={detail.recipeId + (detail.planId ?? '')}
+              recipeId={detail.recipeId}
+              backLabel="Back to meal planner"
+              onBack={backToPlanner}
+              onEdit={() => setEditing(true)}
+              onDeleted={() => {
+                void loadRecipes();
+                backToPlanner();
+              }}
+              activeCookingSession={activeCookingSession}
+              onStartCooking={onStartCooking}
+              plannedMeal={
+                detailPlan
+                  ? {
+                      ...detailPlan,
+                      servings:
+                        detailPlan.servings ??
+                        recipes.find((r) => r.recipeId === detailPlan.recipeId)?.portions ??
+                        1,
+                    }
+                  : undefined
+              }
+              onSaveServings={
+                detailPlan ? (value) => savePlan(detailPlan.planId, { servings: value }) : undefined
+              }
+            />
+          )}
         </div>
       )}
-      <h1 style={styles.heading}>{t('Meal Planner')}</h1>
-      <form
-        onSubmit={handleServings}
-        style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}
+      {moving && (
+        <form
+          style={{ padding: 16, display: 'grid', gap: 12, maxWidth: 480 }}
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (savingRef.current) return;
+            savingRef.current = true;
+            setSaving(true);
+            setRemoveError(null);
+            try {
+              await savePlan(moving.planId, { date: moving.date, mealType: moving.mealType });
+              backToPlanner();
+            } catch (err) {
+              setRemoveError(err instanceof Error ? err.message : 'Failed to update meal');
+            } finally {
+              savingRef.current = false;
+              setSaving(false);
+            }
+          }}
+        >
+          <h2>{t('Move {0}', moving.recipeName)}</h2>
+          <label>
+            {t('Date')}
+            <input
+              type="date"
+              required
+              value={moving.date}
+              onChange={(e) => setMoving({ ...moving, date: e.target.value })}
+            />
+          </label>
+          <label>
+            {t('Meal')}
+            <select
+              aria-label={t('Meal')}
+              value={moving.mealType}
+              onChange={(e) =>
+                setMoving({ ...moving, mealType: e.target.value as MealPlan['mealType'] })
+              }
+            >
+              {(['breakfast', 'lunch', 'dinner'] as const).map((type) => (
+                <option key={type} value={type}>
+                  {t(type)}
+                </option>
+              ))}
+            </select>
+          </label>
+          {removeError && <p role="alert">{translateMessage(removeError)}</p>}
+          <button disabled={saving} type="submit">
+            {t('Save')}
+          </button>
+          <button disabled={saving} type="button" onClick={backToPlanner}>
+            {t('Cancel')}
+          </button>
+        </form>
+      )}
+      <div
+        style={{ ...styles.page, display: detail || moving ? 'none' : 'flex' }}
+        ref={recipeDrag.rootRef}
       >
-        <label htmlFor="planner-servings">{t('Servings')}</label>
-        <input
-          id="planner-servings"
-          type="number"
-          min="1"
-          step="1"
-          required
-          value={servings}
-          onChange={(event) => setServings(event.target.value)}
-          style={{ width: 72, padding: 8 }}
-        />
-        <button type="submit" disabled={saving} style={styles.retryButton}>
-          {t('Update future meals')}{' '}
-        </button>
-        <span>{t('Applies to all planned meals from today onward.')}</span>
-      </form>
-      {message && <p role="status">{translateMessage(message)}</p>}
-
-      {/* Remove error banner — Req 5.5 */}
-      {removeError && (
-        <div role="alert" style={styles.removeError}>
-          {translateMessage(removeError)}
-          <button
-            type="button"
-            onClick={() => setRemoveError(null)}
-            aria-label={t('Dismiss error')}
-            style={styles.dismissButton}
+        {recipeDrag.drag && (
+          <div
+            data-testid="recipe-drag-preview"
+            aria-hidden="true"
+            style={{
+              position: 'fixed',
+              left: recipeDrag.drag.x + 12,
+              top: recipeDrag.drag.y + 12,
+              zIndex: 2000,
+              pointerEvents: 'none',
+              padding: '8px 12px',
+              borderRadius: 8,
+              backgroundColor: 'var(--color-lavender)',
+              border: '1px solid var(--color-muted)',
+              maxWidth: 220,
+              boxShadow: '0 3px 12px #0002',
+            }}
           >
-            ×
+            {recipeDrag.drag.name}
+          </div>
+        )}
+        <h1 style={styles.heading}>{t('Meal Planner')}</h1>
+        {onShopping && (
+          <button
+            style={styles.retryButton}
+            onClick={() =>
+              onShopping({
+                start: weekStart,
+                weeks:
+                  view === 'two-weeks' || (view === 'day' && day > addDays(weekStart, 6)) ? 2 : 1,
+                days: view === 'day' ? [day] : [],
+              })
+            }
+          >
+            {t('Shop for these meals')}
           </button>
+        )}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {(['day', 'week', 'two-weeks'] as const).map((mode) => (
+            <button
+              key={mode}
+              aria-pressed={view === mode}
+              style={{
+                ...styles.retryButton,
+                background: view === mode ? 'var(--color-mint)' : 'var(--color-surface)',
+              }}
+              onClick={() => setView(mode)}
+            >
+              {t(mode === 'day' ? 'Day' : mode === 'week' ? 'Week' : 'Two weeks')}
+            </button>
+          ))}
+          {view === 'day' && (
+            <label>
+              {t('Selected day')}
+              <select value={day} onChange={(e) => setSelectedDay(e.target.value)}>
+                {allDates.map((date) => (
+                  <option key={date}>{date}</option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
-      )}
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 16 }}>
-        <aside
-          aria-label={t('Recipe library')}
-          style={{
-            flex: '1 1 200px',
-            minWidth: 0,
-            padding: 12,
-            backgroundColor: 'var(--color-canvas)',
-            borderRadius: 12,
-            maxHeight: '50vh',
-            overflowY: 'auto',
-          }}
+        <form
+          onSubmit={handleServings}
+          style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}
         >
-          <h2 style={{ marginTop: 0, fontSize: '1rem' }}>{t('Recipes')}</h2>
-          <p>{t('Drag a recipe to a meal, or select it and tap a calendar meal.')}</p>
-          {recipesLoading && <p role="status">{t('Loading recipes…')}</p>}
-          {recipeError && (
-            <div role="alert">
-              {translateMessage(recipeError)}
-              <button onClick={loadRecipes}>{t('Retry recipes')}</button>
-            </div>
-          )}
-          {!recipesLoading && !recipeError && recipes.length === 0 && (
-            <p>{t('No recipes yet. Add recipes in the Recipes tab.')}</p>
-          )}
-          {!recipesLoading &&
-            !recipeError &&
-            categories.map((category) => (
-              <section key={category} aria-label={category}>
-                <h3 style={{ fontSize: '0.875rem', textTransform: 'capitalize' }}>{category}</h3>
-                {recipes
-                  .filter((recipe) =>
-                    (recipe.tags?.length ? recipe.tags : ['Uncategorized']).includes(category),
-                  )
-                  .sort((a, b) => a.name.localeCompare(b.name))
-                  .map((recipe) => (
-                    <button
-                      key={recipe.recipeId}
-                      type="button"
-                      draggable={false}
-                      disabled={saving}
-                      aria-pressed={selectedRecipeId === recipe.recipeId}
-                      onDragStart={(event) => event.preventDefault()}
-                      onPointerDown={(event) =>
-                        recipeDrag.start(event, recipe.recipeId, recipe.name)
-                      }
-                      onPointerMove={recipeDrag.move}
-                      onPointerUp={recipeDrag.end}
-                      onPointerCancel={recipeDrag.cancel}
-                      onLostPointerCapture={recipeDrag.cancel}
-                      onClick={(event) => {
-                        if (event.detail > 0 && recipeDrag.consumeDragClick()) return;
-                        setSelectedRecipeId((previous) =>
-                          previous === recipe.recipeId ? '' : recipe.recipeId,
-                        );
-                      }}
-                      style={{
-                        display: 'block',
-                        width: '100%',
-                        padding: 10,
-                        marginBottom: 6,
-                        textAlign: 'left',
-                        border: '1px solid var(--color-border)',
-                        borderRadius: 8,
-                        backgroundColor:
-                          selectedRecipeId === recipe.recipeId
-                            ? 'var(--color-lavender)'
-                            : 'var(--color-surface)',
-                        cursor: 'grab',
-                        touchAction: 'pan-y',
-                        userSelect: 'none',
-                      }}
-                    >
-                      {recipe.name}
-                    </button>
-                  ))}
-              </section>
-            ))}
-        </aside>
-        <div style={{ flex: '4 1 650px', minWidth: 0, width: '100%' }}>
-          <WeekCalendar
-            weekDates={weekDates}
-            assignments={assignments}
-            loading={loading}
-            error={error}
-            removingPlanIds={removingPlanIds}
-            onPrevWeek={handlePrevWeek}
-            onNextWeek={handleNextWeek}
-            onAddClick={handleAddClick}
-            onRemove={handleRemove}
-            onDropRecipe={handleDropRecipe}
-            selectedRecipeId={selectedRecipeId}
-            saving={saving}
-            dragTarget={recipeDrag.drag?.target}
+          <label htmlFor="planner-servings">{t('Servings')}</label>
+          <input
+            id="planner-servings"
+            type="number"
+            min="1"
+            step="1"
+            required
+            value={servings}
+            onChange={(event) => setServings(event.target.value)}
+            style={{ width: 72, padding: 8 }}
           />
-        </div>
-      </div>
-
-      {/* Retry control when week fetch failed — Req 2.5, 2.6 */}
-      {error && !loading && (
-        <div style={styles.retryRow}>
-          <button type="button" onClick={() => loadMealPlans(weekStart)} style={styles.retryButton}>
-            {t('Retry')}{' '}
+          <button type="submit" disabled={saving} style={styles.retryButton}>
+            {t('Update future meals')}{' '}
           </button>
-        </div>
-      )}
+          <span>{t('Applies to all planned meals from today onward.')}</span>
+        </form>
+        {message && <p role="status">{translateMessage(message)}</p>}
 
-      {/* Add Recipe Dialog — Req 4.1 */}
-      {dialogDate && (
-        <AddRecipeDialog
-          date={dialogDate.date}
-          onAdd={handleAddSuccess}
-          onClose={handleDialogClose}
-        />
-      )}
-    </div>
+        {/* Remove error banner — Req 5.5 */}
+        {removeError && (
+          <div role="alert" style={styles.removeError}>
+            {translateMessage(removeError)}
+            <button
+              type="button"
+              onClick={() => setRemoveError(null)}
+              aria-label={t('Dismiss error')}
+              style={styles.dismissButton}
+            >
+              ×
+            </button>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 16 }}>
+          <aside
+            aria-label={t('Recipe library')}
+            style={{
+              flex: '1 1 200px',
+              minWidth: 0,
+              padding: 12,
+              backgroundColor: 'var(--color-canvas)',
+              borderRadius: 12,
+              maxHeight: '50vh',
+              overflowY: 'auto',
+            }}
+          >
+            <h2 style={{ marginTop: 0, fontSize: '1rem' }}>{t('Recipes')}</h2>
+
+            {recipesLoading && <p role="status">{t('Loading recipes…')}</p>}
+            {recipeError && (
+              <div role="alert">
+                {translateMessage(recipeError)}
+                <button onClick={loadRecipes}>{t('Retry recipes')}</button>
+              </div>
+            )}
+            {!recipesLoading && !recipeError && recipes.length === 0 && (
+              <p>{t('No recipes yet. Add recipes in the Recipes tab.')}</p>
+            )}
+            {!recipesLoading && !recipeError && (
+              <RecipeLibrary
+                recipes={recipes}
+                search={search}
+                onSearch={setSearch}
+                categories={filters}
+                onCategories={setFilters}
+                selected={selectedRecipeId}
+                onSelect={setSelectedRecipeId}
+                onOpen={openRecipe}
+                saving={saving}
+                drag={recipeDrag}
+              />
+            )}
+          </aside>
+          <div style={{ flex: '4 1 650px', minWidth: 0, width: '100%' }}>
+            <WeekCalendar
+              weekDates={weekDates}
+              assignments={assignments}
+              loading={loading}
+              error={error}
+              removingPlanIds={removingPlanIds}
+              onPrevWeek={handlePrevWeek}
+              onNextWeek={handleNextWeek}
+              onAddClick={handleAddClick}
+              onRemove={handleRemove}
+              onOpen={(planId) => {
+                const plan = mealPlans.find((p) => p.planId === planId);
+                if (plan) openRecipe(plan.recipeId, planId);
+              }}
+              onMove={(planId) => {
+                const plan = mealPlans.find((p) => p.planId === planId);
+                if (plan) {
+                  returnTarget.current = document.activeElement as HTMLElement;
+                  window.history.pushState({ plannerMove: true }, '');
+                  setMoving({ ...plan });
+                }
+              }}
+              onDropRecipe={handleDropRecipe}
+              selectedRecipeId={selectedRecipeId}
+              saving={saving}
+              dragTarget={recipeDrag.drag?.target}
+            />
+          </div>
+        </div>
+
+        {/* Retry control when week fetch failed — Req 2.5, 2.6 */}
+        {error && !loading && (
+          <div style={styles.retryRow}>
+            <button
+              type="button"
+              onClick={() => loadMealPlans(weekStart)}
+              style={styles.retryButton}
+            >
+              {t('Retry')}{' '}
+            </button>
+          </div>
+        )}
+
+        {/* Add Recipe Dialog — Req 4.1 */}
+        {dialogDate && (
+          <AddRecipeDialog
+            date={dialogDate.date}
+            initialMealType={dialogDate.mealType}
+            onAdd={handleAddSuccess}
+            onClose={handleDialogClose}
+          />
+        )}
+      </div>
+    </>
   );
 };
 

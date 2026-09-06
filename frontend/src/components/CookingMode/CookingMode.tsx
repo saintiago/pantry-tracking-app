@@ -6,6 +6,7 @@ import ResizableSplit from '../ResizableSplit/ResizableSplit';
 import ConfirmDialog from './ConfirmDialog';
 
 interface CookingModeProps {
+  backLabel?: string;
   recipeName: string;
   instructionSteps: string[];
   ingredients: RecipeIngredient[];
@@ -34,6 +35,7 @@ const CookingMode: React.FC<CookingModeProps> = ({
   onPortionsIncrement,
   onPortionsDecrement,
   onExit,
+  backLabel,
   onFinish,
   currentStepIndex,
   onStepChange,
@@ -177,7 +179,7 @@ const CookingMode: React.FC<CookingModeProps> = ({
           style={styles.backButton}
           aria-label={t('Leave cooking mode')}
         >
-          {t('← Back')}{' '}
+          {t(backLabel ?? '← Back')}{' '}
         </button>
         <h2 style={styles.recipeName} title={recipeName}>
           {recipeName}

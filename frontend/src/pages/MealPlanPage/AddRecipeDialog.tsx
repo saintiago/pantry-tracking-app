@@ -19,6 +19,7 @@ export function sortRecipes(recipes: PlannableRecipe[]): PlannableRecipe[] {
 }
 
 interface AddRecipeDialogProps {
+  initialMealType?: MealType;
   /** ISO date (YYYY-MM-DD) for which we're adding a recipe */
   date: string;
   /** Called with the newly-created MealPlan on success */
@@ -36,14 +37,19 @@ const MEAL_TYPE_OPTIONS: { value: MealType; label: string }[] = [
   { value: 'dinner', label: 'Dinner' },
 ];
 
-const AddRecipeDialog: React.FC<AddRecipeDialogProps> = ({ date, onAdd, onClose }) => {
+const AddRecipeDialog: React.FC<AddRecipeDialogProps> = ({
+  date,
+  onAdd,
+  onClose,
+  initialMealType = 'breakfast',
+}) => {
   useLanguage();
   const [recipes, setRecipes] = useState<PlannableRecipe[]>([]);
   const [fetchState, setFetchState] = useState<FetchState>('idle');
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const [selectedRecipeId, setSelectedRecipeId] = useState<string>('');
-  const [mealType, setMealType] = useState<MealType>('breakfast');
+  const [mealType, setMealType] = useState<MealType>(initialMealType);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);

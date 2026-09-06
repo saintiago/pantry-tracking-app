@@ -12,8 +12,10 @@ interface WeekCalendarProps {
   removingPlanIds: Set<string>; // Plan IDs currently being deleted
   onPrevWeek: () => void; // Navigate to previous week
   onNextWeek: () => void; // Navigate to next week
-  onAddClick: (date: string) => void;
+  onAddClick: (date: string, mealType?: Assignment['mealType']) => void;
   onRemove: (planId: string) => void;
+  onOpen?: (planId: string) => void;
+  onMove?: (planId: string) => void;
   onDropRecipe?: (recipeId: string, date: string, mealType: Assignment['mealType']) => void;
   selectedRecipeId?: string;
   saving?: boolean;
@@ -30,6 +32,8 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({
   onNextWeek,
   onAddClick,
   onRemove,
+  onOpen,
+  onMove,
   onDropRecipe,
   selectedRecipeId,
   saving,
@@ -84,7 +88,14 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({
       )}
 
       {/* Seven DayColumns (Req 1.1) */}
-      <div style={styles.columns} data-meal-calendar>
+      <div
+        style={{
+          ...styles.columns,
+          gridTemplateColumns:
+            weekDates.length === 1 ? 'minmax(0, 1fr)' : styles.columns.gridTemplateColumns,
+        }}
+        data-meal-calendar
+      >
         {weekDates.map((date) => (
           <DayColumn
             key={date}
@@ -92,6 +103,8 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({
             assignments={grouped[date] ?? []}
             removingPlanIds={removingPlanIds}
             onRemove={onRemove}
+            onOpen={onOpen}
+            onMove={onMove}
             onAddClick={onAddClick}
             onDropRecipe={onDropRecipe}
             selectedRecipeId={selectedRecipeId}

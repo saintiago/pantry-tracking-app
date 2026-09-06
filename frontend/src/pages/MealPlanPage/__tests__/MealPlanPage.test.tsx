@@ -88,7 +88,7 @@ describe('MealPlanPage — initial render', () => {
 
     await waitFor(() => {
       // 7 "Add recipe" buttons — one per day column
-      const addButtons = screen.getAllByRole('button', { name: 'Add recipe' });
+      const addButtons = screen.getAllByRole('button', { name: /Plan breakfast on/ });
       expect(addButtons).toHaveLength(14);
     });
   });
@@ -173,7 +173,7 @@ describe('MealPlanPage — error states', () => {
     });
 
     // All 7 add buttons still present
-    const addButtons = screen.getAllByRole('button', { name: 'Add recipe' });
+    const addButtons = screen.getAllByRole('button', { name: /Plan breakfast on/ });
     expect(addButtons).toHaveLength(14);
   });
 
@@ -294,13 +294,13 @@ describe('MealPlanPage — add recipe flow', () => {
     renderPage();
 
     await waitFor(() => {
-      const addButtons = screen.getAllByRole('button', { name: 'Add recipe' });
+      const addButtons = screen.getAllByRole('button', { name: /Plan breakfast on/ });
       expect(addButtons.length).toBeGreaterThan(0);
     });
 
     await waitFor(() => expect(screen.queryByText('Loading…')).not.toBeInTheDocument());
 
-    const addButtons = screen.getAllByRole('button', { name: 'Add recipe' });
+    const addButtons = screen.getAllByRole('button', { name: /Plan breakfast on/ });
     await userEvent.click(addButtons[0]);
 
     // Dialog should be open
@@ -323,7 +323,7 @@ describe('MealPlanPage — add recipe flow', () => {
 
     await waitFor(() => expect(screen.queryByText('Loading…')).not.toBeInTheDocument());
 
-    const addButtons = screen.getAllByRole('button', { name: 'Add recipe' });
+    const addButtons = screen.getAllByRole('button', { name: /Plan breakfast on/ });
     await userEvent.click(addButtons[0]);
 
     // Wait for dialog with recipes
@@ -368,6 +368,7 @@ describe('MealPlanPage — remove flow', () => {
       ).toBeInTheDocument();
     });
 
+    await userEvent.click(screen.getByLabelText(/Meal actions for/));
     const removeButton = screen.getByRole('button', { name: 'Remove assignment' });
     await userEvent.click(removeButton);
 
@@ -391,6 +392,8 @@ describe('MealPlanPage — remove flow', () => {
         ).getByText('Oatmeal'),
       ).toBeInTheDocument();
     });
+
+    await userEvent.click(screen.getByLabelText(/Meal actions for/));
 
     await userEvent.click(screen.getByRole('button', { name: 'Remove assignment' }));
 
@@ -418,6 +421,7 @@ describe('MealPlanPage — remove flow', () => {
       ).toBeInTheDocument();
     });
 
+    await userEvent.click(screen.getByLabelText(/Meal actions for/));
     const removeButton = screen.getByRole('button', { name: 'Remove assignment' });
     await userEvent.click(removeButton);
 
@@ -457,6 +461,7 @@ describe('MealPlanPage — remove flow', () => {
       ).toBeInTheDocument();
     });
 
+    await userEvent.click(screen.getByLabelText(/Meal actions for/));
     const removeButton = screen.getByRole('button', { name: 'Remove assignment' });
     await userEvent.click(removeButton);
 
@@ -464,8 +469,10 @@ describe('MealPlanPage — remove flow', () => {
     expect(screen.getByRole('button', { name: 'Remove assignment' })).toBeDisabled();
 
     // Resolve + finish
-    act(() => resolveDelete());
     // Clean up with a resolved refresh
     mockFetchMealPlans.mockResolvedValueOnce({ mealPlans: [] });
+    await act(async () => {
+      resolveDelete();
+    });
   });
 });

@@ -20,6 +20,28 @@ export interface CreateMealPlanInput {
   recipeName: string;
 }
 
+export async function updateMealPlan(
+  planId: string,
+  input: Partial<CreateMealPlanInput>,
+): Promise<{ mealPlan: MealPlan }> {
+  const headers = await getAuthHeaders();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    const res = await fetch(`${API_URL}/meal-plans/${encodeURIComponent(planId)}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(input),
+      signal: controller.signal,
+    });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.message ?? 'Failed to update meal');
+    return body;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export interface PlannableRecipe {
   recipeId: string;
   name: string;

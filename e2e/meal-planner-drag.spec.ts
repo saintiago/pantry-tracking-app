@@ -44,7 +44,7 @@ async function setup(page: Page) {
 test('mouse drag from a long library into the second week saves exactly once', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
   const writes = await setup(page);
-  const recipe = page.getByRole('button', { name: 'Recipe 00', exact: true });
+  const recipe = page.getByRole('button', { name: 'Place Recipe 00', exact: true });
   const target = page
     .locator('[data-date]')
     .nth(8)
@@ -61,7 +61,7 @@ test('mouse press, move and release places a recipe without clicking a meal firs
 }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
   const writes = await setup(page);
-  const recipe = page.getByRole('button', { name: 'Recipe 00', exact: true });
+  const recipe = page.getByRole('button', { name: 'Place Recipe 00', exact: true });
   const target = page
     .locator('[data-date]')
     .nth(1)
@@ -86,7 +86,7 @@ test('drag works when Chrome native dragging is cancelled and highlights the act
   await page.evaluate(() =>
     document.addEventListener('dragstart', (event) => event.preventDefault()),
   );
-  const source = page.getByRole('button', { name: 'Recipe 00', exact: true });
+  const source = page.getByRole('button', { name: 'Place Recipe 00', exact: true });
   const target = page
     .locator('[data-date]')
     .nth(1)
@@ -110,12 +110,12 @@ test('drag works when Chrome native dragging is cancelled and highlights the act
 test('scrolling a long library preserves the exact dragged recipe', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
   const writes = await setup(page);
-  const source = page.getByRole('button', { name: 'Recipe 23', exact: true });
+  const source = page.getByRole('button', { name: 'Place Recipe 23', exact: true });
   const target = page
     .locator('[data-date]')
     .nth(1)
     .getByRole('button', { name: /Plan dinner/ });
-  await source.scrollIntoViewIfNeeded();
+  await source.evaluate((element) => element.scrollIntoView({ block: 'center' }));
   await source.dragTo(target);
   await expect(
     page.locator('[data-date]').nth(1).getByText('Recipe 23', { exact: true }),
@@ -129,7 +129,7 @@ for (const cancellation of ['outside', 'escape', 'pointercancel']) {
   test(`${cancellation} cancels a drag without placing or selecting a recipe`, async ({ page }) => {
     await page.setViewportSize({ width: 1366, height: 768 });
     const writes = await setup(page);
-    const source = page.getByRole('button', { name: 'Recipe 00', exact: true });
+    const source = page.getByRole('button', { name: 'Place Recipe 00', exact: true });
     const target = page
       .locator('[data-date]')
       .nth(1)
@@ -148,6 +148,7 @@ for (const cancellation of ['outside', 'escape', 'pointercancel']) {
     await expect(source).toHaveAttribute('aria-pressed', 'false');
     await target.click();
     expect(writes).toHaveLength(0);
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
     await source.click();
     await target.click();
     await expect(
@@ -160,7 +161,8 @@ for (const cancellation of ['outside', 'escape', 'pointercancel']) {
 test('holding a drag near the window edge scrolls to the second week', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 600 });
   const writes = await setup(page);
-  const source = page.getByRole('button', { name: 'Recipe 00', exact: true });
+  const source = page.getByRole('button', { name: 'Place Recipe 00', exact: true });
+  await source.evaluate((element) => element.scrollIntoView({ block: 'center' }));
   const from = (await source.boundingBox())!;
   await page.mouse.move(from.x + 15, from.y + 15);
   await page.mouse.down();
@@ -169,7 +171,12 @@ test('holding a drag near the window edge scrolls to the second week', async ({ 
     .locator('[data-date]')
     .nth(8)
     .getByRole('button', { name: /Plan dinner/ });
-  await expect.poll(async () => (await target.boundingBox())!.y).toBeLessThan(460);
+  await expect
+    .poll(async () => {
+      const bounds = (await target.boundingBox())!;
+      return bounds.y + bounds.height;
+    })
+    .toBeLessThan(544);
   await page.mouse.move(800, 300);
   const to = (await target.boundingBox())!;
   await page.mouse.move(to.x + 15, to.y + 15, { steps: 10 });
@@ -189,7 +196,7 @@ test.describe('touch selection', () => {
     context,
   }) => {
     const writes = await setup(page);
-    const source = page.getByRole('button', { name: 'Recipe 00', exact: true });
+    const source = page.getByRole('button', { name: 'Place Recipe 00', exact: true });
     const bounds = (await source.boundingBox())!;
     const session = await context.newCDPSession(page);
     const x = bounds.x + 50;
@@ -211,7 +218,7 @@ test.describe('touch selection', () => {
 
   test('touch taps select and place a recipe without starting a drag', async ({ page }) => {
     const writes = await setup(page);
-    const selected = page.getByRole('button', { name: 'Recipe 00', exact: true });
+    const selected = page.getByRole('button', { name: 'Place Recipe 00', exact: true });
     await selected.tap();
     await expect(selected).toHaveAttribute('aria-pressed', 'true');
     const target = page

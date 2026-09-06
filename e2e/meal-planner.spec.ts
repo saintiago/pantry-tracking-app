@@ -252,7 +252,7 @@ test.describe('Meal Planner', () => {
       const slot = page.getByRole('region', { name: `${mealType} on ${date}`, exact: true });
       const recipe = page
         .getByRole('complementary')
-        .getByRole('button', { name: 'Pancakes', exact: true });
+        .getByRole('button', { name: 'Place Pancakes', exact: true });
       await recipe.dragTo(slot.getByRole('button', { name: `Plan ${mealType} on ${date}` }));
       await expect(slot.getByText('Pancakes', { exact: true })).toBeVisible();
       await expect(page.locator('[data-date]').getByText('Pancakes', { exact: true })).toHaveCount(
@@ -268,6 +268,7 @@ test.describe('Meal Planner', () => {
       await page.getByRole('button', { name: 'Next week', exact: true }).click();
       await page.getByRole('button', { name: 'Previous week', exact: true }).click();
       await expect(slot.getByText('Pancakes', { exact: true })).toBeVisible();
+      await slot.getByLabel(/Meal actions for/).click();
       await slot.getByRole('button', { name: 'Remove assignment' }).click();
       await expect(slot.getByText('Pancakes', { exact: true })).toHaveCount(0);
       await expect(slot.getByRole('button', { name: `Plan ${mealType} on ${date}` })).toBeVisible();
@@ -284,10 +285,10 @@ test.describe('Meal Planner', () => {
     await expect(lunch.getByText('Tomato Soup')).toBeVisible();
     const recipe = page
       .getByRole('complementary')
-      .getByRole('button', { name: 'Pancakes', exact: true });
+      .getByRole('button', { name: 'Place Pancakes', exact: true });
     await recipe.dragTo(breakfast.getByText('Pasta Carbonara'));
     await expect(breakfast.getByText('Pancakes')).toBeVisible();
-    await expect(breakfast.getByRole('button', { name: 'Remove assignment' })).toHaveCount(2);
+    await expect(breakfast.getByLabel(/Meal actions for/)).toHaveCount(2);
     await expect(lunch.getByText('Tomato Soup')).toBeVisible();
   });
 
@@ -301,7 +302,7 @@ test.describe('Meal Planner', () => {
       await expect(page.getByText(label, { exact: true }).first()).toBeVisible();
     }
 
-    const addButtons = page.getByRole('button', { name: 'Add recipe' });
+    const addButtons = page.getByRole('button', { name: /Plan breakfast on/ });
     await expect(addButtons).toHaveCount(14);
   });
 
@@ -322,20 +323,14 @@ test.describe('Meal Planner', () => {
   test('breakfast card appears before lunch card on the same day (Req 1.1 ordering)', async ({
     page,
   }) => {
-    const removeButtons = page.getByRole('button', { name: 'Remove assignment' });
-    await expect(removeButtons).toHaveCount(2);
-
-    // The first card in the DOM (breakfast) should be Pasta Carbonara
-    const firstCardText = await removeButtons.first().locator('..').textContent();
-    expect(firstCardText).toContain('Breakfast');
-    expect(firstCardText).toContain('Pasta Carbonara');
+    await expect(page.locator('[data-plan-open]')).toHaveText(['Pasta Carbonara', 'Tomato Soup']);
   });
 
   // ── 2. Add a recipe to a day ─────────────────────────────────────────────
 
   test('can add a recipe to a day and the card appears (Req 4.5, 4.7)', async ({ page }) => {
     // Open the Add dialog on Tuesday (second column)
-    const addButtons = page.getByRole('button', { name: 'Add recipe' });
+    const addButtons = page.getByRole('button', { name: /Plan breakfast on/ });
     await addButtons.nth(1).click();
 
     // Dialog appears
@@ -362,7 +357,10 @@ test.describe('Meal Planner', () => {
   test('cancelling the Add Recipe dialog does not create a meal plan (Req 4.8)', async ({
     page,
   }) => {
-    await page.getByRole('button', { name: 'Add recipe' }).nth(1).click();
+    await page
+      .getByRole('button', { name: /Plan breakfast on/ })
+      .nth(1)
+      .click();
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
 
     await page.getByRole('button', { name: 'Cancel' }).click();
@@ -418,8 +416,8 @@ test.describe('Meal Planner', () => {
     });
 
     // Remove the lunch card (Tomato Soup is the second card). Target its remove button.
-    const removeButtons = page.getByRole('button', { name: 'Remove assignment' });
-    await removeButtons.nth(1).click();
+    await page.getByLabel('Meal actions for Tomato Soup').click();
+    await page.getByRole('button', { name: 'Remove assignment' }).click();
 
     // After successful delete + re-fetch the card disappears
     await expect(page.locator('[data-date]').getByText('Tomato Soup')).not.toBeVisible({
