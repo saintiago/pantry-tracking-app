@@ -71,8 +71,8 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 500,
     color: '#1f2937',
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    overflowWrap: 'anywhere',
+    whiteSpace: 'normal',
   },
   removeButton: {
     flexShrink: 0,
