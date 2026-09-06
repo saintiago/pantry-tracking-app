@@ -1,4 +1,6 @@
+import { t, useLanguage } from '../../i18n/i18n';
 import React, { useState } from 'react';
+import LanguageSwitcher from '../../components/LanguageSwitcher/LanguageSwitcher';
 import { useAuth } from '../AuthContext/AuthContext';
 import LoginForm from '../LoginForm/LoginForm';
 import SignupForm from '../SignupForm/SignupForm';
@@ -6,6 +8,7 @@ import SignupForm from '../SignupForm/SignupForm';
 type AuthView = 'login' | 'signup';
 
 const AuthScreen: React.FC = () => {
+  useLanguage();
   const [view, setView] = useState<AuthView>('login');
   const { clearError } = useAuth();
 
@@ -17,7 +20,10 @@ const AuthScreen: React.FC = () => {
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <h1 style={styles.appTitle}>🥫 Pantry Tracker</h1>
+        <div style={{ alignSelf: 'flex-end', marginBottom: 12 }}>
+          <LanguageSwitcher />
+        </div>
+        <h1 style={styles.appTitle}>{t('🥫 Pantry Tracker')}</h1>
         {view === 'login' ? (
           <LoginForm onSwitchToSignup={() => switchView('signup')} />
         ) : (

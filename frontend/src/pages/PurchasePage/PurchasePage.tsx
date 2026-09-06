@@ -1,3 +1,5 @@
+import { getUnitLabel } from '../../types/units';
+import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useEffect, useState } from 'react';
 import { fetchLocations } from '../../api/locations/locations';
 import type { StorageLocation } from '../../api/locations/locations';
@@ -26,6 +28,7 @@ export default function PurchasePage({
   purchase: PurchaseRequest;
   onBack: () => void;
 }) {
+  useLanguage();
   const [locations, setLocations] = useState<StorageLocation[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -136,34 +139,37 @@ export default function PurchasePage({
   if (done)
     return (
       <section style={{ maxWidth: 650, margin: 'auto', padding: 24 }}>
-        <h2>Purchase added to inventory</h2>
-        <p role="status">Saved successfully. Any remaining quantity stays on your shopping list.</p>
-        {error && <p role="alert">{error}</p>}
-        <button onClick={onBack}>Back to shopping list</button>
+        <h2>{t('Purchase added to inventory')}</h2>
+        <p role="status">
+          {t('Saved successfully. Any remaining quantity stays on your shopping list.')}
+        </p>
+        {error && <p role="alert">{translateMessage(error)}</p>}
+        <button onClick={onBack}>{t('Back to shopping list')}</button>
       </section>
     );
-  if (loading) return <p role="status">Loading storage locations…</p>;
+  if (loading) return <p role="status">{t('Loading storage locations…')}</p>;
   if (error)
     return (
       <section>
-        <p role="alert">{error}</p>
-        <button onClick={() => setRetry((n) => n + 1)}>Retry locations</button>
-        <button onClick={onBack}>Back to shopping list</button>
+        <p role="alert">{translateMessage(error)}</p>
+        <button onClick={() => setRetry((n) => n + 1)}>{t('Retry locations')}</button>
+        <button onClick={onBack}>{t('Back to shopping list')}</button>
       </section>
     );
   return (
     <>
       <p style={{ maxWidth: 650, margin: '16px auto' }}>
-        Shopping requirement: {amount(purchase.line?.quantity ?? purchase.quantity)}{' '}
-        {purchase.line?.unit ?? purchase.unit}. Edit the actual product, quantity, unit and storage
-        details below.
+        {t('Shopping requirement:')} {amount(purchase.line?.quantity ?? purchase.quantity)}{' '}
+        {getUnitLabel(purchase.line?.unit ?? purchase.unit, 1)}
+        {t('. Edit the actual product, quantity, unit and storage details below.')}{' '}
       </p>
       <details style={{ maxWidth: 650, margin: '16px auto' }}>
-        <summary>Changing between packages and ingredient units?</summary>
+        <summary>{t('Changing between packages and ingredient units?')}</summary>
         <label>
-          Shopping quantity covered ({purchase.line?.unit ?? purchase.unit})
+          {t('Shopping quantity covered (')}
+          {getUnitLabel(purchase.line?.unit ?? purchase.unit, 1)})
           <input
-            aria-label="Shopping quantity covered"
+            aria-label={t('Shopping quantity covered')}
             type="number"
             min="0"
             step="any"
@@ -172,12 +178,13 @@ export default function PurchasePage({
           />
         </label>
         <p>
-          Only needed for incompatible units, such as bottles and milliliters. Use the package label
-          to enter the conversion.
+          {t(
+            'Only needed for incompatible units, such as bottles and milliliters. Use the package label to enter the conversion.',
+          )}{' '}
         </p>
       </details>
       <AddItemPage
-        title="Add purchases to inventory"
+        title={t('Add purchases to inventory')}
         submitText="Add purchase"
         backLabel="Back to shopping list"
         returnAfterSave={false}

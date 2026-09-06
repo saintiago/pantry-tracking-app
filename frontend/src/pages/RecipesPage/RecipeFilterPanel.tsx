@@ -1,3 +1,4 @@
+import { message as translateMessage, t, useLanguage } from '../../i18n/i18n';
 import React from 'react';
 import { validateMaxTimeInput } from '../../api/recipes/filter';
 
@@ -39,28 +40,29 @@ const RecipeFilterPanel: React.FC<RecipeFilterPanelProps> = ({
   onClear,
   inventoryLoading,
 }) => {
+  useLanguage();
   const prepValidation = validateMaxTimeInput(value.maxPrepTimeInput);
   const cookValidation = validateMaxTimeInput(value.maxCookTimeInput);
   const totalValidation = validateMaxTimeInput(value.maxTotalTimeInput);
 
   return (
-    <section role="region" aria-label="Recipe filters" style={styles.section}>
+    <section role="region" aria-label={t('Recipe filters')} style={styles.section}>
       <div style={styles.header}>
-        <span style={styles.title}>Filters</span>
+        <span style={styles.title}>{t('Filters')}</span>
         <button
           type="button"
           onClick={onClear}
           disabled={isAllInactive}
           style={isAllInactive ? styles.clearButtonDisabled : styles.clearButton}
         >
-          Clear filters
+          {t('Clear filters')}{' '}
         </button>
       </div>
 
       {/* Max prep time */}
       <div style={styles.fieldGroup}>
         <label htmlFor="filter-max-prep-time" style={styles.label}>
-          Max prep time (min)
+          {t('Max prep time (min)')}{' '}
         </label>
         <input
           id="filter-max-prep-time"
@@ -74,7 +76,7 @@ const RecipeFilterPanel: React.FC<RecipeFilterPanelProps> = ({
         />
         {prepValidation.error && (
           <p id="filter-max-prep-time-error" style={styles.fieldError}>
-            {prepValidation.error}
+            {translateMessage(prepValidation.error)}
           </p>
         )}
       </div>
@@ -82,7 +84,7 @@ const RecipeFilterPanel: React.FC<RecipeFilterPanelProps> = ({
       {/* Max cook time */}
       <div style={styles.fieldGroup}>
         <label htmlFor="filter-max-cook-time" style={styles.label}>
-          Max cook time (min)
+          {t('Max cook time (min)')}{' '}
         </label>
         <input
           id="filter-max-cook-time"
@@ -96,7 +98,7 @@ const RecipeFilterPanel: React.FC<RecipeFilterPanelProps> = ({
         />
         {cookValidation.error && (
           <p id="filter-max-cook-time-error" style={styles.fieldError}>
-            {cookValidation.error}
+            {translateMessage(cookValidation.error)}
           </p>
         )}
       </div>
@@ -104,7 +106,7 @@ const RecipeFilterPanel: React.FC<RecipeFilterPanelProps> = ({
       {/* Max total time */}
       <div style={styles.fieldGroup}>
         <label htmlFor="filter-max-total-time" style={styles.label}>
-          Max total time (min)
+          {t('Max total time (min)')}{' '}
         </label>
         <input
           id="filter-max-total-time"
@@ -118,7 +120,7 @@ const RecipeFilterPanel: React.FC<RecipeFilterPanelProps> = ({
         />
         {totalValidation.error && (
           <p id="filter-max-total-time-error" style={styles.fieldError}>
-            {totalValidation.error}
+            {translateMessage(totalValidation.error)}
           </p>
         )}
       </div>
@@ -136,9 +138,9 @@ const RecipeFilterPanel: React.FC<RecipeFilterPanelProps> = ({
             onChange={(e) => onChange({ ...value, onlyAllAvailable: e.target.checked })}
             style={styles.checkbox}
           />
-          Only recipes I can make now
+          {t('Only recipes I can make now')}{' '}
         </label>
-        {inventoryLoading && <span style={styles.loadingHint}>Loading inventory…</span>}
+        {inventoryLoading && <span style={styles.loadingHint}>{t('Loading inventory…')}</span>}
       </div>
     </section>
   );

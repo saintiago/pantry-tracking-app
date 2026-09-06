@@ -81,6 +81,15 @@ cd infrastructure && npx cdk deploy
 
 The `gh` CLI tool is installed and authenticated for GitHub interactions (issues, PRs, releases, etc.). Use it directly for GitHub operations such as `gh issue view`, `gh pr create`, and `gh pr list`.
 
+## Localization
+
+The app ships English, Spanish, and Italian catalogs in a separately cached translation
+chunk. No translation service is called. Use `useLanguage()` in translated components,
+`t` for app-owned labels, `message` for canonical app/API errors, and locale-aware display
+helpers from `i18n/i18n.ts`. Preserve user content and canonical values. Unit menus use
+`localizedUnits()` and keep their existing unit keys. Do not format numbers used in IDs,
+requests, or calculations. Account locale uses Cognito's mutable standard `locale` field.
+
 ## Shared palette
 
 `frontend/src/styles/palette.css` defines the approved September 2026 colors. Use

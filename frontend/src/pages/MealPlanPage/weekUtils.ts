@@ -1,3 +1,5 @@
+import { t } from '../../i18n/i18n';
+
 const MEAL_TYPE_ORDER: Record<string, number> = {
   breakfast: 0,
   lunch: 1,
@@ -66,7 +68,7 @@ export function getWeekDates(weekStart: string): string[] {
 export function getDayLabel(isoDate: string): string {
   const [year, month, day] = isoDate.split('-').map(Number);
   const date = new Date(Date.UTC(year, month - 1, day));
-  return DAY_LABELS[date.getUTCDay()];
+  return t(DAY_LABELS[date.getUTCDay()]);
 }
 
 /**
@@ -90,8 +92,8 @@ export function getMonthYearLabel(weekDates: string[]): string {
   const [firstYear, firstMonth] = weekDates[0].split('-').map(Number);
   const [lastYear, lastMonth] = weekDates[weekDates.length - 1].split('-').map(Number);
 
-  const firstMonthName = MONTH_NAMES[firstMonth - 1];
-  const lastMonthName = MONTH_NAMES[lastMonth - 1];
+  const firstMonthName = t(MONTH_NAMES[firstMonth - 1]);
+  const lastMonthName = t(MONTH_NAMES[lastMonth - 1]);
 
   if (firstYear === lastYear && firstMonth === lastMonth) {
     return `${firstMonthName} ${firstYear}`;

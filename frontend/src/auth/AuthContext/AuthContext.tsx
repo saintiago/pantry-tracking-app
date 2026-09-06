@@ -1,11 +1,4 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-  useMemo,
-} from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import type { AuthUser } from '../cognitoClient/cognitoClient';
 import * as cognito from '../cognitoClient/cognitoClient';
 
@@ -27,9 +20,7 @@ interface AuthContextValue extends AuthState {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AuthState>({
     isAuthenticated: false,
     isLoading: true,
@@ -76,8 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         error: null,
       });
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : 'Authentication failed';
+      const message = err instanceof Error ? err.message : 'Authentication failed';
       setState((prev) => ({
         ...prev,
         isLoading: false,
@@ -87,18 +77,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const signup = useCallback(
-    async (
-      email: string,
-      password: string,
-    ): Promise<{ userConfirmed: boolean } | null> => {
+    async (email: string, password: string): Promise<{ userConfirmed: boolean } | null> => {
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
       try {
         const result = await cognito.signUp(email, password);
         setState((prev) => ({ ...prev, isLoading: false }));
         return result;
       } catch (err: unknown) {
-        const message =
-          err instanceof Error ? err.message : 'Registration failed';
+        const message = err instanceof Error ? err.message : 'Registration failed';
         setState((prev) => ({
           ...prev,
           isLoading: false,
@@ -110,33 +96,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     [],
   );
 
-  const confirmSignUpFn = useCallback(
-    async (email: string, code: string): Promise<boolean> => {
-      setState((prev) => ({ ...prev, isLoading: true, error: null }));
-      try {
-        await cognito.confirmSignUp(email, code);
-        setState((prev) => ({ ...prev, isLoading: false }));
-        return true;
-      } catch (err: unknown) {
-        const message =
-          err instanceof Error ? err.message : 'Confirmation failed';
-        setState((prev) => ({
-          ...prev,
-          isLoading: false,
-          error: message,
-        }));
-        return false;
-      }
-    },
-    [],
-  );
+  const confirmSignUpFn = useCallback(async (email: string, code: string): Promise<boolean> => {
+    setState((prev) => ({ ...prev, isLoading: true, error: null }));
+    try {
+      await cognito.confirmSignUp(email, code);
+      setState((prev) => ({ ...prev, isLoading: false }));
+      return true;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Confirmation failed';
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: message,
+      }));
+      return false;
+    }
+  }, []);
 
   const resendCode = useCallback(async (email: string): Promise<void> => {
     try {
       await cognito.resendConfirmationCode(email);
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : 'Failed to resend code';
+      const message = err instanceof Error ? err.message : 'Failed to resend code';
       setState((prev) => ({
         ...prev,
         error: message,

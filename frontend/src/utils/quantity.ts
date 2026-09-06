@@ -1,3 +1,4 @@
+import { number } from '../i18n/i18n';
 /**
  * Common cooking fractions with their decimal values and display strings.
  * Ordered so that the closest match is found first when multiple fractions
@@ -44,7 +45,7 @@ export function formatQuantity(n: number): string {
   }
 
   // No matching fraction — round to 2 decimal places
-  return String(Math.round(abs * 100) / 100);
+  return number(Math.round(abs * 100) / 100, { useGrouping: false });
 }
 
 /**
@@ -59,7 +60,7 @@ export function formatQuantity(n: number): string {
  * Returns null if the string cannot be parsed as a positive number.
  */
 export function parseFractionalQuantity(s: string): number | null {
-  const trimmed = s.trim();
+  const trimmed = s.trim().replace(',', '.');
   if (trimmed === '') return null;
 
   // Try decimal / whole number first

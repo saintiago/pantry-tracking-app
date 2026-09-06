@@ -1,6 +1,8 @@
+import { t, useLanguage } from '../../i18n/i18n';
 import React, { useEffect, useState } from 'react';
 
 const OnlineIndicator: React.FC = () => {
+  useLanguage();
   const [isOnline, setIsOnline] = useState(
     typeof navigator !== 'undefined' ? navigator.onLine : true,
   );
@@ -22,7 +24,7 @@ const OnlineIndicator: React.FC = () => {
     <span
       className="online-indicator"
       role="status"
-      aria-label={isOnline ? 'Online' : 'Offline'}
+      aria-label={isOnline ? t('Online') : t('Offline')}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -39,7 +41,7 @@ const OnlineIndicator: React.FC = () => {
           backgroundColor: isOnline ? 'var(--color-action)' : 'var(--color-danger-text)',
         }}
       />
-      {isOnline ? 'Online' : 'Offline'}
+      {isOnline ? t('Online') : t('Offline')}
     </span>
   );
 };

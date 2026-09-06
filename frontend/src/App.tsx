@@ -1,4 +1,6 @@
+import { t, useLanguage } from './i18n/i18n';
 import React, { useCallback, useState } from 'react';
+import { LanguageProvider } from './i18n/LanguageProvider';
 import { AuthProvider, useAuth } from './auth/AuthContext/AuthContext';
 import AuthScreen from './auth/AuthScreen/AuthScreen';
 import Layout, { PageId } from './components/Layout/Layout';
@@ -38,52 +40,56 @@ const mainPages: Partial<Record<PageId, React.FC>> = {
   'meal-plan': MealPlanPage,
 };
 
-const LoadingSpinner: React.FC = () => (
-  <div
-    style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '100vh',
-      padding: '1rem',
-      backgroundColor: 'var(--color-canvas)',
-    }}
-    role="status"
-    aria-label="Loading"
-  >
+const LoadingSpinner: React.FC = () => {
+  useLanguage();
+  return (
     <div
       style={{
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        width: '100%',
-        maxWidth: 440,
-        padding: '2rem 1.5rem',
-        backgroundColor: 'var(--color-surface)',
-        borderRadius: 12,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        padding: '1rem',
+        backgroundColor: 'var(--color-canvas)',
       }}
+      role="status"
+      aria-label={t('Loading')}
     >
-      <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '1.5rem' }}>
-        🥫 Pantry Tracker
-      </h1>
       <div
         style={{
-          width: 40,
-          height: 40,
-          border: '4px solid var(--color-border)',
-          borderTopColor: 'var(--color-action)',
-          borderRadius: '50%',
-          animation: 'spin 0.8s linear infinite',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          width: '100%',
+          maxWidth: 440,
+          padding: '2rem 1.5rem',
+          backgroundColor: 'var(--color-surface)',
+          borderRadius: 12,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
         }}
-      />
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      >
+        <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '1.5rem' }}>
+          {t('🥫 Pantry Tracker')}{' '}
+        </h1>
+        <div
+          style={{
+            width: 40,
+            height: 40,
+            border: '4px solid var(--color-border)',
+            borderTopColor: 'var(--color-action)',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite',
+          }}
+        />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const AuthenticatedApp: React.FC = () => {
+  useLanguage();
   const [activePage, setActivePage] = useState<PageId>('inventory');
   const [inventoryKey, setInventoryKey] = useState(0);
   const [shoppingEdit, setShoppingEdit] = useState<ShoppingEditRequest | null>(null);
@@ -240,6 +246,7 @@ const AuthenticatedApp: React.FC = () => {
 };
 
 const AppContent: React.FC = () => {
+  useLanguage();
   const { isAuthenticated, isLoading } = useAuth();
   const [initialCheckDone, setInitialCheckDone] = useState(false);
 
@@ -261,10 +268,15 @@ const AppContent: React.FC = () => {
   return <AuthenticatedApp />;
 };
 
-const App: React.FC = () => (
-  <AuthProvider>
-    <AppContent />
-  </AuthProvider>
-);
+const App: React.FC = () => {
+  useLanguage();
+  return (
+    <AuthProvider>
+      <LanguageProvider>
+        <AppContent />
+      </LanguageProvider>
+    </AuthProvider>
+  );
+};
 
 export default App;

@@ -1,3 +1,4 @@
+import { message as translateMessage, t, useLanguage } from '../../i18n/i18n';
 import React, { useState, FormEvent } from 'react';
 import { useAuth } from '../AuthContext/AuthContext';
 import PasswordStrength from '../PasswordStrength/PasswordStrength';
@@ -7,6 +8,7 @@ interface SignupFormProps {
 }
 
 const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
+  useLanguage();
   const { signup, confirmSignUp, resendCode, isLoading, error, clearError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -65,20 +67,20 @@ const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
   if (step === 'confirm') {
     return (
       <form onSubmit={handleConfirm} style={styles.form} noValidate>
-        <h2 style={styles.heading}>Enter confirmation code</h2>
+        <h2 style={styles.heading}>{t('Enter confirmation code')}</h2>
         <p style={styles.verifyText}>
-          We sent a 6-digit code to <strong>{email}</strong>.
+          {t('We sent a 6-digit code to')} <strong>{email}</strong>.
         </p>
 
         {displayError && (
           <div role="alert" style={styles.error}>
-            {displayError}
+            {translateMessage(displayError)}
           </div>
         )}
-        {resendMsg && <div style={styles.success}>{resendMsg}</div>}
+        {resendMsg && <div style={styles.success}>{translateMessage(resendMsg)}</div>}
 
         <label style={styles.label} htmlFor="confirm-code">
-          Code
+          {t('Code')}{' '}
         </label>
         <input
           id="confirm-code"
@@ -98,13 +100,13 @@ const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
           disabled={isLoading}
           style={{ ...styles.button, opacity: isLoading ? 0.7 : 1 }}
         >
-          {isLoading ? 'Confirming…' : 'Confirm'}
+          {isLoading ? t('Confirming…') : t('Confirm')}
         </button>
 
         <p style={styles.switchText}>
-          Didn't get the code?{' '}
+          {t("Didn't get the code?")}{' '}
           <button type="button" onClick={handleResend} style={styles.switchLink}>
-            Resend
+            {t('Resend')}{' '}
           </button>
         </p>
       </form>
@@ -113,16 +115,16 @@ const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
 
   return (
     <form onSubmit={handleSubmit} style={styles.form} noValidate>
-      <h2 style={styles.heading}>Create an account</h2>
+      <h2 style={styles.heading}>{t('Create an account')}</h2>
 
       {displayError && (
         <div role="alert" style={styles.error}>
-          {displayError}
+          {translateMessage(displayError)}
         </div>
       )}
 
       <label style={styles.label} htmlFor="signup-email">
-        Email
+        {t('Email')}{' '}
       </label>
       <input
         id="signup-email"
@@ -136,7 +138,7 @@ const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
       />
 
       <label style={styles.label} htmlFor="signup-password">
-        Password
+        {t('Password')}{' '}
       </label>
       <input
         id="signup-password"
@@ -146,13 +148,13 @@ const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         style={styles.input}
-        placeholder="Min 8 chars, upper + lower + digit"
+        placeholder={t('Min 8 chars, upper + lower + digit')}
       />
 
       <PasswordStrength password={password} />
 
       <label style={styles.label} htmlFor="signup-confirm-password">
-        Confirm password
+        {t('Confirm password')}{' '}
       </label>
       <input
         id="signup-confirm-password"
@@ -162,7 +164,7 @@ const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
         value={confirmPassword}
         onChange={(e) => setConfirmPassword(e.target.value)}
         style={styles.input}
-        placeholder="Re-enter your password"
+        placeholder={t('Re-enter your password')}
       />
 
       <button
@@ -170,13 +172,13 @@ const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
         disabled={isLoading}
         style={{ ...styles.button, opacity: isLoading ? 0.7 : 1 }}
       >
-        {isLoading ? 'Creating account…' : 'Sign up'}
+        {isLoading ? t('Creating account…') : t('Sign up')}
       </button>
 
       <p style={styles.switchText}>
-        Already have an account?{' '}
+        {t('Already have an account?')}{' '}
         <button type="button" onClick={onSwitchToLogin} style={styles.switchLink}>
-          Sign in
+          {t('Sign in')}{' '}
         </button>
       </p>
     </form>

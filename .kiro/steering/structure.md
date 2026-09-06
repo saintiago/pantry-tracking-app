@@ -48,6 +48,11 @@ pantry-tracking-app/
 
 ## Conventions
 
+- `frontend/src/i18n/` owns language preferences, English/Spanish/Italian catalogs, and
+  display formatting. `components/LanguageSwitcher/` owns the flag selector. Subscribe
+  translated components with `useLanguage()`; translate app-owned strings at render time,
+  including errors and async content. Never translate user-written text or persisted IDs.
+
 - Frontend pages go in `frontend/src/pages/` as `<Name>Page.tsx`
 - Shared frontend components go in `frontend/src/components/`
 - Feature-specific frontend modules get their own folder (e.g., `frontend/src/auth/`)

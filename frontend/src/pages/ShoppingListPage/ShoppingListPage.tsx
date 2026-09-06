@@ -1,3 +1,6 @@
+import { getShoppingUnitLabel as getUnitLabel } from '../../types/units';
+import { date, number, getLanguage } from '../../i18n/i18n';
+import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../auth/AuthContext/AuthContext';
 import { fetchShoppingData } from '../../api/shopping-list/shopping-list';
@@ -36,7 +39,7 @@ import type { ShoppingEditRequest } from './ShoppingEditPage';
 import type { PurchaseRequest } from '../PurchasePage/PurchasePage';
 const input: React.CSSProperties = { ...button, width: '100%', boxSizing: 'border-box' };
 const dateLabel = (date: string) =>
-  new Date(`${date}T12:00:00`).toLocaleDateString(undefined, {
+  new Date(`${date}T12:00:00`).toLocaleDateString(getLanguage(), {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
@@ -65,6 +68,7 @@ export default function ShoppingListPage({
   onPurchase: (purchase: PurchaseRequest) => void;
   onEdit: (request: ShoppingEditRequest) => void;
 }) {
+  useLanguage();
   const { user } = useAuth();
   const today = localToday();
   const currentWeek = getWeekStart(new Date(`${today}T12:00:00Z`));
@@ -341,11 +345,11 @@ export default function ShoppingListPage({
     <div style={{ maxWidth: 1100, margin: 'auto', color: 'var(--color-text)' }}>
       <div style={{ ...wrap, justifyContent: 'space-between', marginBottom: 18 }}>
         <div>
-          <h2>Shopping List</h2>
-          <p style={muted}>Plan it once. Shop with a clear list.</p>
+          <h2>{t('Shopping List')}</h2>
+          <p style={muted}>{t('Plan it once. Shop with a clear list.')}</p>
         </div>
         <button style={button} disabled={loading} onClick={() => setRefresh((n) => n + 1)}>
-          Refresh
+          {t('Refresh')}{' '}
         </button>
       </div>
       <div style={{ ...wrap, marginBottom: 18 }}>
@@ -357,33 +361,33 @@ export default function ShoppingListPage({
             onClick={() => setMode(value)}
           >
             {value === 'planning'
-              ? 'Planning lists'
+              ? t('Planning lists')
               : value === 'shopping'
-                ? 'Shopping mode'
-                : 'Order preview'}
+                ? t('Shopping mode')
+                : t('Order preview')}
           </button>
         ))}
         <button style={button} onClick={() => onEdit({ kind: 'manual', key: globalKey })}>
-          Add something to buy
+          {t('Add something to buy')}{' '}
         </button>
       </div>
       <section
-        aria-label="Shopping filters"
+        aria-label={t('Shopping filters')}
         style={{ ...panel, background: 'var(--color-canvas)' }}
       >
         <div style={wrap}>
           <button
-            aria-label="Previous week"
+            aria-label={t('Previous week')}
             style={{ ...button, padding: 0, width: 44, flexShrink: 0 }}
             onClick={() => period(addDays(start, -7))}
           >
             ←
           </button>
           <label style={{ flex: 1, minWidth: 0, maxWidth: 200 }}>
-            Week of{' '}
+            {t('Week of')}{' '}
             <input
               style={{ ...input, width: '100%', display: 'block' }}
-              aria-label="Week of"
+              aria-label={t('Week of')}
               type="date"
               value={start}
               onChange={(e) => {
@@ -392,7 +396,7 @@ export default function ShoppingListPage({
             />
           </label>
           <button
-            aria-label="Next week"
+            aria-label={t('Next week')}
             style={{ ...button, padding: 0, width: 44, flexShrink: 0 }}
             onClick={() => period(addDays(start, 7))}
           >
@@ -405,21 +409,21 @@ export default function ShoppingListPage({
             aria-pressed={start === currentWeek && weeks === 1}
             onClick={() => period(currentWeek, 1)}
           >
-            This week
+            {t('This week')}{' '}
           </button>
           <button
             style={filterStyle(start === addDays(currentWeek, 7) && weeks === 1)}
             aria-pressed={start === addDays(currentWeek, 7) && weeks === 1}
             onClick={() => period(addDays(currentWeek, 7), 1)}
           >
-            Next week only
+            {t('Next week only')}{' '}
           </button>
           <button
             style={filterStyle(start === currentWeek && weeks === 2)}
             aria-pressed={start === currentWeek && weeks === 2}
             onClick={() => period(currentWeek, 2)}
           >
-            Both weeks
+            {t('Both weeks')}{' '}
           </button>
         </div>
         <p>
@@ -429,9 +433,9 @@ export default function ShoppingListPage({
         </p>
         <details style={{ marginTop: 12 }}>
           <summary style={button}>
-            Day and recipe filters
+            {t('Day and recipe filters')}{' '}
             {days.length || recipes.length
-              ? ` · ${days.length || 'all'} days, ${recipes.length || 'all'} recipes`
+              ? t(' · {0} days, {1} recipes', days.length || t('all'), recipes.length || t('all'))
               : ''}
           </summary>
           <label style={{ ...wrap, minHeight: 44 }}>
@@ -443,11 +447,11 @@ export default function ShoppingListPage({
                 setDays([]);
               }}
             />
-            Include past days
+            {t('Include past days')}{' '}
           </label>
           <fieldset style={{ border: 0, padding: 0, margin: '12px 0' }}>
             <legend style={{ marginBottom: 8 }}>
-              Days · {days.length ? `${days.length} selected` : 'All days'}
+              {t('Days ·')} {days.length ? t('{0} selected', days.length) : t('All days')}
             </legend>
             <div style={wrap}>
               {Array.from({ length: weeks * 7 }, (_, i) => addDays(start, i))
@@ -469,7 +473,8 @@ export default function ShoppingListPage({
           </fieldset>
           <fieldset style={{ border: 0, padding: 0, margin: '12px 0' }}>
             <legend style={{ marginBottom: 8 }}>
-              Recipes · {recipes.length ? `${recipes.length} selected` : 'All recipes'}
+              {t('Recipes ·')}{' '}
+              {recipes.length ? t('{0} selected', recipes.length) : t('All recipes')}
             </legend>
             <div style={wrap}>
               {recipeOptions.map((recipe) => (
@@ -498,7 +503,7 @@ export default function ShoppingListPage({
                 setSearch('');
               }}
             >
-              Clear filters
+              {t('Clear filters')}{' '}
             </button>
             <label style={{ ...wrap, minHeight: 44 }}>
               <input
@@ -506,12 +511,12 @@ export default function ShoppingListPage({
                 checked={showStock}
                 onChange={(e) => setShowStock(e.target.checked)}
               />
-              Show ingredients already in stock
+              {t('Show ingredients already in stock')}{' '}
             </label>
           </div>
         </details>
         <label style={{ display: 'block', marginTop: 12 }}>
-          Search ingredients
+          {t('Search ingredients')}{' '}
           <input
             type="search"
             style={{ ...input, display: 'block', width: '100%', marginTop: 6 }}
@@ -521,39 +526,40 @@ export default function ShoppingListPage({
         </label>
       </section>
       <label style={{ ...wrap, marginBottom: 16 }}>
-        Store
+        {t('Store')}{' '}
         <select
-          aria-label="Filter by store"
+          aria-label={t('Filter by store')}
           style={button}
           value={store}
           onChange={(e) => setStore(e.target.value)}
         >
-          <option value="">All stores</option>
+          <option value="">{t('All stores')}</option>
           {[...new Set(lines.map((l) => l.store))].sort().map((s) => (
             <option key={s}>{s}</option>
           ))}
         </select>
       </label>
-      {storageError && <p role="alert">{storageError}</p>}
-      {loading && <p role="status">Updating shopping list…</p>}
+      {storageError && <p role="alert">{translateMessage(storageError)}</p>}
+      {loading && <p role="status">{t('Updating shopping list…')}</p>}
       {error && (
         <div role="alert" style={panel}>
           <p>
-            {error} {data ? 'Showing the last loaded list. Refresh before shopping.' : ''}
+            {translateMessage(error)}{' '}
+            {data ? t('Showing the last loaded list. Refresh before shopping.') : ''}
           </p>
           <button style={button} onClick={() => setRefresh((n) => n + 1)}>
-            Retry shopping list
+            {t('Retry shopping list')}{' '}
           </button>
         </div>
       )}
       {result?.warnings.map((warning) => (
         <p key={warning} role="alert">
-          {warning}
+          {translateMessage(warning)}
         </p>
       ))}
       {removed && (
         <p role="status">
-          Removed {removed.name}.{' '}
+          {t('Removed')} {removed.name}.{' '}
           <button
             style={button}
             onClick={() => {
@@ -561,7 +567,7 @@ export default function ShoppingListPage({
               setRemoved(null);
             }}
           >
-            Undo removal
+            {t('Undo removal')}{' '}
           </button>
         </p>
       )}
@@ -570,30 +576,34 @@ export default function ShoppingListPage({
           {mode === 'planning' && (
             <>
               <p style={muted}>
-                {selected.length} planned meals · quantities adjusted to your servings.
+                {selected.length} {t('planned meals · quantities adjusted to your servings.')}{' '}
               </p>
               {renderList('Ingredients for planned meals', mealLines, 'meal')}
               {!mealLines.length && (
                 <p style={{ ...muted, marginBottom: 18 }}>
                   {search
-                    ? 'No ingredients match your search.'
+                    ? t('No ingredients match your search.')
                     : !selected.length
-                      ? 'No meals planned for these filters.'
+                      ? t('No meals planned for these filters.')
                       : result.warnings.length
-                        ? 'Some planned recipes could not be calculated. Review the warning above.'
-                        : 'Everything needed is in stock.'}
+                        ? t(
+                            'Some planned recipes could not be calculated. Review the warning above.',
+                          )
+                        : t('Everything needed is in stock.')}
                 </p>
               )}
               {renderList('Low-stock inventory', lowLines, 'low')}
               {!lowLines.length && (
                 <p style={muted}>
-                  {search ? 'No low-stock products match your search.' : 'No low-stock items.'}
+                  {search
+                    ? t('No low-stock products match your search.')
+                    : t('No low-stock items.')}
                 </p>
               )}
               {renderList('Other things to buy', manualLines, 'manual')}
               {!manualLines.length && (
                 <p style={muted}>
-                  Add manual items for any store. They stay on your list across weeks.
+                  {t('Add manual items for any store. They stay on your list across weeks.')}{' '}
                 </p>
               )}
               {active.some((l) => l.carried) &&
@@ -607,32 +617,34 @@ export default function ShoppingListPage({
           {mode === 'shopping' && (
             <>
               <p style={muted}>
-                {shopLines.length} distinct products · {basketLines.length} in basket · one row per
-                product across all three lists.
+                {shopLines.length} {t('distinct products ·')} {basketLines.length}{' '}
+                {t('in basket · one row per product across all three lists.')}{' '}
               </p>
               {renderList('Shopping by store', shopLines, 'shopping')}
-              {!shopLines.length && <p>No outstanding products for these filters.</p>}
+              {!shopLines.length && <p>{t('No outstanding products for these filters.')}</p>}
               {basketLines.length > 0 && (
                 <button
                   style={{ ...button, background: 'var(--color-mint)' }}
                   disabled={loading || !!error}
                   onClick={() => purchase(basketLines[0])}
                 >
-                  Put purchases away ({basketLines.length})
+                  {t('Put purchases away (')}
+                  {basketLines.length})
                 </button>
               )}
             </>
           )}
           {mode === 'order' && (
-            <section aria-label="Order preview" style={panel}>
-              <h3>Review your order plan</h3>
+            <section aria-label={t('Order preview')} style={panel}>
+              <h3>{t('Review your order plan')}</h3>
               <p style={muted}>
-                A draft to help you order. Prices are your saved estimates, not live retailer
-                prices. No order is submitted.
+                {t(
+                  'A draft to help you order. Prices are your saved estimates, not live retailer prices. No order is submitted.',
+                )}{' '}
               </p>
               <div style={wrap}>
                 <label>
-                  Shopping budget (€)
+                  {t('Shopping budget (€)')}{' '}
                   <input
                     style={input}
                     type="number"
@@ -649,7 +661,7 @@ export default function ShoppingListPage({
                   />
                 </label>
                 <label>
-                  Maximum delivery fee (€)
+                  {t('Maximum delivery fee (€)')}{' '}
                   <input
                     style={input}
                     type="number"
@@ -667,19 +679,24 @@ export default function ShoppingListPage({
                 </label>
               </div>
               <p>
-                Known product estimate: €{estimate.toFixed(2)}
+                {t('Known product estimate: €')}
+                {number(estimate, { minimumFractionDigits: 2 })}
                 {companion.deliveryBudget !== undefined
-                  ? ` · including delivery allowance: €${(estimate + companion.deliveryBudget).toFixed(2)}`
+                  ? t(
+                      ' · including delivery allowance: €{0}',
+                      number(estimate + companion.deliveryBudget, { minimumFractionDigits: 2 }),
+                    )
                   : ''}
               </p>
               {missingPrices > 0 && (
                 <p style={{ background: 'var(--color-warning)', padding: 10 }}>
-                  {missingPrices} products have no package price. The total is incomplete.
+                  {missingPrices}{' '}
+                  {t('products have no package price. The total is incomplete.')}{' '}
                 </p>
               )}
               {companion.budget !== undefined &&
                 estimate + (companion.deliveryBudget ?? 0) > companion.budget && (
-                  <p role="alert">This plan exceeds your shopping budget.</p>
+                  <p role="alert">{t('This plan exceeds your shopping budget.')}</p>
                 )}
               {[...new Set(shopLines.map((l) => l.store))].sort().map((s) => (
                 <section key={s}>
@@ -698,23 +715,27 @@ export default function ShoppingListPage({
                           }}
                         >
                           <strong>
-                            {line.name} · {amount(line.quantity)} {line.unit}
+                            {line.name} · {amount(line.quantity)}{' '}
+                            {getUnitLabel(line.unit, line.quantity)}
                           </strong>
                           <p style={muted}>
                             {pref.substitute
-                              ? `Substitutions allowed${pref.replacement ? `: ${pref.replacement}` : ''}`
-                              : 'No substitutions'}
+                              ? t(
+                                  'Substitutions allowed{0}',
+                                  pref.replacement ? `: ${pref.replacement}` : '',
+                                )
+                              : t('No substitutions')}
                           </p>
                           {link ? (
                             <a href={link} target="_blank" rel="noopener noreferrer">
-                              Open product at retailer
+                              {t('Open product at retailer')}{' '}
                             </a>
                           ) : (
                             <button
                               style={button}
                               onClick={() => onEdit({ kind: 'preference', key: globalKey, line })}
                             >
-                              Add product link and package price
+                              {t('Add product link and package price')}{' '}
                             </button>
                           )}
                         </div>
@@ -728,7 +749,7 @@ export default function ShoppingListPage({
                   const text = shopLines
                     .map(
                       (l) =>
-                        `${l.store} / ${l.department}: ${l.name} — ${amount(l.quantity)} ${l.unit}`,
+                        `${l.store} / ${t(l.department)}: ${l.name} — ${amount(l.quantity)} ${getUnitLabel(l.unit, l.quantity)}`,
                     )
                     .join('\n');
                   try {
@@ -739,16 +760,16 @@ export default function ShoppingListPage({
                   }
                 }}
               >
-                Copy shopping list
+                {t('Copy shopping list')}{' '}
               </button>
-              {copyMessage && <p role="status">{copyMessage}</p>}
+              {copyMessage && <p role="status">{translateMessage(copyMessage)}</p>}
               <textarea
-                aria-label="Shopping list text"
+                aria-label={t('Shopping list text')}
                 readOnly
                 value={shopLines
                   .map(
                     (l) =>
-                      `${l.store} / ${l.department}: ${l.name} — ${amount(l.quantity)} ${l.unit}`,
+                      `${l.store} / ${t(l.department)}: ${l.name} — ${amount(l.quantity)} ${getUnitLabel(l.unit, l.quantity)}`,
                   )
                   .join('\n')}
                 style={{ ...input, marginTop: 12, minHeight: 120 }}
@@ -758,7 +779,7 @@ export default function ShoppingListPage({
           {deferred.length > 0 && renderList('Later and unavailable', deferred, 'pending')}
           <details style={panel}>
             <summary style={{ minHeight: 44, cursor: 'pointer' }}>
-              Pantry reminders & purchase history
+              {t('Pantry reminders & purchase history')}{' '}
             </summary>
             {data.items
               .filter(
@@ -772,7 +793,7 @@ export default function ShoppingListPage({
                   key={i.itemId}
                   style={{ ...muted, padding: 8, background: 'var(--color-warning)' }}
                 >
-                  Use {i.name} soon · expires {i.expirationDate}
+                  {t('Use')} {i.name} {t('soon · expires')} {date(i.expirationDate)}
                   {i.locationDetails ? ` · ${i.locationDetails}` : ''}
                 </p>
               ))}
@@ -781,12 +802,14 @@ export default function ShoppingListPage({
                 i.quantity > 0 &&
                 i.expirationDate >= today &&
                 i.expirationDate <= addDays(today, 3),
-            ) && <p style={muted}>No recorded stock expires in the next three days.</p>}
+            ) && <p style={muted}>{t('No recorded stock expires in the next three days.')}</p>}
             {purchaseCadence(companion.history).map((pattern) => (
               <p key={pattern.id} style={muted}>
-                {pattern.name}: bought about every {pattern.interval} days across {pattern.count}{' '}
-                purchase dates. This is a shopping-history reminder; check your current stock before
-                adding more.
+                {pattern.name}
+                {t(': bought about every')} {pattern.interval} {t('days across')} {pattern.count}{' '}
+                {t(
+                  'purchase dates. This is a shopping-history reminder; check your current stock before adding more.',
+                )}{' '}
               </p>
             ))}
             {companion.history
@@ -794,18 +817,20 @@ export default function ShoppingListPage({
               .reverse()
               .map((h, i) => (
                 <p key={`${h.date}-${i}`} style={muted}>
-                  {h.name} · {amount(h.quantity)} {h.unit} · {new Date(h.date).toLocaleDateString()}
+                  {h.name} · {amount(h.quantity)} {getUnitLabel(h.unit, h.quantity)} ·{' '}
+                  {new Date(h.date).toLocaleDateString(getLanguage())}
                 </p>
               ))}
             {!companion.history.length && (
-              <p style={muted}>Purchases added through this tab will appear here.</p>
+              <p style={muted}>{t('Purchases added through this tab will appear here.')}</p>
             )}
           </details>
         </>
       )}
       <p style={{ ...muted, margin: '12px 0 24px' }}>
-        Lists and preferences are saved for your account on this device. Checking an item does not
-        change inventory. Actual ordering and receipt import require future retailer integrations.
+        {t(
+          'Lists and preferences are saved for your account on this device. Checking an item does not change inventory. Actual ordering and receipt import require future retailer integrations.',
+        )}{' '}
       </p>
     </div>
   );

@@ -1,3 +1,4 @@
+import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useCallback, useEffect, useRef } from 'react';
 
 interface ConfirmDialogProps {
@@ -26,6 +27,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onConfirm,
   onCancel,
 }) => {
+  useLanguage();
   const cancelRef = useRef<HTMLButtonElement>(null);
 
   // Focus the cancel (safe) button on mount
@@ -47,12 +49,12 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       <div
         role="alertdialog"
         aria-modal="true"
-        aria-label="Confirm finish cooking"
+        aria-label={t('Confirm finish cooking')}
         style={styles.dialog}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
-        <p style={styles.message}>{message}</p>
+        <p style={styles.message}>{translateMessage(message)}</p>
         <div style={styles.actions}>
           <button
             ref={cancelRef}
@@ -61,7 +63,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             style={styles.cancelButton}
             data-testid="confirm-dialog-cancel"
           >
-            {cancelLabel}
+            {t(cancelLabel)}
           </button>
           <button
             type="button"
@@ -69,7 +71,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             style={styles.confirmButton}
             data-testid="confirm-dialog-confirm"
           >
-            {confirmLabel}
+            {t(confirmLabel)}
           </button>
         </div>
       </div>

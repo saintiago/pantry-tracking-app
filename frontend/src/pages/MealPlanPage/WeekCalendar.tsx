@@ -1,3 +1,4 @@
+import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React from 'react';
 import DayColumn from './DayColumn';
 import { getMonthYearLabel, groupByDate } from './weekUtils';
@@ -34,6 +35,7 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({
   saving,
   dragTarget,
 }) => {
+  useLanguage();
   // When there's an error, pass empty arrays to all DayColumns (Req 1.9)
   const grouped = error ? groupByDate([], weekDates) : groupByDate(assignments, weekDates);
 
@@ -50,16 +52,16 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({
           type="button"
           onClick={onPrevWeek}
           disabled={loading}
-          aria-label="Previous week"
+          aria-label={t('Previous week')}
           style={{ ...styles.navButton, ...(loading ? styles.navButtonDisabled : {}) }}
         >
-          ‹ Prev
+          {t('‹ Prev')}{' '}
         </button>
 
         {/* Loading indication (Req 1.8) */}
         {loading && (
           <span role="status" aria-live="polite" style={styles.loadingIndicator}>
-            Loading…
+            {t('Loading…')}{' '}
           </span>
         )}
 
@@ -67,17 +69,17 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({
           type="button"
           onClick={onNextWeek}
           disabled={loading}
-          aria-label="Next week"
+          aria-label={t('Next week')}
           style={{ ...styles.navButton, ...(loading ? styles.navButtonDisabled : {}) }}
         >
-          Next ›
+          {t('Next ›')}{' '}
         </button>
       </div>
 
       {/* Error indication — still renders all 7 columns below (Req 1.9) */}
       {error && (
         <div role="alert" style={styles.errorBanner}>
-          {error}
+          {translateMessage(error)}
         </div>
       )}
 

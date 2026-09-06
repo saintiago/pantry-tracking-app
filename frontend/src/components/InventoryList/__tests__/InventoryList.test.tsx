@@ -16,7 +16,9 @@ const locations: StorageLocation[] = [
   { locationId: 'loc-2', name: 'Fridge', createdAt: '2024-01-02T00:00:00Z' },
 ];
 
-function makeItem(overrides: Partial<InventoryItem> & { itemId: string; name: string }): InventoryItem {
+function makeItem(
+  overrides: Partial<InventoryItem> & { itemId: string; name: string },
+): InventoryItem {
   return {
     category: 'Dairy',
     expirationDate: '2025-03-01',
@@ -31,10 +33,40 @@ function makeItem(overrides: Partial<InventoryItem> & { itemId: string; name: st
 }
 
 const sampleItems: InventoryItem[] = [
-  makeItem({ itemId: '1', name: 'Milk', category: 'Dairy', location: 'loc-2', quantity: 2, unit: 'l' }),
-  makeItem({ itemId: '2', name: 'Rice', category: 'Grains', location: 'loc-1', quantity: 10, unit: 'kg' }),
-  makeItem({ itemId: '3', name: 'Cheese', category: 'Dairy', location: 'loc-2', isLowStock: true, quantity: 1, unit: 'piece' }),
-  makeItem({ itemId: '4', name: 'Bread', category: 'Bakery', location: 'loc-1', isLowStock: true, quantity: 1, unit: 'slice' }),
+  makeItem({
+    itemId: '1',
+    name: 'Milk',
+    category: 'Dairy',
+    location: 'loc-2',
+    quantity: 2,
+    unit: 'l',
+  }),
+  makeItem({
+    itemId: '2',
+    name: 'Rice',
+    category: 'Grains',
+    location: 'loc-1',
+    quantity: 10,
+    unit: 'kg',
+  }),
+  makeItem({
+    itemId: '3',
+    name: 'Cheese',
+    category: 'Dairy',
+    location: 'loc-2',
+    isLowStock: true,
+    quantity: 1,
+    unit: 'piece',
+  }),
+  makeItem({
+    itemId: '4',
+    name: 'Bread',
+    category: 'Bakery',
+    location: 'loc-1',
+    isLowStock: true,
+    quantity: 1,
+    unit: 'slice',
+  }),
 ];
 
 /** Helper: drill into a category from the category-summary view */
@@ -171,9 +203,7 @@ describe('InventoryList', () => {
 
   it('does not show remove buttons when removeMode is false', async () => {
     const user = userEvent.setup();
-    render(
-      <InventoryList items={[sampleItems[0]]} locations={locations} removeMode={false} />,
-    );
+    render(<InventoryList items={[sampleItems[0]]} locations={locations} removeMode={false} />);
 
     await drillIntoCategory(user, 'Dairy');
     expect(screen.queryByLabelText('Remove Milk')).not.toBeInTheDocument();
@@ -205,7 +235,7 @@ describe('InventoryList', () => {
 
     await drillIntoCategory(user, 'Dairy');
     await expandGroup(user, 'Milk');
-    expect(screen.getByText('Exp: 2025-03-01')).toBeInTheDocument();
+    expect(screen.getByText('Exp: 3/1/2025')).toBeInTheDocument();
   });
 
   it('displays category badge on item card', async () => {

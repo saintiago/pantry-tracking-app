@@ -1,3 +1,4 @@
+import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useEffect, useRef, useState } from 'react';
 
 interface TagInputProps {
@@ -9,6 +10,7 @@ interface TagInputProps {
 }
 
 const TagInput: React.FC<TagInputProps> = ({ tags, onChange, allTags, tagsLoading, error }) => {
+  useLanguage();
   const [inputValue, setInputValue] = useState('');
   const [autocompleteOpen, setAutocompleteOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -163,7 +165,7 @@ const TagInput: React.FC<TagInputProps> = ({ tags, onChange, allTags, tagsLoadin
                 type="button"
                 onClick={() => removeTag(tag)}
                 style={styles.removeButton}
-                aria-label={`Remove tag ${tag}`}
+                aria-label={t('Remove tag {0}', tag)}
               >
                 ×
               </button>
@@ -181,7 +183,7 @@ const TagInput: React.FC<TagInputProps> = ({ tags, onChange, allTags, tagsLoadin
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           onFocus={handleFocus}
-          placeholder={tagsLoading ? 'Loading tags…' : 'Add a tag…'}
+          placeholder={tagsLoading ? t('Loading tags…') : t('Add a tag…')}
           role="combobox"
           aria-expanded={showDropdown}
           aria-autocomplete="list"
@@ -219,7 +221,7 @@ const TagInput: React.FC<TagInputProps> = ({ tags, onChange, allTags, tagsLoadin
       {/* Error message */}
       {error && (
         <span style={styles.errorText} role="alert">
-          {error}
+          {translateMessage(error)}
         </span>
       )}
     </div>

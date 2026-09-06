@@ -1,3 +1,4 @@
+import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   deleteRecipe,
@@ -27,6 +28,7 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
   activeCookingSession,
   onStartCooking,
 }) => {
+  useLanguage();
   const [data, setData] = useState<RecipeWithAvailability | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +71,9 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
 
   const handleDelete = useCallback(async () => {
     const confirmed = window.confirm(
-      'Are you sure you want to delete this recipe? If it is assigned to meal plans, those assignments will remain but reference a deleted recipe.',
+      t(
+        'Are you sure you want to delete this recipe? If it is assigned to meal plans, those assignments will remain but reference a deleted recipe.',
+      ),
     );
     if (!confirmed) return;
 
@@ -87,12 +91,17 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
     return (
       <div style={styles.page}>
         <div style={styles.pageHeader}>
-          <button onClick={onBack} style={styles.backButton} type="button" aria-label="Go back">
-            ← Back
+          <button
+            onClick={onBack}
+            style={styles.backButton}
+            type="button"
+            aria-label={t('Go back')}
+          >
+            {t('← Back')}{' '}
           </button>
         </div>
         <div style={styles.loadingState} aria-live="polite">
-          Loading recipe…
+          {t('Loading recipe…')}{' '}
         </div>
       </div>
     );
@@ -102,12 +111,17 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
     return (
       <div style={styles.page}>
         <div style={styles.pageHeader}>
-          <button onClick={onBack} style={styles.backButton} type="button" aria-label="Go back">
-            ← Back
+          <button
+            onClick={onBack}
+            style={styles.backButton}
+            type="button"
+            aria-label={t('Go back')}
+          >
+            {t('← Back')}{' '}
           </button>
         </div>
         <div style={styles.errorBanner} role="alert">
-          {error}
+          {translateMessage(error)}
         </div>
       </div>
     );
@@ -161,10 +175,10 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
           onClick={onBack}
           style={styles.backButton}
           type="button"
-          aria-label="Go back"
+          aria-label={t('Go back')}
           disabled={deleting}
         >
-          ← Back
+          {t('← Back')}{' '}
         </button>
         <h2 style={styles.pageTitle}>{recipe.name}</h2>
       </div>
@@ -172,7 +186,7 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
       {/* Error banner (delete errors) */}
       {error && (
         <div style={styles.errorBanner} role="alert">
-          {error}
+          {translateMessage(error)}
         </div>
       )}
 
@@ -180,7 +194,7 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
       <div style={styles.content}>
         {/* Tags */}
         {(recipe.tags ?? []).length > 0 && (
-          <section style={styles.tagsSection} aria-label="Recipe tags">
+          <section style={styles.tagsSection} aria-label={t('Recipe tags')}>
             {(recipe.tags ?? []).map((tag) => (
               <span key={tag} style={styles.tagChip}>
                 {tag}
@@ -191,32 +205,36 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
 
         {/* Time display */}
         {totalTime !== undefined && (
-          <section style={styles.timeSection} aria-label="Recipe time">
+          <section style={styles.timeSection} aria-label={t('Recipe time')}>
             {recipe.prepTime !== undefined && recipe.cookTime !== undefined ? (
               <>
-                <span style={styles.timeItem}>Prep: {recipe.prepTime} min</span>
-                <span style={styles.timeItem}>Cook: {recipe.cookTime} min</span>
+                <span style={styles.timeItem}>
+                  {t('Prep:')} {recipe.prepTime} {t('min')}
+                </span>
+                <span style={styles.timeItem}>
+                  {t('Cook:')} {recipe.cookTime} {t('min')}
+                </span>
                 <span style={{ ...styles.timeItem, ...styles.totalTime }}>
-                  Total: {totalTime} min
+                  {t('Total:')} {totalTime} {t('min')}{' '}
                 </span>
               </>
             ) : (
               <span style={{ ...styles.timeItem, ...styles.totalTime }}>
-                Total: {totalTime} min
+                {t('Total:')} {totalTime} {t('min')}{' '}
               </span>
             )}
           </section>
         )}
 
         {/* Portions scaler */}
-        <section style={styles.portionsSection} aria-label="Portions">
-          <span style={styles.portionsLabel}>Portions</span>
+        <section style={styles.portionsSection} aria-label={t('Portions')}>
+          <span style={styles.portionsLabel}>{t('Portions')}</span>
           <div style={styles.portionsControls}>
             <button
               type="button"
               onClick={handleDecrement}
               disabled={selectedPortions === 1}
-              aria-label="Decrease portions"
+              aria-label={t('Decrease portions')}
               style={styles.portionsButton}
             >
               –
@@ -227,7 +245,7 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
             <button
               type="button"
               onClick={handleIncrement}
-              aria-label="Increase portions"
+              aria-label={t('Increase portions')}
               style={styles.portionsButton}
             >
               +
@@ -243,7 +261,7 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
 
         {/* Instructions */}
         <section style={styles.section}>
-          <h3 style={styles.sectionTitle}>Instructions</h3>
+          <h3 style={styles.sectionTitle}>{t('Instructions')}</h3>
           <ol style={styles.instructionsList}>
             {instructionSteps.filter(Boolean).map((step, index) => (
               <li key={index} style={styles.instructions}>
@@ -254,8 +272,8 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
         </section>
 
         {recipe.chefNotes && (
-          <section style={styles.section} aria-label="Chef's notes">
-            <h3 style={styles.sectionTitle}>Chef&apos;s notes</h3>
+          <section style={styles.section} aria-label={t("Chef's notes")}>
+            <h3 style={styles.sectionTitle}>{t("Chef's notes")}</h3>
             <p style={styles.instructions}>{recipe.chefNotes}</p>
           </section>
         )}
@@ -269,7 +287,7 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
               rel="noopener noreferrer"
               style={styles.sourceLink}
             >
-              View original recipe
+              {t('View original recipe')}{' '}
             </a>
           </section>
         )}
@@ -287,7 +305,7 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
           disabled={deleting}
           data-testid="delete-button"
         >
-          {deleting ? 'Deleting…' : 'Delete'}
+          {deleting ? t('Deleting…') : t('Delete')}
         </button>
         <button
           type="button"
@@ -301,11 +319,11 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
           data-testid="cook-button"
           title={
             isDifferentRecipe
-              ? 'Finish your current cooking session before starting a new one'
+              ? t('Finish your current cooking session before starting a new one')
               : undefined
           }
         >
-          {cookButtonLabel}
+          {t(cookButtonLabel)}
         </button>
         <button
           type="button"
@@ -314,7 +332,7 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
           disabled={deleting}
           data-testid="edit-button"
         >
-          Edit
+          {t('Edit')}{' '}
         </button>
       </div>
     </div>

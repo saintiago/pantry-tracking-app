@@ -1,3 +1,4 @@
+import { date, t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import { departmentFor, departmentColor } from '../../pages/ShoppingListPage/departments';
 import React, { useMemo, useState } from 'react';
 import type { StorageLocation } from '../../api/locations/locations';
@@ -61,7 +62,7 @@ export function formatQuantityByUnit(quantityByUnit: Record<string, number>): st
     const [unit, qty] = entries[0];
     return `${formatQuantity(qty)} ${getUnitLabel(unit, qty)}`;
   }
-  return 'mixed units';
+  return t('mixed units');
 }
 
 export function groupItemsByCategory(items: InventoryItem[]): CategorySummary[] {
@@ -212,11 +213,14 @@ export function groupItemsByGroupingKey(
 
 /* ── Sub-components ─────────────────────────────────────────────── */
 
-export const LowStockBadge: React.FC = () => (
-  <span style={styles.lowStockBadge} aria-label="Low stock">
-    Low Stock
-  </span>
-);
+export const LowStockBadge: React.FC = () => {
+  useLanguage();
+  return (
+    <span style={styles.lowStockBadge} aria-label={t('Low stock')}>
+      {t('Low Stock')}{' '}
+    </span>
+  );
+};
 
 export interface InAppNotificationProps {
   message: string;
@@ -229,14 +233,15 @@ export const InAppNotification: React.FC<InAppNotificationProps> = ({
   visible,
   onDismiss,
 }) => {
+  useLanguage();
   if (!visible) return null;
   return (
     <div style={styles.notification} role="alert" className="inv-fade-slide-in">
-      <span>{message}</span>
+      <span>{translateMessage(message)}</span>
       <button
         onClick={onDismiss}
         style={styles.notificationClose}
-        aria-label="Dismiss notification"
+        aria-label={t('Dismiss notification')}
       >
         ✕
       </button>
@@ -251,17 +256,20 @@ interface QuickFilterInputProps {
   onChange: (value: string) => void;
 }
 
-export const QuickFilterInput: React.FC<QuickFilterInputProps> = ({ value, onChange }) => (
-  <input
-    type="text"
-    value={value}
-    onChange={(e) => onChange(e.target.value)}
-    placeholder="Search by name…"
-    aria-label="Filter by product name"
-    className="inv-input"
-    style={styles.filterInput}
-  />
-);
+export const QuickFilterInput: React.FC<QuickFilterInputProps> = ({ value, onChange }) => {
+  useLanguage();
+  return (
+    <input
+      type="text"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={t('Search by name…')}
+      aria-label={t('Filter by product name')}
+      className="inv-input"
+      style={styles.filterInput}
+    />
+  );
+};
 
 /* ── CategorySelector ───────────────────────────────────────────── */
 
@@ -275,22 +283,25 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
   categories,
   value,
   onChange,
-}) => (
-  <select
-    value={value}
-    onChange={(e) => onChange(e.target.value)}
-    aria-label="Filter by category"
-    className="inv-select"
-    style={styles.filterSelect}
-  >
-    <option value="All">All Categories</option>
-    {categories.map((cat) => (
-      <option key={cat} value={cat}>
-        {cat}
-      </option>
-    ))}
-  </select>
-);
+}) => {
+  useLanguage();
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      aria-label={t('Filter by category')}
+      className="inv-select"
+      style={styles.filterSelect}
+    >
+      <option value="All">{t('All Categories')}</option>
+      {categories.map((cat) => (
+        <option key={cat} value={cat}>
+          {cat}
+        </option>
+      ))}
+    </select>
+  );
+};
 
 /* ── LocationFilter ─────────────────────────────────────────────── */
 
@@ -300,22 +311,25 @@ interface LocationFilterProps {
   onChange: (value: string) => void;
 }
 
-export const LocationFilter: React.FC<LocationFilterProps> = ({ locations, value, onChange }) => (
-  <select
-    value={value}
-    onChange={(e) => onChange(e.target.value)}
-    aria-label="Filter by location"
-    className="inv-select"
-    style={styles.filterSelect}
-  >
-    <option value="All">All Locations</option>
-    {locations.map((loc) => (
-      <option key={loc.locationId} value={loc.locationId}>
-        {loc.name}
-      </option>
-    ))}
-  </select>
-);
+export const LocationFilter: React.FC<LocationFilterProps> = ({ locations, value, onChange }) => {
+  useLanguage();
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      aria-label={t('Filter by location')}
+      className="inv-select"
+      style={styles.filterSelect}
+    >
+      <option value="All">{t('All Locations')}</option>
+      {locations.map((loc) => (
+        <option key={loc.locationId} value={loc.locationId}>
+          {loc.name}
+        </option>
+      ))}
+    </select>
+  );
+};
 
 /* ── CategoryCard ───────────────────────────────────────────────── */
 
@@ -325,6 +339,7 @@ interface CategoryCardProps {
 }
 
 export const CategoryCard: React.FC<CategoryCardProps> = ({ summary, onClick }) => {
+  useLanguage();
   const { isHovered, hoverProps } = useHoverState();
   const { feedbackClass, triggerSuccess } = useInteractionFeedback();
 
@@ -347,7 +362,12 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ summary, onClick }) 
       tabIndex={0}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      aria-label={`${summary.category}, ${summary.itemCount} items, ${formatQuantityByUnit(summary.quantityByUnit)}`}
+      aria-label={t(
+        '{0}, {1} items, {2}',
+        summary.category,
+        summary.itemCount,
+        formatQuantityByUnit(summary.quantityByUnit),
+      )}
       className={feedbackClass}
       style={{
         ...styles.categoryCard,
@@ -365,14 +385,16 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ summary, onClick }) 
         {summary.lowStockCount > 0 && (
           <span
             style={styles.categoryLowStockBadge}
-            aria-label={`${summary.lowStockCount} low stock`}
+            aria-label={t('{0} low stock', summary.lowStockCount)}
           >
-            ⚠️ {summary.lowStockCount} low stock
+            ⚠️ {summary.lowStockCount} {t('low stock')}{' '}
           </span>
         )}
       </div>
       <div style={styles.categoryCardStats}>
-        <span>{summary.itemCount} items</span>
+        <span>
+          {summary.itemCount} {t('items')}
+        </span>
         <span style={styles.categoryCardDot}>·</span>
         <span>{formatQuantityByUnit(summary.quantityByUnit)}</span>
       </div>
@@ -387,6 +409,7 @@ interface BackButtonProps {
 }
 
 export const BackButton: React.FC<BackButtonProps> = ({ onClick }) => {
+  useLanguage();
   const { isHovered, hoverProps } = useHoverState();
   const { feedbackClass, triggerSuccess } = useInteractionFeedback();
 
@@ -406,7 +429,7 @@ export const BackButton: React.FC<BackButtonProps> = ({ onClick }) => {
     <button
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      aria-label="Back to categories"
+      aria-label={t('Back to categories')}
       className={feedbackClass}
       style={{
         ...styles.backButton,
@@ -418,7 +441,7 @@ export const BackButton: React.FC<BackButtonProps> = ({ onClick }) => {
       }}
       {...hoverProps}
     >
-      ‹ Back
+      {t('‹ Back')}{' '}
     </button>
   );
 };
@@ -440,6 +463,7 @@ export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
   onRemove,
   onClick,
 }) => {
+  useLanguage();
   const isClickable = !removeMode && !!onClick;
   const { isHovered: isCardHovered, hoverProps: cardHoverProps } = useHoverState();
   const { isHovered: isRemoveHovered, hoverProps: removeHoverProps } = useHoverState();
@@ -481,7 +505,7 @@ export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
       {...(isClickable ? cardHoverProps : {})}
     >
       {/* Thumbnail area */}
-      <div style={styles.thumbnail} aria-label="Item picture">
+      <div style={styles.thumbnail} aria-label={t('Item picture')}>
         {item.pictureUrl ? (
           <img src={item.pictureUrl} alt={item.name} style={styles.thumbnailImg} />
         ) : (
@@ -506,7 +530,9 @@ export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
           <span>
             {formatQuantity(item.quantity)} {getUnitLabel(item.unit, item.quantity)}
           </span>
-          <span style={styles.expiration}>Exp: {item.expirationDate}</span>
+          <span style={styles.expiration}>
+            {t('Exp:')} {date(item.expirationDate)}
+          </span>
         </div>
       </div>
 
@@ -522,7 +548,7 @@ export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
               backgroundColor: isRemoveHovered ? 'var(--inv-primary-bg)' : 'transparent',
               transition: 'background-color 0.15s ease',
             }}
-            aria-label={`Remove ${item.name}`}
+            aria-label={t('Remove {0}', item.name)}
             {...removeHoverProps}
           >
             ✕
@@ -572,6 +598,7 @@ export const GroupedRowView: React.FC<GroupedRowProps> = ({
   onItemClick,
   onUpdateThreshold,
 }) => {
+  useLanguage();
   const [editingThreshold, setEditingThreshold] = useState(false);
   const [thresholdValue, setThresholdValue] = useState(
     group.threshold === undefined ? '' : String(group.threshold),
@@ -613,7 +640,7 @@ export const GroupedRowView: React.FC<GroupedRowProps> = ({
         aria-controls={childRegionId}
         onClick={handleToggle}
         onKeyDown={handleKeyDown}
-        aria-label={`${group.name}, ${countText}, ${quantityText}${
+        aria-label={`${group.name}, ${translateMessage(countText)}, ${quantityText}${
           group.hasLowStock ? ', contains low stock' : ''
         }, ${expanded ? 'expanded' : 'collapsed'}`}
         className={feedbackClass}
@@ -637,7 +664,7 @@ export const GroupedRowView: React.FC<GroupedRowProps> = ({
             {onUpdateThreshold && (
               <button
                 type="button"
-                aria-label={`Edit low-stock threshold for ${group.name}`}
+                aria-label={t('Edit low-stock threshold for {0}', group.name)}
                 style={styles.thresholdButton}
                 onClick={(event) => {
                   event.stopPropagation();
@@ -647,7 +674,7 @@ export const GroupedRowView: React.FC<GroupedRowProps> = ({
                   setEditingThreshold((value) => !value);
                 }}
               >
-                ⚙ Threshold
+                {t('⚙ Threshold')}{' '}
                 {group.threshold === undefined
                   ? ''
                   : `: ${group.threshold} ${getUnitLabel(group.thresholdUnit ?? group.unit, group.threshold)}`}
@@ -657,7 +684,7 @@ export const GroupedRowView: React.FC<GroupedRowProps> = ({
           <div style={styles.groupedRowStats}>
             <span>{quantityText}</span>
             <span style={styles.categoryCardDot}>·</span>
-            <span>{countText}</span>
+            <span>{translateMessage(countText)}</span>
           </div>
         </div>
       </div>
@@ -681,7 +708,7 @@ export const GroupedRowView: React.FC<GroupedRowProps> = ({
             }
           }}
         >
-          <label htmlFor={`threshold-${group.groupId}`}>Low-stock threshold</label>
+          <label htmlFor={`threshold-${group.groupId}`}>{t('Low-stock threshold')}</label>
           <input
             id={`threshold-${group.groupId}`}
             type="number"
@@ -691,7 +718,7 @@ export const GroupedRowView: React.FC<GroupedRowProps> = ({
             onChange={(event) => setThresholdValue(event.target.value)}
             style={styles.thresholdInput}
           />
-          <label htmlFor={`threshold-unit-${group.groupId}`}>Threshold unit</label>
+          <label htmlFor={`threshold-unit-${group.groupId}`}>{t('Threshold unit')}</label>
           <select
             id={`threshold-unit-${group.groupId}`}
             value={thresholdUnit}
@@ -703,23 +730,23 @@ export const GroupedRowView: React.FC<GroupedRowProps> = ({
               </option>
             ))}
           </select>
-          {thresholdError && <span role="alert">{thresholdError}</span>}
+          {thresholdError && <span role="alert">{translateMessage(thresholdError)}</span>}
           <button type="submit" disabled={thresholdSaving} style={styles.thresholdSaveButton}>
-            Save
+            {t('Save')}{' '}
           </button>
           <button
             type="button"
             onClick={() => setEditingThreshold(false)}
             style={styles.thresholdCancelButton}
           >
-            Cancel
+            {t('Cancel')}{' '}
           </button>
         </form>
       )}
 
       {/* Child region referenced by aria-controls. Rendered (empty) even when
           collapsed so the aria-controls target id always resolves. */}
-      <div id={childRegionId} role="region" aria-label={`${group.name} items`}>
+      <div id={childRegionId} role="region" aria-label={t('{0} items', group.name)}>
         {expanded && (
           <div style={styles.groupedChildren}>
             {group.childItems.map((item) => (
@@ -768,6 +795,7 @@ const InventoryList: React.FC<InventoryListProps> = ({
   onItemClick,
   onUpdateThreshold,
 }) => {
+  useLanguage();
   const [textFilter, setTextFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [locationFilter, setLocationFilter] = useState('All');
@@ -880,7 +908,7 @@ const InventoryList: React.FC<InventoryListProps> = ({
   };
 
   return (
-    <section aria-label="Inventory list" style={styles.container}>
+    <section aria-label={t('Inventory list')} style={styles.container}>
       {/* Filters row */}
       <div style={styles.filtersRow}>
         <QuickFilterInput value={textFilter} onChange={setTextFilter} />
@@ -908,9 +936,9 @@ const InventoryList: React.FC<InventoryListProps> = ({
               ...(showLowStockOnly ? styles.lowStockToggleActive : {}),
             }}
             aria-pressed={showLowStockOnly}
-            aria-label="Show low stock items only"
+            aria-label={t('Show low stock items only')}
           >
-            ⚠️ Low Stock
+            {t('⚠️ Low Stock')}{' '}
           </button>
         </Tooltip>
       </div>
@@ -919,7 +947,7 @@ const InventoryList: React.FC<InventoryListProps> = ({
       {viewMode === 'category-summary' && (
         <>
           {categorySummaries.length === 0 ? (
-            <p style={styles.emptyText}>No items match the current filters.</p>
+            <p style={styles.emptyText}>{t('No items match the current filters.')}</p>
           ) : (
             <div style={styles.categoryGrid}>
               {categorySummaries.map((summary) => (
@@ -939,7 +967,7 @@ const InventoryList: React.FC<InventoryListProps> = ({
         <>
           <BackButton onClick={handleBackClick} />
           {groupedRows.length === 0 ? (
-            <p style={styles.emptyText}>No items match the current filters.</p>
+            <p style={styles.emptyText}>{t('No items match the current filters.')}</p>
           ) : (
             <div style={styles.itemsList}>
               {groupedRows.map((group) => (

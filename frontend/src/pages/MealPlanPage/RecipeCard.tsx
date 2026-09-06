@@ -1,3 +1,4 @@
+import { t, useLanguage } from '../../i18n/i18n';
 import React from 'react';
 import type { Assignment } from './weekUtils';
 
@@ -14,6 +15,7 @@ const MEAL_TYPE_LABELS: Record<Assignment['mealType'], string> = {
 };
 
 const RecipeCard: React.FC<RecipeCardProps> = ({ assignment, isRemoving, onRemove }) => {
+  useLanguage();
   const handleRemove = () => {
     onRemove(assignment.planId);
   };
@@ -21,15 +23,19 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ assignment, isRemoving, onRemov
   return (
     <div style={styles.card}>
       <div style={styles.content}>
-        <span style={styles.mealType}>{MEAL_TYPE_LABELS[assignment.mealType]}</span>
+        <span style={styles.mealType}>{t(MEAL_TYPE_LABELS[assignment.mealType])}</span>
         <span style={styles.recipeName}>{assignment.recipeName}</span>
-        {assignment.servings !== undefined && <span>{assignment.servings} servings</span>}
+        {assignment.servings !== undefined && (
+          <span>
+            {assignment.servings} {t('servings')}
+          </span>
+        )}
       </div>
       <button
         type="button"
         onClick={handleRemove}
         disabled={isRemoving}
-        aria-label="Remove assignment"
+        aria-label={t('Remove assignment')}
         style={isRemoving ? styles.removeButtonDisabled : styles.removeButton}
       >
         ×

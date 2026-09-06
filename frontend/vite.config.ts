@@ -12,7 +12,10 @@ const { version } = require('./package.json') as { version: string };
 function mockAuthPlugin(): Plugin | null {
   if (process.env.VITE_MOCK_AUTH !== 'true') return null;
 
-  const realPath = path.resolve(__dirname, 'src/auth/cognitoClient/cognitoClient.ts').split(path.sep).join('/');
+  const realPath = path
+    .resolve(__dirname, 'src/auth/cognitoClient/cognitoClient.ts')
+    .split(path.sep)
+    .join('/');
   const mockPath = path.resolve(__dirname, '../e2e/mocks/cognitoClient.ts');
   const mockContent = fs.readFileSync(mockPath, 'utf-8');
 
@@ -33,6 +36,15 @@ export default defineConfig({
   plugins: [mockAuthPlugin(), react()].filter(Boolean),
   build: {
     outDir: 'build',
+    rollupOptions: {
+      output: {
+        // Catalogs are cached separately from changing app code and loaded with the app
+        // so switching languages also works offline.
+        manualChunks(id) {
+          if (id.split(path.sep).join('/').endsWith('/src/i18n/messages.ts')) return 'translations';
+        },
+      },
+    },
   },
   define: {
     global: 'globalThis',

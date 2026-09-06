@@ -1,3 +1,4 @@
+import { t, useLanguage } from '../../i18n/i18n';
 import React from 'react';
 import RecipeCard from './RecipeCard';
 import type { Assignment } from './weekUtils';
@@ -26,6 +27,7 @@ const DayColumn: React.FC<DayColumnProps> = ({
   saving,
   dragTarget,
 }) => {
+  useLanguage();
   const handleAddClick = () => {
     onAddClick(date);
   };
@@ -38,39 +40,39 @@ const DayColumn: React.FC<DayColumnProps> = ({
       </div>
       {(['breakfast', 'lunch', 'dinner'] as const).map((mealType) => (
         <section
-          key={mealType}
-          aria-label={`${mealType} on ${date}`}
+          key={t(mealType)}
+          aria-label={t('{0} on {1}', t(mealType), date)}
           data-meal-date={onDropRecipe ? date : undefined}
-          data-meal-type={mealType}
+          data-meal-type={t(mealType)}
           data-drop-disabled={saving ? 'true' : undefined}
-          data-drag-over={dragTarget === `${date}/${mealType}` ? 'true' : undefined}
+          data-drag-over={dragTarget === `${date}/${t(mealType)}` ? 'true' : undefined}
           style={{
             ...styles.mealSlot,
             backgroundColor:
-              dragTarget === `${date}/${mealType}`
+              dragTarget === `${date}/${t(mealType)}`
                 ? 'var(--color-mint)'
                 : selectedRecipeId
                   ? 'var(--color-success)'
                   : 'var(--color-canvas)',
             outline:
-              dragTarget === `${date}/${mealType}` ? '2px solid var(--color-action)' : undefined,
+              dragTarget === `${date}/${t(mealType)}` ? '2px solid var(--color-action)' : undefined,
           }}
         >
           {onDropRecipe ? (
             <button
               type="button"
-              aria-label={`Plan ${mealType} on ${date}`}
+              aria-label={t('Plan {0} on {1}', t(mealType), date)}
               disabled={saving}
-              data-drag-over={dragTarget === `${date}/${mealType}` ? 'true' : undefined}
+              data-drag-over={dragTarget === `${date}/${t(mealType)}` ? 'true' : undefined}
               onClick={() => {
                 if (selectedRecipeId) onDropRecipe(selectedRecipeId, date, mealType);
               }}
               style={styles.mealButton}
             >
-              {mealType}
+              {t(mealType)}
             </button>
           ) : (
-            <div style={styles.mealLabel}>{mealType}</div>
+            <div style={styles.mealLabel}>{t(mealType)}</div>
           )}
           <div style={styles.cards}>
             {assignments
@@ -89,7 +91,7 @@ const DayColumn: React.FC<DayColumnProps> = ({
       <button
         type="button"
         onClick={handleAddClick}
-        aria-label="Add recipe"
+        aria-label={t('Add recipe')}
         style={styles.addButton}
       >
         +

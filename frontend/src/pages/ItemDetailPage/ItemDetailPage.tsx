@@ -1,8 +1,9 @@
+import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useCallback, useState } from 'react';
 import type { InventoryItem } from '../../components/InventoryList/InventoryList';
 import type { StorageLocation } from '../../api/locations/locations';
 import { updateInventoryItem } from '../../api/inventory/inventory';
-import { VALID_UNITS, getUnitLabel, resolveUnit } from '../../types/units';
+import { localizedUnits, getUnitLabel, resolveUnit } from '../../types/units';
 import { parseFractionalQuantity, formatQuantity } from '../../utils/quantity';
 
 export interface ItemDetailPageProps {
@@ -77,6 +78,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
   onBack,
   onItemUpdated,
 }) => {
+  useLanguage();
   const [editForm, setEditForm] = useState<EditFormState>(initForm(item));
   const [errors, setErrors] = useState<EditFormErrors>({});
   const [saving, setSaving] = useState(false);
@@ -122,7 +124,9 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
         resolveUnit(editForm.unit) !== resolveUnit(item.unit);
       if (groupingFieldsChanged) {
         const keepCurrentGroup = window.confirm(
-          'Keep this item in its current inventory group? Select Cancel to assign it automatically from its new name, category, and unit.',
+          t(
+            'Keep this item in its current inventory group? Select Cancel to assign it automatically from its new name, category, and unit.',
+          ),
         );
         if (!keepCurrentGroup) data.reassignGroup = true;
       }
@@ -151,10 +155,10 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
           onClick={onBack}
           style={styles.backButton}
           type="button"
-          aria-label="Go back"
+          aria-label={t('Go back')}
           disabled={saving}
         >
-          ← Back
+          {t('← Back')}{' '}
         </button>
         <h2 style={styles.pageTitle}>{item.name}</h2>
       </div>
@@ -169,7 +173,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
       {/* Error banner */}
       {submitError && (
         <div style={styles.errorBanner} role="alert">
-          {submitError}
+          {translateMessage(submitError)}
         </div>
       )}
 
@@ -178,7 +182,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
         {/* Name */}
         <div style={styles.fieldGroup}>
           <label htmlFor="edit-name" style={styles.label}>
-            Product Name <span aria-hidden="true">*</span>
+            {t('Product Name')} <span aria-hidden="true">*</span>
           </label>
           <input
             id="edit-name"
@@ -191,7 +195,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
           />
           {errors.name && (
             <span style={styles.fieldError} role="alert">
-              {errors.name}
+              {translateMessage(errors.name)}
             </span>
           )}
         </div>
@@ -199,7 +203,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
         {/* Category */}
         <div style={styles.fieldGroup}>
           <label htmlFor="edit-category" style={styles.label}>
-            Category <span aria-hidden="true">*</span>
+            {t('Category')} <span aria-hidden="true">*</span>
           </label>
           <input
             id="edit-category"
@@ -212,7 +216,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
           />
           {errors.category && (
             <span style={styles.fieldError} role="alert">
-              {errors.category}
+              {translateMessage(errors.category)}
             </span>
           )}
         </div>
@@ -220,7 +224,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
         {/* Location */}
         <div style={styles.fieldGroup}>
           <label htmlFor="edit-location" style={styles.label}>
-            Storage Location <span aria-hidden="true">*</span>
+            {t('Storage Location')} <span aria-hidden="true">*</span>
           </label>
           <select
             id="edit-location"
@@ -230,7 +234,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
             aria-required="true"
             aria-invalid={!!errors.locationId}
           >
-            <option value="">Select a location</option>
+            <option value="">{t('Select a location')}</option>
             {locations.map((loc) => (
               <option key={loc.locationId} value={loc.locationId}>
                 {loc.name}
@@ -239,20 +243,20 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
           </select>
           {errors.locationId && (
             <span style={styles.fieldError} role="alert">
-              {errors.locationId}
+              {translateMessage(errors.locationId)}
             </span>
           )}
         </div>
 
         <div style={styles.fieldGroup}>
           <label htmlFor="edit-location-details" style={styles.label}>
-            Location Details
+            {t('Location Details')}{' '}
           </label>
           <input
             id="edit-location-details"
             value={editForm.locationDetails}
             onChange={handleChange('locationDetails')}
-            placeholder="e.g. Shelf 2A"
+            placeholder={t('e.g. Shelf 2A')}
             style={styles.input}
           />
         </div>
@@ -260,7 +264,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
         {/* Quantity */}
         <div style={styles.fieldGroup}>
           <label htmlFor="edit-quantity" style={styles.label}>
-            Quantity <span aria-hidden="true">*</span>
+            {t('Quantity')} <span aria-hidden="true">*</span>
           </label>
           <input
             id="edit-quantity"
@@ -274,7 +278,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
           />
           {errors.quantity && (
             <span style={styles.fieldError} role="alert">
-              {errors.quantity}
+              {translateMessage(errors.quantity)}
             </span>
           )}
         </div>
@@ -282,7 +286,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
         {/* Unit */}
         <div style={styles.fieldGroup}>
           <label htmlFor="edit-unit" style={styles.label}>
-            Unit <span aria-hidden="true">*</span>
+            {t('Unit')} <span aria-hidden="true">*</span>
           </label>
           <select
             id="edit-unit"
@@ -292,8 +296,8 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
             aria-required="true"
             aria-invalid={!!errors.unit}
           >
-            <option value="">Select a unit</option>
-            {VALID_UNITS.map((u) => (
+            <option value="">{t('Select a unit')}</option>
+            {localizedUnits().map((u) => (
               <option key={u} value={u}>
                 {getUnitLabel(u, 1)}
               </option>
@@ -301,7 +305,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
           </select>
           {errors.unit && (
             <span style={styles.fieldError} role="alert">
-              {errors.unit}
+              {translateMessage(errors.unit)}
             </span>
           )}
         </div>
@@ -309,7 +313,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
         {/* Expiration Date */}
         <div style={styles.fieldGroup}>
           <label htmlFor="edit-expiration" style={styles.label}>
-            Expiration Date <span aria-hidden="true">*</span>
+            {t('Expiration Date')} <span aria-hidden="true">*</span>
           </label>
           <input
             id="edit-expiration"
@@ -322,7 +326,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
           />
           {errors.expirationDate && (
             <span style={styles.fieldError} role="alert">
-              {errors.expirationDate}
+              {translateMessage(errors.expirationDate)}
             </span>
           )}
         </div>
@@ -330,7 +334,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
         {/* Brand (optional) */}
         <div style={styles.fieldGroup}>
           <label htmlFor="edit-brand" style={styles.label}>
-            Brand
+            {t('Brand')}{' '}
           </label>
           <input
             id="edit-brand"
@@ -344,7 +348,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
         {/* Barcode (optional) */}
         <div style={styles.fieldGroup}>
           <label htmlFor="edit-barcode" style={styles.label}>
-            Barcode
+            {t('Barcode')}{' '}
           </label>
           <input
             id="edit-barcode"
@@ -358,7 +362,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
         {/* Where to Buy (optional) */}
         <div style={styles.fieldGroup}>
           <label htmlFor="edit-wheretobuy" style={styles.label}>
-            Where to Buy
+            {t('Where to Buy')}{' '}
           </label>
           <input
             id="edit-wheretobuy"
@@ -372,7 +376,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
         {/* Online Store Link (optional) */}
         <div style={styles.fieldGroup}>
           <label htmlFor="edit-onlinelink" style={styles.label}>
-            Online Store Link
+            {t('Online Store Link')}{' '}
           </label>
           <input
             id="edit-onlinelink"
@@ -396,7 +400,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
           data-testid="cancel-button"
           disabled={saving}
         >
-          Cancel
+          {t('Cancel')}{' '}
         </button>
         <button
           type="button"
@@ -405,7 +409,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
           data-testid="save-button"
           disabled={saving}
         >
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? t('Saving…') : t('Save')}
         </button>
       </div>
     </div>

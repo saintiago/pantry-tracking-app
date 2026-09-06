@@ -1,3 +1,4 @@
+import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 import '../../styles/inventory-theme.css';
 import StorageLocationManager from '../../components/StorageLocationManager/StorageLocationManager';
@@ -27,20 +28,23 @@ import {
 
 // --- Barcode Scanner Loading Fallback ---
 
-export const BarcodeScannerLoadingFallback: React.FC = () => (
-  <div
-    role="status"
-    aria-live="polite"
-    aria-label="Loading barcode scanner"
-    data-testid="barcode-scanner-loading"
-    style={styles.scannerLoadingOverlay}
-  >
-    <div style={styles.scannerLoadingModal}>
-      <div style={styles.scannerLoadingSpinner} aria-hidden="true" />
-      <p style={styles.scannerLoadingText}>Loading scanner…</p>
+export const BarcodeScannerLoadingFallback: React.FC = () => {
+  useLanguage();
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-label={t('Loading barcode scanner')}
+      data-testid="barcode-scanner-loading"
+      style={styles.scannerLoadingOverlay}
+    >
+      <div style={styles.scannerLoadingModal}>
+        <div style={styles.scannerLoadingSpinner} aria-hidden="true" />
+        <p style={styles.scannerLoadingText}>{t('Loading scanner…')}</p>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // --- Barcode Scanner Error Boundary ---
 
@@ -75,7 +79,7 @@ export class BarcodeScannerErrorBoundary extends React.Component<
       return (
         <div data-testid="barcode-scanner-error" style={styles.scannerErrorOverlay}>
           <div style={styles.scannerErrorModal}>
-            <p style={styles.scannerErrorText}>Couldn't load the scanner.</p>
+            <p style={styles.scannerErrorText}>{t("Couldn't load the scanner.")}</p>
             <div style={styles.scannerErrorButtons}>
               <button
                 style={styles.scannerErrorRetryButton}
@@ -85,14 +89,14 @@ export class BarcodeScannerErrorBoundary extends React.Component<
                 }}
                 type="button"
               >
-                Retry
+                {t('Retry')}{' '}
               </button>
               <button
                 style={styles.scannerErrorCloseButton}
                 onClick={this.props.onClose}
                 type="button"
               >
-                Close
+                {t('Close')}{' '}
               </button>
             </div>
           </div>
@@ -128,6 +132,7 @@ const InventoryPage: React.FC<InventoryPageProps> = ({
   onNavigateToAddItem,
   onNavigateToItemDetail,
 }) => {
+  useLanguage();
   const [locations, setLocations] = useState<StorageLocation[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [inventoryGroups, setInventoryGroups] = useState<InventoryGroup[]>([]);
@@ -310,8 +315,8 @@ const InventoryPage: React.FC<InventoryPageProps> = ({
 
   if (loading) {
     return (
-      <div style={styles.centered} role="status" aria-label="Loading">
-        <p>Loading…</p>
+      <div style={styles.centered} role="status" aria-label={t('Loading')}>
+        <p>{t('Loading…')}</p>
       </div>
     );
   }
@@ -319,9 +324,9 @@ const InventoryPage: React.FC<InventoryPageProps> = ({
   if (error) {
     return (
       <div style={styles.centered} role="alert">
-        <p style={styles.errorText}>{error}</p>
+        <p style={styles.errorText}>{translateMessage(error)}</p>
         <button onClick={loadAll} style={styles.retryButton}>
-          Retry
+          {t('Retry')}{' '}
         </button>
       </div>
     );
@@ -329,7 +334,7 @@ const InventoryPage: React.FC<InventoryPageProps> = ({
 
   return (
     <div className="page inventory-page">
-      <h2>Inventory</h2>
+      <h2>{t('Inventory')}</h2>
 
       <InAppNotification
         message={notification.message}
@@ -343,37 +348,37 @@ const InventoryPage: React.FC<InventoryPageProps> = ({
           <button
             onClick={() => setAddMenuOpen((prev) => !prev)}
             style={styles.addButton}
-            aria-label="Add item"
+            aria-label={t('Add item')}
             aria-expanded={addMenuOpen}
             aria-haspopup="menu"
           >
             <span style={styles.buttonIcon} aria-hidden="true">
               +
             </span>
-            <span>Add</span>
+            <span>{t('Add')}</span>
           </button>
           {addMenuOpen && (
-            <div style={styles.addMenu} role="menu" aria-label="Add item methods">
+            <div style={styles.addMenu} role="menu" aria-label={t('Add item methods')}>
               <button
                 role="menuitem"
                 style={styles.menuItem}
                 onClick={() => handleAddMenuSelect('manual')}
               >
-                ✏️ Manual Entry
+                {t('✏️ Manual Entry')}{' '}
               </button>
               <button
                 role="menuitem"
                 style={styles.menuItem}
                 onClick={() => handleAddMenuSelect('barcode')}
               >
-                📷 Barcode Scan
+                {t('📷 Barcode Scan')}{' '}
               </button>
               <button
                 role="menuitem"
                 style={styles.menuItem}
                 onClick={() => handleAddMenuSelect('receipt')}
               >
-                🧾 Receipt Photo
+                {t('🧾 Receipt Photo')}{' '}
               </button>
             </div>
           )}
@@ -385,19 +390,19 @@ const InventoryPage: React.FC<InventoryPageProps> = ({
             ...styles.removeButton,
             ...(removeMode ? styles.removeButtonActive : {}),
           }}
-          aria-label="Remove item"
+          aria-label={t('Remove item')}
           aria-pressed={removeMode}
         >
           <span style={styles.buttonIcon} aria-hidden="true">
             −
           </span>
-          <span>Remove</span>
+          <span>{t('Remove')}</span>
         </button>
       </div>
 
       {removeMode && (
         <p style={styles.removeModeHint} role="status">
-          Tap an item to remove it. Press Remove again to exit.
+          {t('Tap an item to remove it. Press Remove again to exit.')}{' '}
         </p>
       )}
 

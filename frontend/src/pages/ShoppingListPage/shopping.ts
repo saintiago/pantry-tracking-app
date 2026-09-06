@@ -2,6 +2,7 @@ import type { InventoryItem, InventoryGroup } from '../../api/inventory/inventor
 import type { Recipe } from '../../api/recipes/recipes';
 import type { MealPlan } from '../../api/meal-plans/meal-plans';
 import { LEGACY_UNIT_MAP } from '../../types/units';
+import { number } from '../../i18n/i18n';
 
 export const normalize = (value: string): string => value.trim().toLowerCase().replace(/\s+/g, ' ');
 export function baseUnit(unit: string): { unit: string; factor: number } {
@@ -14,8 +15,9 @@ export function localToday(now = new Date()): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 export function amount(value: number): string {
-  if (value > 0 && value < 0.001) return '<0.001';
-  return String(Math.round(value * 1000) / 1000);
+  if (value > 0 && value < 0.001)
+    return `<${number(0.001, { maximumFractionDigits: 3, useGrouping: false })}`;
+  return number(Math.round(value * 1000) / 1000, { maximumFractionDigits: 3, useGrouping: false });
 }
 export interface Contribution {
   planId: string;

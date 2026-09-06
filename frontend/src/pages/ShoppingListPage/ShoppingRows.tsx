@@ -1,3 +1,6 @@
+import { getShoppingUnitLabel as getUnitLabel } from '../../types/units';
+import { number, getLanguage } from '../../i18n/i18n';
+import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React from 'react';
 import { amount, needsReview } from './shopping';
 import type { ShoppingState } from './shopping';
@@ -55,24 +58,25 @@ interface Props {
   onUpdate: (state: CompanionState) => void;
 }
 export default function ShoppingRows(props: Props) {
+  useLanguage();
   const { lines, title, mode, companion, basket, disabled, today, period } = props;
   function render(line: ShoppingLine) {
     const pref = companion.preferences[line.id] ?? {};
     const pack = packageSuggestion(line.quantity, line.unit, pref);
     const deferred = isDeferred(companion, line.id, today, period);
     const checked = lineChecked(line, basket);
-    const label = `${line.name} ${mode === 'meal' ? 'meal ingredient' : mode === 'low' ? 'low stock' : mode === 'manual' ? 'manual item' : 'shopping item'}`;
+    const label = `${line.name} ${mode === 'meal' ? t('meal ingredient') : mode === 'low' ? t('low stock') : mode === 'manual' ? t('manual item') : t('shopping item')}`;
     return (
       <article
         key={line.id}
-        aria-label={label}
+        aria-label={translateMessage(label)}
         style={{ padding: '14px 0', borderBottom: '1px solid var(--color-border)' }}
       >
         <div style={{ ...rowWrap, justifyContent: 'space-between' }}>
           <label style={{ ...rowWrap, flexWrap: 'nowrap', minHeight: 44, cursor: 'pointer' }}>
             <input
               type="checkbox"
-              aria-label={`In basket: ${line.name}`}
+              aria-label={t('In basket: {0}', line.name)}
               checked={checked}
               disabled={disabled || deferred || (line.quantity === 0 && !line.unknown)}
               onChange={() => props.onCheck(line)}
@@ -88,22 +92,23 @@ export default function ShoppingRows(props: Props) {
             }}
           >
             {line.quantity > 0
-              ? `Buy ${amount(line.quantity)} ${line.unit}`
+              ? t('Buy {0} {1}', amount(line.quantity), getUnitLabel(line.unit, line.quantity))
               : line.unknown
-                ? 'Quantity to check'
+                ? t('Quantity to check')
                 : mode === 'low'
-                  ? 'Threshold reached'
-                  : 'In stock'}
+                  ? t('Threshold reached')
+                  : t('In stock')}
           </strong>
         </div>
         {line.meal && (
           <>
             <p style={small}>
-              Needed{' '}
+              {t('Needed')}{' '}
               {line.meal.unknown && line.meal.needed === 0
-                ? 'quantity to check'
-                : `${amount(line.meal.needed)} ${line.unit}`}{' '}
-              · In inventory for these meals {amount(line.meal.available)} {line.unit}
+                ? t('quantity to check')
+                : `${amount(line.meal.needed)} ${getUnitLabel(line.unit, line.quantity)}`}{' '}
+              {t('· In inventory for these meals')} {amount(line.meal.available)}{' '}
+              {getUnitLabel(line.unit, line.quantity)}
             </p>
             <div style={rowWrap}>
               {[...new Map(line.meal.contributions.map((c) => [c.planId, c])).values()].map((c) => (
@@ -117,18 +122,18 @@ export default function ShoppingRows(props: Props) {
                   }}
                 >
                   {c.recipeName} ·{' '}
-                  {new Date(`${c.date}T12:00:00`).toLocaleDateString(undefined, {
+                  {new Date(`${c.date}T12:00:00`).toLocaleDateString(getLanguage(), {
                     weekday: 'short',
                     month: 'short',
                     day: 'numeric',
                   })}{' '}
-                  · {c.mealType}
+                  · {t(c.mealType)}
                 </span>
               ))}
             </div>
             {line.meal.warnings.map((w) => (
               <p key={w} style={{ ...small, color: 'var(--color-warning-text)' }}>
-                {w}
+                {translateMessage(w)}
               </p>
             ))}
           </>
@@ -136,34 +141,57 @@ export default function ShoppingRows(props: Props) {
         {line.sources.includes('Restock') && (
           <p style={small}>
             {line.meal
-              ? `Also low stock · ${amount(line.extra)} ${line.unit} extra to keep`
-              : `Buy ${amount(line.extra)} ${line.unit} to complete`}{' '}
-            the {amount(line.reserve)} {line.unit}{' '}
-            {pref.reserve === undefined ? 'threshold' : 'desired stock'}
-            {line.meal ? ' after planned meals.' : '.'}
+              ? t(
+                  'Also low stock · {0} {1} extra to keep',
+                  amount(line.extra),
+                  getUnitLabel(line.unit, line.quantity),
+                )
+              : t(
+                  'Buy {0} {1} to complete',
+                  amount(line.extra),
+                  getUnitLabel(line.unit, line.quantity),
+                )}{' '}
+            {t('the')} {amount(line.reserve)} {getUnitLabel(line.unit, line.quantity)}{' '}
+            {pref.reserve === undefined ? t('threshold') : t('desired stock')}
+            {line.meal ? t(' after planned meals.') : '.'}
           </p>
         )}
-        {!line.meal && line.sources.includes('Restock') && <p style={small}>General restock</p>}
+        {!line.meal && line.sources.includes('Restock') && (
+          <p style={small}>{t('General restock')}</p>
+        )}
         <p style={small}>
-          {line.sources.join(' · ')} · {line.store}
-          {line.carried ? ' · Still outstanding from an earlier list' : ''}
+          {line.sources.map((source) => t(source)).join(' · ')} · {line.store}
+          {line.carried ? t(' · Still outstanding from an earlier list') : ''}
         </p>
         {line.notes && <p style={small}>{line.notes}</p>}
         {pack && line.quantity > 0 && (
           <p style={small}>
-            {pack.count} package{pack.count === 1 ? '' : 's'} × {amount(pref.packageSize!)}{' '}
-            {pref.packageUnit ?? line.unit} · {amount(pack.remainder)} {line.unit} beyond this list
-            {pack.price === undefined ? '' : ` · estimated €${pack.price.toFixed(2)}`}
+            {t(
+              pack.count === 1 ? '{0} package × {1} {2}' : '{0} packages × {1} {2}',
+              pack.count,
+              amount(pref.packageSize!),
+              getUnitLabel(pref.packageUnit ?? line.unit, pref.packageSize ?? 1),
+            )}
+            {' · '}
+            {amount(pack.remainder)} {getUnitLabel(line.unit, line.quantity)}{' '}
+            {t('beyond this list')}{' '}
+            {pack.price === undefined
+              ? ''
+              : t(' · estimated €{0}', number(pack.price, { minimumFractionDigits: 2 }))}
           </p>
         )}
         {pref.packageSize && !pack && (
           <p style={small}>
-            Package unit differs. Confirm the package conversion when putting purchases away.
+            {t(
+              'Package unit differs. Confirm the package conversion when putting purchases away.',
+            )}{' '}
           </p>
         )}
         {needsReview(basket.checked[line.id], line.quantity, line.meal) && (
           <p role="status" style={{ ...small, background: 'var(--color-warning)' }}>
-            Needs review — the meals or quantity increased. Check the amount and tick again.
+            {t(
+              'Needs review — the meals or quantity increased. Check the amount and tick again.',
+            )}{' '}
           </p>
         )}
         {checked && (
@@ -172,16 +200,16 @@ export default function ShoppingRows(props: Props) {
             disabled={disabled}
             onClick={() => props.onPurchase(line)}
           >
-            Add purchases to inventory
+            {t('Add purchases to inventory')}{' '}
           </button>
         )}
         {deferred && (
           <p style={small}>
             {companion.deferred[line.id].kind === 'later'
-              ? `Buy on ${companion.deferred[line.id].until}`
+              ? t('Buy on {0}', companion.deferred[line.id].until)
               : companion.deferred[line.id].kind === 'skip'
-                ? 'Skipped for this period'
-                : 'Unavailable at this store'}{' '}
+                ? t('Skipped for this period')
+                : t('Unavailable at this store')}{' '}
             <button
               style={action}
               onClick={() => {
@@ -190,25 +218,25 @@ export default function ShoppingRows(props: Props) {
                 props.onUpdate({ ...companion, deferred: next });
               }}
             >
-              Return to list
+              {t('Return to list')}{' '}
             </button>
           </p>
         )}
         <details style={{ marginTop: 8 }}>
           <summary style={{ ...small, minHeight: 44, cursor: 'pointer', padding: '10px 0' }}>
-            Options for {line.name}
+            {t('Options for')} {line.name}
           </summary>
           <div style={rowWrap}>
             <button style={action} onClick={() => props.onPreferences(line)}>
-              Product preferences
+              {t('Product preferences')}{' '}
             </button>
             {line.manualIds.map((id) => (
               <React.Fragment key={id}>
                 <button style={action} onClick={() => props.onEditManual(id)}>
-                  Edit manual entry
+                  {t('Edit manual entry')}{' '}
                 </button>
                 <button style={action} onClick={() => props.onRemoveManual(id)}>
-                  Remove manual entry
+                  {t('Remove manual entry')}{' '}
                 </button>
               </React.Fragment>
             ))}
@@ -221,7 +249,7 @@ export default function ShoppingRows(props: Props) {
                 })
               }
             >
-              Skip this trip
+              {t('Skip this trip')}{' '}
             </button>
             <button
               style={action}
@@ -235,12 +263,12 @@ export default function ShoppingRows(props: Props) {
                 })
               }
             >
-              Buy next week
+              {t('Buy next week')}{' '}
             </button>
             <label style={small}>
-              Buy on date
+              {t('Buy on date')}{' '}
               <input
-                aria-label={`Buy on date: ${line.name}`}
+                aria-label={t('Buy on date: {0}', line.name)}
                 style={action}
                 type="date"
                 min={today}
@@ -265,7 +293,7 @@ export default function ShoppingRows(props: Props) {
                 })
               }
             >
-              Unavailable here
+              {t('Unavailable here')}{' '}
             </button>
             {pref.alternativeStore && (
               <button
@@ -287,7 +315,7 @@ export default function ShoppingRows(props: Props) {
                   });
                 }}
               >
-                Try {pref.alternativeStore}
+                {t('Try')} {pref.alternativeStore}
               </button>
             )}
             {line.carried && (
@@ -299,7 +327,7 @@ export default function ShoppingRows(props: Props) {
                   props.onUpdate({ ...companion, carry });
                 }}
               >
-                Dismiss carried item
+                {t('Dismiss carried item')}{' '}
               </button>
             )}
           </div>
@@ -311,7 +339,7 @@ export default function ShoppingRows(props: Props) {
     return DEPARTMENTS.map((department) => {
       const section = items.filter((line) => line.department === department);
       return section.length ? (
-        <section key={department} aria-label={`${title}: ${department}`}>
+        <section key={t(department)} aria-label={`${t(title)}: ${t(department)}`}>
           <h4
             style={{
               padding: '8px 12px',
@@ -320,7 +348,7 @@ export default function ShoppingRows(props: Props) {
               borderRadius: 10,
             }}
           >
-            {department}
+            {t(department)}
           </h4>
           {section.map(render)}
         </section>
@@ -330,11 +358,13 @@ export default function ShoppingRows(props: Props) {
   const pending = lines.filter((line) => !lineChecked(line, basket));
   const checked = lines.filter((line) => lineChecked(line, basket));
   return (
-    <section aria-label={title} style={card}>
-      <h3 style={{ marginBottom: 6 }}>{title}</h3>
+    <section aria-label={t(title)} style={card}>
+      <h3 style={{ marginBottom: 6 }}>{t(title)}</h3>
       {mode === 'low' && (
         <p style={small}>
-          Replenish across all locations. Includes the stock to keep after selected meals.
+          {t(
+            'Replenish across all locations. Includes the stock to keep after selected meals.',
+          )}{' '}
         </p>
       )}
       {mode === 'shopping'
@@ -347,7 +377,10 @@ export default function ShoppingRows(props: Props) {
         : departments(pending)}
       {checked.length > 0 && (
         <details>
-          <summary style={{ ...action, marginTop: 12 }}>In basket ({checked.length})</summary>
+          <summary style={{ ...action, marginTop: 12 }}>
+            {t('In basket (')}
+            {checked.length})
+          </summary>
           {departments(checked)}
         </details>
       )}

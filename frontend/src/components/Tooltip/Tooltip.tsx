@@ -1,3 +1,4 @@
+import { message as translateMessage, useLanguage } from '../../i18n/i18n';
 import React, { useId, useState } from 'react';
 
 interface TooltipProps {
@@ -7,6 +8,7 @@ interface TooltipProps {
 }
 
 const Tooltip: React.FC<TooltipProps> = ({ content, children, position = 'top' }) => {
+  useLanguage();
   const [visible, setVisible] = useState(false);
   const id = useId();
 
@@ -63,7 +65,7 @@ const Tooltip: React.FC<TooltipProps> = ({ content, children, position = 'top' }
           maxWidth: '90vw',
         }}
       >
-        {content}
+        {translateMessage(content)}
       </div>
     </div>
   );

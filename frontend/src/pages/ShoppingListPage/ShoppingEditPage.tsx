@@ -1,5 +1,6 @@
+import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useEffect, useState } from 'react';
-import { VALID_UNITS, getUnitLabel } from '../../types/units';
+import { localizedUnits, getUnitLabel } from '../../types/units';
 import { fetchLocations } from '../../api/locations/locations';
 import type { StorageLocation } from '../../api/locations/locations';
 import { DEPARTMENTS } from './departments';
@@ -29,6 +30,7 @@ export default function ShoppingEditPage({
   request: ShoppingEditRequest;
   onBack: () => void;
 }) {
+  useLanguage();
   const [initial] = useState(() => {
     try {
       return readCompanion(request.key);
@@ -84,7 +86,7 @@ export default function ShoppingEditPage({
   ) {
     return (
       <label style={field}>
-        {label}
+        {translateMessage(label)}
         <input
           style={input}
           value={pref[key] ?? ''}
@@ -97,7 +99,7 @@ export default function ShoppingEditPage({
   function numberPref(label: string, key: 'reserve' | 'packageSize' | 'packagePrice') {
     return (
       <label style={field}>
-        {label}
+        {translateMessage(label)}
         <input
           style={input}
           type="number"
@@ -121,20 +123,20 @@ export default function ShoppingEditPage({
         borderRadius: 18,
       }}
     >
-      <button onClick={onBack}>Back to shopping list</button>
+      <button onClick={onBack}>{t('Back to shopping list')}</button>
       <h2>
         {request.kind === 'manual'
           ? request.item
-            ? 'Edit manual item'
-            : 'Add something to buy'
-          : `Product preferences: ${request.line?.name}`}
+            ? t('Edit manual item')
+            : t('Add something to buy')
+          : t('Product preferences: {0}', request.line?.name)}
       </h2>
       <datalist id="shopping-stores">
         {stores.map((store) => (
           <option key={store} value={store} />
         ))}
       </datalist>
-      {error && <p role="alert">{error}</p>}
+      {error && <p role="alert">{translateMessage(error)}</p>}
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -174,7 +176,7 @@ export default function ShoppingEditPage({
         {request.kind === 'manual' ? (
           <>
             <label style={field}>
-              Item name
+              {t('Item name')}{' '}
               <input
                 style={input}
                 required
@@ -183,7 +185,7 @@ export default function ShoppingEditPage({
               />
             </label>
             <label style={field}>
-              Quantity
+              {t('Quantity')}{' '}
               <input
                 style={input}
                 type="number"
@@ -195,13 +197,13 @@ export default function ShoppingEditPage({
               />
             </label>
             <label style={field}>
-              Unit
+              {t('Unit')}{' '}
               <select
                 style={input}
                 value={manual.unit}
                 onChange={(e) => setManual({ ...manual, unit: e.target.value })}
               >
-                {VALID_UNITS.map((u) => (
+                {localizedUnits().map((u) => (
                   <option key={u} value={u}>
                     {getUnitLabel(u, 1)}
                   </option>
@@ -209,29 +211,31 @@ export default function ShoppingEditPage({
               </select>
             </label>
             <label style={field}>
-              Supermarket department
+              {t('Supermarket department')}{' '}
               <select
                 style={input}
                 value={manual.category}
                 onChange={(e) => setManual({ ...manual, category: e.target.value })}
               >
                 {DEPARTMENTS.map((d) => (
-                  <option key={d}>{d}</option>
+                  <option key={d} value={d}>
+                    {t(d)}
+                  </option>
                 ))}
               </select>
             </label>
             <label style={field}>
-              Where to buy
+              {t('Where to buy')}{' '}
               <input
                 style={input}
                 list="shopping-stores"
-                placeholder="Any store"
+                placeholder={t('Any store')}
                 value={manual.store}
                 onChange={(e) => setManual({ ...manual, store: e.target.value })}
               />
             </label>
             <label style={field}>
-              Notes
+              {t('Notes')}{' '}
               <textarea
                 style={input}
                 value={manual.notes}
@@ -242,8 +246,9 @@ export default function ShoppingEditPage({
         ) : (
           <>
             <p>
-              Saved for this product on this device. Leave a field blank to use its
-              inventory/default value.
+              {t(
+                'Saved for this product on this device. Leave a field blank to use its inventory/default value.',
+              )}{' '}
             </p>
             {stringPref('Preferred store', 'store')}
             {stringPref('Alternative store', 'alternativeStore')}
@@ -251,7 +256,7 @@ export default function ShoppingEditPage({
             {stringPref('Barcode', 'barcode')}
             {stringPref('Product link', 'link')}
             <label style={field}>
-              Supermarket department
+              {t('Supermarket department')}{' '}
               <select
                 style={input}
                 value={pref.department ?? request.line?.department}
@@ -263,18 +268,20 @@ export default function ShoppingEditPage({
                 }
               >
                 {DEPARTMENTS.map((d) => (
-                  <option key={d}>{d}</option>
+                  <option key={d} value={d}>
+                    {t(d)}
+                  </option>
                 ))}
               </select>
             </label>
             <label style={field}>
-              Usual storage location
+              {t('Usual storage location')}{' '}
               <select
                 style={input}
                 value={pref.locationId ?? ''}
                 onChange={(e) => setPref({ ...pref, locationId: e.target.value })}
               >
-                <option value="">Use inventory default</option>
+                <option value="">{t('Use inventory default')}</option>
                 {locations.map((l) => (
                   <option key={l.locationId} value={l.locationId}>
                     {l.name}
@@ -286,13 +293,13 @@ export default function ShoppingEditPage({
               numberPref(`Desired stock after meals (${request.line.unit})`, 'reserve')}
             {numberPref('Package size', 'packageSize')}
             <label style={field}>
-              Package unit
+              {t('Package unit')}{' '}
               <select
                 style={input}
                 value={pref.packageUnit ?? request.line?.unit}
                 onChange={(e) => setPref({ ...pref, packageUnit: e.target.value })}
               >
-                {VALID_UNITS.map((u) => (
+                {localizedUnits().map((u) => (
                   <option key={u} value={u}>
                     {getUnitLabel(u, 1)}
                   </option>
@@ -306,7 +313,7 @@ export default function ShoppingEditPage({
                 checked={pref.substitute ?? false}
                 onChange={(e) => setPref({ ...pref, substitute: e.target.checked })}
               />
-              Allow substitutions in order plans
+              {t('Allow substitutions in order plans')}{' '}
             </label>
             {stringPref('Preferred replacement', 'replacement')}
           </>
@@ -316,7 +323,7 @@ export default function ShoppingEditPage({
           disabled={!initial}
           style={{ ...input, background: 'var(--color-mint)' }}
         >
-          Save {request.kind === 'manual' ? 'manual item' : 'preferences'}
+          {t('Save')} {request.kind === 'manual' ? t('manual item') : t('preferences')}
         </button>
       </form>
     </section>

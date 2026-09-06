@@ -1,3 +1,4 @@
+import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useEffect, useMemo, useState } from 'react';
 import { fetchRecipes, computeTotalTime } from '../../api/recipes/recipes';
 import type { Recipe } from '../../api/recipes/recipes';
@@ -29,6 +30,7 @@ const RecipeList: React.FC<RecipeListProps> = ({
   inventoryLoading,
   activeCookingSession,
 }) => {
+  useLanguage();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -77,8 +79,8 @@ const RecipeList: React.FC<RecipeListProps> = ({
 
   if (loading) {
     return (
-      <div style={styles.centered} role="status" aria-label="Loading recipes">
-        <p style={styles.statusText}>Loading…</p>
+      <div style={styles.centered} role="status" aria-label={t('Loading recipes')}>
+        <p style={styles.statusText}>{t('Loading…')}</p>
       </div>
     );
   }
@@ -86,7 +88,7 @@ const RecipeList: React.FC<RecipeListProps> = ({
   if (error) {
     return (
       <div style={styles.centered} role="alert">
-        <p style={styles.errorText}>{error}</p>
+        <p style={styles.errorText}>{translateMessage(error)}</p>
       </div>
     );
   }
@@ -94,30 +96,30 @@ const RecipeList: React.FC<RecipeListProps> = ({
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>Recipes</h2>
+        <h2 style={styles.title}>{t('Recipes')}</h2>
         <button onClick={onNew} style={styles.newButton} type="button">
-          + New Recipe
+          {t('+ New Recipe')}{' '}
         </button>
       </div>
 
       <input
         type="search"
-        placeholder="Search recipes…"
+        placeholder={t('Search recipes…')}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         style={styles.searchInput}
-        aria-label="Search recipes"
+        aria-label={t('Search recipes')}
       />
 
       {/* Tag cloud filter */}
       {tagsLoading ? (
-        <div style={styles.tagCloudSpinner} role="status" aria-label="Loading tags…">
+        <div style={styles.tagCloudSpinner} role="status" aria-label={t('Loading tags…')}>
           <span style={{ color: 'var(--color-secondary)', fontSize: '0.875rem' }}>
-            Loading tags…
+            {t('Loading tags…')}{' '}
           </span>
         </div>
       ) : allTags.length > 0 ? (
-        <div style={styles.tagCloud} role="group" aria-label="Filter by tag">
+        <div style={styles.tagCloud} role="group" aria-label={t('Filter by tag')}>
           {allTags.map((tag) => {
             const isActive = activeTagFilters.includes(tag);
             return (
@@ -151,11 +153,11 @@ const RecipeList: React.FC<RecipeListProps> = ({
       {filtered.length === 0 ? (
         <div style={styles.emptyState} role="status">
           {recipes.length === 0 ? (
-            <p style={styles.statusText}>No recipes yet. Tap &quot;New Recipe&quot; to add one.</p>
+            <p style={styles.statusText}>{t('No recipes yet. Tap "New Recipe" to add one.')}</p>
           ) : isAnyFilterActive ? (
-            <p style={styles.statusText}>No recipes match the selected filters.</p>
+            <p style={styles.statusText}>{t('No recipes match the selected filters.')}</p>
           ) : (
-            <p style={styles.statusText}>No recipes match your search.</p>
+            <p style={styles.statusText}>{t('No recipes match your search.')}</p>
           )}
         </div>
       ) : (
@@ -170,13 +172,13 @@ const RecipeList: React.FC<RecipeListProps> = ({
                   onClick={() => onSelect(recipe.recipeId)}
                   style={styles.rowButton}
                   type="button"
-                  aria-label={`View ${recipe.name}`}
+                  aria-label={t('View {0}', recipe.name)}
                 >
                   <div style={styles.rowContent}>
                     <span style={styles.recipeName}>
                       {recipe.name}
                       {activeCookingSession?.recipeId === recipe.recipeId && (
-                        <span style={styles.cookingIndicator} aria-label="Currently cooking">
+                        <span style={styles.cookingIndicator} aria-label={t('Currently cooking')}>
                           {' '}
                           🍳
                         </span>
@@ -194,16 +196,16 @@ const RecipeList: React.FC<RecipeListProps> = ({
                   </div>
                   <span style={styles.badgeGroup}>
                     {totalTime !== undefined && (
-                      <span style={styles.timeBadge} aria-label={`${totalTime} minutes total`}>
-                        {totalTime} min
+                      <span style={styles.timeBadge} aria-label={t('{0} minutes total', totalTime)}>
+                        {totalTime} {t('min')}{' '}
                       </span>
                     )}
                     {missingCount != null && missingCount > 0 && (
                       <span
                         style={styles.missingBadge}
-                        aria-label={`${missingCount} ingredient(s) missing`}
+                        aria-label={t('{0} ingredient(s) missing', missingCount)}
                       >
-                        {missingCount} missing
+                        {missingCount} {t('missing')}{' '}
                       </span>
                     )}
                   </span>

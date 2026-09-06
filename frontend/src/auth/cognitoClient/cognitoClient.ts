@@ -46,15 +46,10 @@ function extractTokens(session: CognitoUserSession): AuthTokens {
   };
 }
 
-export function signUp(
-  email: string,
-  password: string,
-): Promise<{ userConfirmed: boolean }> {
+export function signUp(email: string, password: string): Promise<{ userConfirmed: boolean }> {
   return new Promise((resolve, reject) => {
     const pool = getUserPool();
-    const attributes = [
-      new CognitoUserAttribute({ Name: 'email', Value: email }),
-    ];
+    const attributes = [new CognitoUserAttribute({ Name: 'email', Value: email })];
 
     pool.signUp(email, password, attributes, [], (err, result) => {
       if (err) {
@@ -66,10 +61,7 @@ export function signUp(
   });
 }
 
-export function confirmSignUp(
-  email: string,
-  code: string,
-): Promise<void> {
+export function confirmSignUp(email: string, code: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const pool = getUserPool();
     const cognitoUser = new CognitoUser({ Username: email, Pool: pool });
@@ -128,6 +120,39 @@ export function signOut(): void {
   }
 }
 
+/** Read the current profile, rather than a possibly stale locale claim in an ID token. */
+export async function getAccountLanguage(): Promise<string | undefined> {
+  const current = getUserPool().getCurrentUser();
+  const session = await getCurrentSession();
+  if (!session) throw new Error('Not authenticated');
+  if (!current || current.getUsername() !== getUserPool().getCurrentUser()?.getUsername())
+    throw new Error('Not authenticated');
+  return new Promise((resolve, reject) => {
+    current.getUserAttributes((error, attributes) => {
+      if (error) reject(error);
+      else resolve(attributes?.find((attribute) => attribute.getName() === 'locale')?.getValue());
+    });
+  });
+}
+
+export async function saveAccountLanguage(language: 'en' | 'es' | 'it'): Promise<void> {
+  if (!['en', 'es', 'it'].includes(language)) throw new Error('Unsupported language');
+  const current = getUserPool().getCurrentUser();
+  const session = await getCurrentSession();
+  if (!session) throw new Error('Not authenticated');
+  if (!current || current.getUsername() !== getUserPool().getCurrentUser()?.getUsername())
+    throw new Error('Not authenticated');
+  return new Promise((resolve, reject) => {
+    current.updateAttributes(
+      [new CognitoUserAttribute({ Name: 'locale', Value: language })],
+      (error) => {
+        if (error) reject(error);
+        else resolve();
+      },
+    );
+  });
+}
+
 export function getCurrentSession(): Promise<{
   user: AuthUser;
   tokens: AuthTokens;
@@ -140,15 +165,13 @@ export function getCurrentSession(): Promise<{
       return;
     }
 
-    currentUser.getSession(
-      (err: Error | null, session: CognitoUserSession | null) => {
-        if (err || !session || !session.isValid()) {
-          resolve(null);
-          return;
-        }
-        resolve({ user: extractUser(session), tokens: extractTokens(session) });
-      },
-    );
+    currentUser.getSession((err: Error | null, session: CognitoUserSession | null) => {
+      if (err || !session || !session.isValid()) {
+        resolve(null);
+        return;
+      }
+      resolve({ user: extractUser(session), tokens: extractTokens(session) });
+    });
   });
 }
 
@@ -164,28 +187,26 @@ export function refreshSession(): Promise<{
       return;
     }
 
-    currentUser.getSession(
-      (err: Error | null, session: CognitoUserSession | null) => {
-        if (err || !session) {
-          resolve(null);
-          return;
-        }
+    currentUser.getSession((err: Error | null, session: CognitoUserSession | null) => {
+      if (err || !session) {
+        resolve(null);
+        return;
+      }
 
-        const refreshToken = session.getRefreshToken();
-        currentUser.refreshSession(
-          refreshToken,
-          (refreshErr: Error | null, newSession: CognitoUserSession) => {
-            if (refreshErr || !newSession) {
-              resolve(null);
-              return;
-            }
-            resolve({
-              user: extractUser(newSession),
-              tokens: extractTokens(newSession),
-            });
-          },
-        );
-      },
-    );
+      const refreshToken = session.getRefreshToken();
+      currentUser.refreshSession(
+        refreshToken,
+        (refreshErr: Error | null, newSession: CognitoUserSession) => {
+          if (refreshErr || !newSession) {
+            resolve(null);
+            return;
+          }
+          resolve({
+            user: extractUser(newSession),
+            tokens: extractTokens(newSession),
+          });
+        },
+      );
+    });
   });
 }

@@ -1,3 +1,4 @@
+import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useCallback, useEffect, useState } from 'react';
 import { fetchRecipeWithAvailability, scaleIngredients } from '../../api/recipes/recipes';
 import type { RecipeWithAvailability } from '../../api/recipes/recipes';
@@ -20,6 +21,7 @@ interface CookingPageProps {
 }
 
 const CookingPage: React.FC<CookingPageProps> = ({ session, onStepChange, onFinish, onExit }) => {
+  useLanguage();
   const [data, setData] = useState<RecipeWithAvailability | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +68,7 @@ const CookingPage: React.FC<CookingPageProps> = ({ session, onStepChange, onFini
     return (
       <div style={styles.page}>
         <div style={styles.loadingState} aria-live="polite">
-          Loading recipe…
+          {t('Loading recipe…')}{' '}
         </div>
       </div>
     );
@@ -76,16 +78,21 @@ const CookingPage: React.FC<CookingPageProps> = ({ session, onStepChange, onFini
     return (
       <div style={styles.page}>
         <div style={styles.pageHeader}>
-          <button onClick={onExit} style={styles.backButton} type="button" aria-label="Go back">
-            ← Back
+          <button
+            onClick={onExit}
+            style={styles.backButton}
+            type="button"
+            aria-label={t('Go back')}
+          >
+            {t('← Back')}{' '}
           </button>
         </div>
         <div style={styles.errorBanner} role="alert">
-          {error || 'Recipe not found'}
+          {translateMessage(error || 'Recipe not found')}
         </div>
         {error && (
           <button type="button" onClick={onFinish} style={styles.endSessionButton}>
-            End Cooking Session
+            {t('End Cooking Session')}{' '}
           </button>
         )}
       </div>

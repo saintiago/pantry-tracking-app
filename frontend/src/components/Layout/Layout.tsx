@@ -1,4 +1,6 @@
+import { t, useLanguage } from '../../i18n/i18n';
 import React from 'react';
+import LanguageSwitcher from '../LanguageSwitcher/LanguageSwitcher';
 import OnlineIndicator from '../OnlineIndicator/OnlineIndicator';
 import { APP_VERSION } from '../../config';
 
@@ -41,6 +43,7 @@ const Layout: React.FC<LayoutProps> = ({
   cookingSession,
   onReturnToCooking,
 }) => {
+  useLanguage();
   const isInventory = activePage === 'inventory';
   const isCooking = activePage === 'cooking';
   const activeColor = 'var(--color-action)';
@@ -63,11 +66,14 @@ const Layout: React.FC<LayoutProps> = ({
               color: 'var(--color-text)',
             }}
           >
-            Pantry Tracking App
+            {t('Pantry Tracking App')}{' '}
           </h1>
           <span style={styles.version}>v{APP_VERSION}</span>
         </div>
-        <OnlineIndicator />
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginLeft: 'auto' }}>
+          <OnlineIndicator />
+          <LanguageSwitcher />
+        </div>
       </header>
 
       {/* Main content */}
@@ -90,16 +96,17 @@ const Layout: React.FC<LayoutProps> = ({
               🍳
             </span>
             <span style={styles.cookingBannerText}>
-              Cooking: &ldquo;{cookingSession!.recipeName}&rdquo;
+              {t('Cooking: “')}
+              {cookingSession!.recipeName}&rdquo;
             </span>
           </div>
           <button
             type="button"
             onClick={onReturnToCooking}
             style={styles.cookingBannerButton}
-            aria-label="Return to cooking"
+            aria-label={t('Return to cooking')}
           >
-            Return to Cooking
+            {t('Return to Cooking')}{' '}
           </button>
         </div>
       )}
@@ -111,7 +118,7 @@ const Layout: React.FC<LayoutProps> = ({
           backgroundColor: 'var(--color-surface)',
           borderTop: `1px solid ${'var(--color-border)'}`,
         }}
-        aria-label="Main navigation"
+        aria-label={t('Main navigation')}
       >
         {NAV_ITEMS.map((item) => {
           const isActive = activePage === item.id;
@@ -130,7 +137,7 @@ const Layout: React.FC<LayoutProps> = ({
               <span style={styles.navIcon} aria-hidden="true">
                 {item.icon}
               </span>
-              <span style={styles.navLabel}>{item.label}</span>
+              <span style={styles.navLabel}>{t(item.label)}</span>
             </button>
           );
         })}
@@ -157,6 +164,8 @@ const styles: Record<string, React.CSSProperties> = {
     position: 'sticky',
     top: 0,
     zIndex: 10,
+    flexWrap: 'wrap',
+    gap: 8,
   },
   title: {
     fontSize: '1.125rem',

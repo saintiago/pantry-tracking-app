@@ -17,6 +17,15 @@ A Progressive Web App (PWA) for household inventory management. Users track food
 
 Mobile-first smartphone experience optimized for quick add/remove operations. Installable as a PWA. Supports screen widths 320px–1920px.
 
+## Languages
+
+English (default), Spanish, and Italian are available from the top-panel flag selector.
+Device preference takes precedence over account locale; new devices copy account locale,
+or detect a supported browser language and fall back to English. Device choices are scoped
+per account. Saving an account default is explicit and leaves other devices unchanged.
+Translate app-owned UI and standard labels, including asynchronously loaded views; preserve
+user-written names, recipes, notes, tags, and custom categories. See `../specs/language/`.
+
 ## Shopping companion and visual system (September 2026)
 
 The approved extension in `../specs/shopping-list/second-brain.md` supersedes the

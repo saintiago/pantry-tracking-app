@@ -1,6 +1,13 @@
+import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { StorageLocation } from '../../api/locations/locations';
-import { VALID_UNITS, LEGACY_UNIT_MAP, getUnitLabel, resolveUnit } from '../../types/units';
+import {
+  localizedUnits,
+  VALID_UNITS,
+  LEGACY_UNIT_MAP,
+  getUnitLabel,
+  resolveUnit,
+} from '../../types/units';
 import type { UnitType } from '../../types/units';
 import { searchInventory, lookupBarcode } from '../../api/inventory/inventory';
 import type { InventoryItem } from '../../api/inventory/inventory';
@@ -83,6 +90,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
   backLabel = 'Go back',
   returnAfterSave = true,
 }) => {
+  useLanguage();
   const [form, setForm] = useState({
     ...INITIAL_FORM,
     name: prefillData?.name ?? '',
@@ -525,21 +533,21 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
     <div style={styles.page}>
       {/* Page header with back button */}
       <div style={styles.pageHeader}>
-        <button onClick={onBack} style={styles.backButton} type="button" aria-label={backLabel}>
-          ← Back
+        <button onClick={onBack} style={styles.backButton} type="button" aria-label={t(backLabel)}>
+          {t('← Back')}{' '}
         </button>
-        <h2 style={styles.pageTitle}>{title}</h2>
+        <h2 style={styles.pageTitle}>{t(title)}</h2>
       </div>
 
       {successMessage && (
         <div style={styles.successBanner} role="status">
-          {successMessage}
+          {translateMessage(successMessage)}
         </div>
       )}
 
       {submitError && (
         <div style={styles.errorBanner} role="alert">
-          {submitError}
+          {translateMessage(submitError)}
         </div>
       )}
 
@@ -547,7 +555,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
         {/* Name */}
         <div style={styles.fieldGroup}>
           <label htmlFor="add-item-name" style={styles.label}>
-            Product Name <span aria-hidden="true">*</span>
+            {t('Product Name')} <span aria-hidden="true">*</span>
           </label>
           <div style={{ position: 'relative' }}>
             <input
@@ -564,7 +572,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
             />
             {errors.name && (
               <span style={styles.fieldError} role="alert">
-                {errors.name}
+                {translateMessage(errors.name)}
               </span>
             )}
             <AutocompleteDropdown
@@ -592,7 +600,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
         {/* Category */}
         <div style={styles.fieldGroup}>
           <label htmlFor="add-item-category" style={styles.label}>
-            Category <span aria-hidden="true">*</span>
+            {t('Category')} <span aria-hidden="true">*</span>
           </label>
           <div style={{ position: 'relative' }}>
             <input
@@ -611,7 +619,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
             />
             {errors.category && (
               <span style={styles.fieldError} role="alert">
-                {errors.category}
+                {translateMessage(errors.category)}
               </span>
             )}
             <AutocompleteDropdown
@@ -631,7 +639,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
         {/* Expiration Date */}
         <div style={styles.fieldGroup}>
           <label htmlFor="add-item-expiration" style={styles.label}>
-            Expiration Date <span aria-hidden="true">*</span>
+            {t('Expiration Date')} <span aria-hidden="true">*</span>
           </label>
           <input
             id="add-item-expiration"
@@ -644,7 +652,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
           />
           {errors.expirationDate && (
             <span style={styles.fieldError} role="alert">
-              {errors.expirationDate}
+              {translateMessage(errors.expirationDate)}
             </span>
           )}
         </div>
@@ -652,7 +660,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
         {/* Location */}
         <div style={styles.fieldGroup}>
           <label htmlFor="add-item-location" style={styles.label}>
-            Storage Location <span aria-hidden="true">*</span>
+            {t('Storage Location')} <span aria-hidden="true">*</span>
           </label>
           <select
             id="add-item-location"
@@ -662,7 +670,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
             aria-required="true"
             aria-invalid={!!errors.locationId}
           >
-            <option value="">Select a location</option>
+            <option value="">{t('Select a location')}</option>
             {locations.map((loc) => (
               <option key={loc.locationId} value={loc.locationId}>
                 {loc.name}
@@ -671,19 +679,19 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
           </select>
           {errors.locationId && (
             <span style={styles.fieldError} role="alert">
-              {errors.locationId}
+              {translateMessage(errors.locationId)}
             </span>
           )}
         </div>
         <div style={styles.fieldGroup}>
           <label htmlFor="add-item-location-details" style={styles.label}>
-            Location Details
+            {t('Location Details')}{' '}
           </label>
           <input
             id="add-item-location-details"
             value={form.locationDetails}
             onChange={handleChange('locationDetails')}
-            placeholder="e.g. Shelf 2A"
+            placeholder={t('e.g. Shelf 2A')}
             style={styles.input}
           />
         </div>
@@ -691,7 +699,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
         {/* Quantity */}
         <div style={styles.fieldGroup}>
           <label htmlFor="add-item-quantity" style={styles.label}>
-            Quantity <span aria-hidden="true">*</span>
+            {t('Quantity')} <span aria-hidden="true">*</span>
           </label>
           <input
             id="add-item-quantity"
@@ -705,7 +713,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
           />
           {errors.quantity && (
             <span style={styles.fieldError} role="alert">
-              {errors.quantity}
+              {translateMessage(errors.quantity)}
             </span>
           )}
         </div>
@@ -713,7 +721,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
         {/* Unit */}
         <div style={styles.fieldGroup}>
           <label htmlFor="add-item-unit" style={styles.label}>
-            Unit <span aria-hidden="true">*</span>
+            {t('Unit')} <span aria-hidden="true">*</span>
           </label>
           <select
             id="add-item-unit"
@@ -723,8 +731,8 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
             aria-required="true"
             aria-invalid={!!errors.unit}
           >
-            <option value="">Select a unit</option>
-            {VALID_UNITS.map((u) => (
+            <option value="">{t('Select a unit')}</option>
+            {localizedUnits().map((u) => (
               <option key={u} value={u}>
                 {getUnitLabel(u, 1)}
               </option>
@@ -732,7 +740,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
           </select>
           {errors.unit && (
             <span style={styles.fieldError} role="alert">
-              {errors.unit}
+              {translateMessage(errors.unit)}
             </span>
           )}
         </div>
@@ -740,7 +748,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
         {/* Barcode (optional) */}
         <div style={styles.fieldGroup}>
           <label htmlFor="add-item-barcode" style={styles.label}>
-            Barcode
+            {t('Barcode')}{' '}
           </label>
           <div style={{ position: 'relative' }}>
             <input
@@ -753,10 +761,10 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
               aria-controls={autocompleteDropdowns.barcode.visible ? 'barcode-dropdown' : undefined}
               aria-expanded={autocompleteDropdowns.barcode.visible}
             />
-            {lookupLoading && <div style={styles.loadingIndicator}>Looking up...</div>}
+            {lookupLoading && <div style={styles.loadingIndicator}>{t('Looking up...')}</div>}
             {lookupError && (
               <span style={styles.fieldError} role="alert">
-                {lookupError}
+                {translateMessage(lookupError)}
               </span>
             )}
             <AutocompleteDropdown
@@ -784,7 +792,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
         {/* Brand (optional) */}
         <div style={styles.fieldGroup}>
           <label htmlFor="add-item-brand" style={styles.label}>
-            Brand
+            {t('Brand')}{' '}
           </label>
           <div style={{ position: 'relative' }}>
             <input
@@ -814,7 +822,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
         {/* Where to Buy (optional) */}
         <div style={styles.fieldGroup}>
           <label htmlFor="add-item-wheretobuy" style={styles.label}>
-            Where to Buy
+            {t('Where to Buy')}{' '}
           </label>
           <div style={{ position: 'relative' }}>
             <input
@@ -846,7 +854,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
         {/* Online Store Link (optional) */}
         <div style={styles.fieldGroup}>
           <label htmlFor="add-item-onlinelink" style={styles.label}>
-            Online Store Link
+            {t('Online Store Link')}{' '}
           </label>
           <div style={{ position: 'relative' }}>
             <input
@@ -878,12 +886,12 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
         {/* Picture (optional) */}
         <div style={styles.fieldGroup}>
           <label htmlFor="add-item-picture" style={styles.label}>
-            Picture
+            {t('Picture')}{' '}
           </label>
           {form.pictureUrl && !pictureFile && (
             <img
               src={form.pictureUrl}
-              alt="Product photo"
+              alt={t('Product photo')}
               style={{ width: 96, height: 96, objectFit: 'contain' }}
             />
           )}
@@ -903,7 +911,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
       {/* Fixed action bar at bottom */}
       <div style={styles.actionBar} data-testid="action-bar">
         <button type="button" onClick={onBack} style={styles.cancelButton} disabled={submitting}>
-          Cancel
+          {t('Cancel')}{' '}
         </button>
         <button
           type="submit"
@@ -911,7 +919,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
           style={styles.submitButton}
           disabled={submitting}
         >
-          {submitLabel}
+          {t(submitLabel)}
         </button>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useState } from 'react';
 
 export interface StorageLocation {
@@ -19,6 +20,7 @@ const StorageLocationManager: React.FC<StorageLocationManagerProps> = ({
   onRename,
   onRemove,
 }) => {
+  useLanguage();
   const [newName, setNewName] = useState('');
   const [addError, setAddError] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -109,8 +111,8 @@ const StorageLocationManager: React.FC<StorageLocationManagerProps> = ({
   };
 
   return (
-    <section aria-label="Storage Locations" style={styles.container}>
-      <h3 style={styles.heading}>Storage Locations</h3>
+    <section aria-label={t('Storage Locations')} style={styles.container}>
+      <h3 style={styles.heading}>{t('Storage Locations')}</h3>
 
       {/* Add location form */}
       <div style={styles.addRow}>
@@ -122,22 +124,22 @@ const StorageLocationManager: React.FC<StorageLocationManagerProps> = ({
             if (addError) setAddError('');
           }}
           onKeyDown={handleAddKeyDown}
-          placeholder="New location name"
-          aria-label="New location name"
+          placeholder={t('New location name')}
+          aria-label={t('New location name')}
           style={styles.input}
         />
-        <button onClick={handleAdd} aria-label="Add location" style={styles.addButton}>
-          Add
+        <button onClick={handleAdd} aria-label={t('Add location')} style={styles.addButton}>
+          {t('Add')}{' '}
         </button>
       </div>
       {addError && (
         <p role="alert" style={styles.errorText}>
-          {addError}
+          {translateMessage(addError)}
         </p>
       )}
 
       {/* Location list */}
-      <ul style={styles.list} aria-label="Locations list">
+      <ul style={styles.list} aria-label={t('Locations list')}>
         {locations.map((loc) => (
           <li key={loc.locationId} style={styles.listItem}>
             {editingId === loc.locationId ? (
@@ -150,45 +152,53 @@ const StorageLocationManager: React.FC<StorageLocationManagerProps> = ({
                     if (editError) setEditError('');
                   }}
                   onKeyDown={handleRenameKeyDown}
-                  aria-label={`Rename ${loc.name}`}
+                  aria-label={t('Rename {0}', loc.name)}
                   autoFocus
                   style={styles.input}
                 />
-                <button onClick={handleRename} aria-label="Save rename" style={styles.actionButton}>
-                  Save
+                <button
+                  onClick={handleRename}
+                  aria-label={t('Save rename')}
+                  style={styles.actionButton}
+                >
+                  {t('Save')}{' '}
                 </button>
                 <button
                   onClick={cancelEditing}
-                  aria-label="Cancel rename"
+                  aria-label={t('Cancel rename')}
                   style={styles.actionButton}
                 >
-                  Cancel
+                  {t('Cancel')}{' '}
                 </button>
                 {editError && (
                   <p role="alert" style={styles.errorText}>
-                    {editError}
+                    {translateMessage(editError)}
                   </p>
                 )}
               </div>
             ) : confirmDeleteId === loc.locationId ? (
               <div style={styles.confirmRow}>
-                <span style={styles.locationName}>Delete &quot;{loc.name}&quot;?</span>
+                <span style={styles.locationName}>
+                  {t('Delete "')}
+                  {loc.name}
+                  {t('"?')}
+                </span>
                 <button
                   onClick={() => handleRemove(loc.locationId)}
-                  aria-label={`Confirm delete ${loc.name}`}
+                  aria-label={t('Confirm delete {0}', loc.name)}
                   style={styles.dangerButton}
                 >
-                  Yes, delete
+                  {t('Yes, delete')}{' '}
                 </button>
                 <button
                   onClick={() => {
                     setConfirmDeleteId(null);
                     setDeleteError('');
                   }}
-                  aria-label="Cancel delete"
+                  aria-label={t('Cancel delete')}
                   style={styles.actionButton}
                 >
-                  No
+                  {t('No')}{' '}
                 </button>
               </div>
             ) : (
@@ -197,20 +207,20 @@ const StorageLocationManager: React.FC<StorageLocationManagerProps> = ({
                 <div style={styles.actions}>
                   <button
                     onClick={() => startEditing(loc)}
-                    aria-label={`Rename ${loc.name}`}
+                    aria-label={t('Rename {0}', loc.name)}
                     style={styles.actionButton}
                   >
-                    Rename
+                    {t('Rename')}{' '}
                   </button>
                   <button
                     onClick={() => {
                       setConfirmDeleteId(loc.locationId);
                       setDeleteError('');
                     }}
-                    aria-label={`Delete ${loc.name}`}
+                    aria-label={t('Delete {0}', loc.name)}
                     style={styles.actionButton}
                   >
-                    Delete
+                    {t('Delete')}{' '}
                   </button>
                 </div>
               </div>
@@ -221,7 +231,7 @@ const StorageLocationManager: React.FC<StorageLocationManagerProps> = ({
 
       {deleteError && (
         <p role="alert" style={styles.errorText}>
-          {deleteError}
+          {translateMessage(deleteError)}
         </p>
       )}
     </section>

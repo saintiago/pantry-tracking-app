@@ -33,6 +33,18 @@ Single-table design pattern. Table name: `PantryApp`.
 
 ## Shared Types
 
+### Language preferences
+
+- Supported values: `en`, `es`, `it`; fallback: `en`.
+- Account preference: Cognito standard `locale` attribute, read from the authenticated
+  profile and updated through Cognito. No new DynamoDB entity or REST endpoint.
+- Device preference: localStorage `pantry-language-v1:<userId>` (or `:guest` before login),
+  `{ language, source: 'explicit' | 'account' | 'system' }`.
+- Resolve device → account → supported browser language → English. Save account/system
+  fallback on the device only after a successful account read (or while logged out).
+- Existing user content, canonical unit keys, department values, and stored dates are
+  preserved. Translation happens only at display time. See `../specs/language/design.md`.
+
 ### UnitType
 
 Units are defined by a metadata table (`backend/src/types/units.ts` and `frontend/src/types/units.ts`),

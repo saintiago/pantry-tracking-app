@@ -1,3 +1,4 @@
+import { message as translateMessage, t, useLanguage } from '../../i18n/i18n';
 import React from 'react';
 import type { IngredientStatus, RecipeIngredient } from '../../api/recipes/recipes';
 import { formatQuantity } from '../../utils/quantity';
@@ -20,6 +21,7 @@ const IngredientAvailability: React.FC<IngredientAvailabilityProps> = ({
   availability,
   missingCount,
 }) => {
+  useLanguage();
   const ingredients: RecipeIngredient[] =
     providedIngredients ??
     availability.map((item) => ({
@@ -29,8 +31,8 @@ const IngredientAvailability: React.FC<IngredientAvailabilityProps> = ({
     }));
 
   return (
-    <section aria-label="Ingredients">
-      <h3 style={styles.title}>Ingredients</h3>
+    <section aria-label={t('Ingredients')}>
+      <h3 style={styles.title}>{t('Ingredients')}</h3>
       <p
         style={{
           ...styles.summary,
@@ -38,8 +40,8 @@ const IngredientAvailability: React.FC<IngredientAvailabilityProps> = ({
         }}
       >
         {missingCount > 0
-          ? `${missingCount} ingredient(s) missing or partial`
-          : 'All ingredients available'}
+          ? t('{0} ingredient(s) missing or partial', missingCount)
+          : t('All ingredients available')}
       </p>
       <div style={styles.list}>
         {ingredients.map((ingredient, index) => {
@@ -77,7 +79,7 @@ const IngredientAvailability: React.FC<IngredientAvailabilityProps> = ({
                     backgroundColor: chipColors[status?.status ?? 'missing'],
                   }}
                 >
-                  {statusLabel}
+                  {translateMessage(statusLabel)}
                 </span>
               </div>
             </React.Fragment>

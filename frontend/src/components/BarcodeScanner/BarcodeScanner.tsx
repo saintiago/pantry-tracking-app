@@ -1,3 +1,4 @@
+import { t, useLanguage } from '../../i18n/i18n';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Quagga from '@ericblade/quagga2';
 import { lookupBarcode } from '../../api/inventory/inventory';
@@ -21,6 +22,7 @@ interface BarcodeScannerProps {
 const SCAN_TIMEOUT_SECONDS = 30;
 
 const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarcodeDetected }) => {
+  useLanguage();
   const [scanning, setScanning] = useState(false);
   const [timeLeft, setTimeLeft] = useState(SCAN_TIMEOUT_SECONDS);
   const [error, setError] = useState<'permission-denied' | 'camera-unavailable' | null>(null);
@@ -247,12 +249,12 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarc
       >
         <div style={styles.header}>
           <h2 id="barcode-scanner-title" style={styles.title}>
-            Scan Barcode
+            {t('Scan Barcode')}{' '}
           </h2>
           <button
             onClick={onClose}
             style={styles.closeButton}
-            aria-label="Close barcode scanner"
+            aria-label={t('Close barcode scanner')}
             type="button"
           >
             ✕
@@ -260,19 +262,20 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarc
         </div>
 
         {/* Looking up state */}
-        {lookingUp && <div style={styles.statusMessage}>Looking up barcode…</div>}
+        {lookingUp && <div style={styles.statusMessage}>{t('Looking up barcode…')}</div>}
 
         {/* Permission denied */}
         {error === 'permission-denied' && (
           <div style={styles.errorContent} data-testid="permission-denied">
             <div style={styles.errorIcon}>📷</div>
-            <p style={styles.errorText}>Camera permission was denied.</p>
+            <p style={styles.errorText}>{t('Camera permission was denied.')}</p>
             <p style={styles.instructionText}>
-              To enable camera access, go to your browser settings and allow camera permissions for
-              this site. Then reload the page and try again.
+              {t(
+                'To enable camera access, go to your browser settings and allow camera permissions for this site. Then reload the page and try again.',
+              )}{' '}
             </p>
             <button onClick={onClose} style={styles.primaryButton} type="button">
-              Close
+              {t('Close')}{' '}
             </button>
           </div>
         )}
@@ -282,17 +285,17 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarc
           <div style={styles.errorContent} data-testid="camera-unavailable">
             <div style={styles.errorIcon}>📷</div>
             {error === 'camera-unavailable' && (
-              <p style={styles.errorText}>Camera is not available on this device.</p>
+              <p style={styles.errorText}>{t('Camera is not available on this device.')}</p>
             )}
-            <p style={styles.instructionText}>You can enter a barcode manually below.</p>
+            <p style={styles.instructionText}>{t('You can enter a barcode manually below.')}</p>
             <div style={styles.manualInputGroup}>
               <input
                 type="text"
                 value={manualBarcode}
                 onChange={(e) => setManualBarcode(e.target.value)}
-                placeholder="Enter barcode number"
+                placeholder={t('Enter barcode number')}
                 style={styles.input}
-                aria-label="Manual barcode entry"
+                aria-label={t('Manual barcode entry')}
                 data-testid="manual-barcode-input"
               />
               <button
@@ -302,7 +305,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarc
                 type="button"
                 data-testid="manual-lookup-button"
               >
-                {lookingUp ? 'Looking up…' : 'Look Up'}
+                {lookingUp ? t('Looking up…') : t('Look Up')}
               </button>
             </div>
           </div>
@@ -312,7 +315,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarc
         {timedOut && !error && (
           <div style={styles.errorContent} data-testid="timeout-prompt">
             <div style={styles.errorIcon}>⏱️</div>
-            <p style={styles.errorText}>No barcode detected within 30 seconds.</p>
+            <p style={styles.errorText}>{t('No barcode detected within 30 seconds.')}</p>
             <div style={styles.buttonGroup}>
               <button
                 onClick={handleRetry}
@@ -320,7 +323,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarc
                 type="button"
                 data-testid="retry-button"
               >
-                Retry
+                {t('Retry')}{' '}
               </button>
               <button
                 onClick={handleManualEntry}
@@ -328,7 +331,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarc
                 type="button"
                 data-testid="manual-entry-button"
               >
-                Enter Manually
+                {t('Enter Manually')}{' '}
               </button>
             </div>
           </div>
@@ -347,7 +350,10 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarc
             </div>
             {scanning && (
               <div style={styles.timerContainer} data-testid="countdown-timer">
-                <span style={styles.timerText}>{timeLeft}s remaining</span>
+                <span style={styles.timerText}>
+                  {timeLeft}
+                  {t('s remaining')}
+                </span>
               </div>
             )}
           </>

@@ -31,10 +31,7 @@ export function signIn(
   return Promise.resolve({ user: currentUser, tokens: MOCK_TOKENS });
 }
 
-export function signUp(
-  _email: string,
-  _password: string,
-): Promise<{ userConfirmed: boolean }> {
+export function signUp(_email: string, _password: string): Promise<{ userConfirmed: boolean }> {
   return Promise.resolve({ userConfirmed: true });
 }
 
@@ -63,4 +60,21 @@ export function refreshSession(): Promise<{
   tokens: AuthTokens;
 } | null> {
   return getCurrentSession();
+}
+
+// Optional test-controlled endpoint simulates one account shared by isolated browsers.
+export async function getAccountLanguage(): Promise<string | undefined> {
+  if (localStorage.getItem('mock-language-api') !== 'true') return undefined;
+  const response = await fetch('https://mock-api.test/test-account-language');
+  if (!response.ok) throw new Error('Account language unavailable');
+  return (await response.json()).language;
+}
+export async function saveAccountLanguage(language: 'en' | 'es' | 'it'): Promise<void> {
+  if (localStorage.getItem('mock-language-api') !== 'true') return;
+  const response = await fetch('https://mock-api.test/test-account-language', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ language }),
+  });
+  if (!response.ok) throw new Error('Account language could not be saved');
 }

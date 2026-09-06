@@ -1,3 +1,4 @@
+import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useState, FormEvent } from 'react';
 import { useAuth } from '../AuthContext/AuthContext';
 
@@ -6,6 +7,7 @@ interface LoginFormProps {
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup }) => {
+  useLanguage();
   const { login, isLoading, error, clearError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,16 +20,16 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup }) => {
 
   return (
     <form onSubmit={handleSubmit} style={styles.form} noValidate>
-      <h2 style={styles.heading}>Welcome back</h2>
+      <h2 style={styles.heading}>{t('Welcome back')}</h2>
 
       {error && (
         <div role="alert" style={styles.error}>
-          {error}
+          {translateMessage(error)}
         </div>
       )}
 
       <label style={styles.label} htmlFor="login-email">
-        Email
+        {t('Email')}{' '}
       </label>
       <input
         id="login-email"
@@ -41,7 +43,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup }) => {
       />
 
       <label style={styles.label} htmlFor="login-password">
-        Password
+        {t('Password')}{' '}
       </label>
       <input
         id="login-password"
@@ -51,7 +53,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup }) => {
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         style={styles.input}
-        placeholder="Enter your password"
+        placeholder={t('Enter your password')}
       />
 
       <button
@@ -62,13 +64,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToSignup }) => {
           opacity: isLoading ? 0.7 : 1,
         }}
       >
-        {isLoading ? 'Signing in…' : 'Sign in'}
+        {isLoading ? t('Signing in…') : t('Sign in')}
       </button>
 
       <p style={styles.switchText}>
-        Don&apos;t have an account?{' '}
+        {t("Don't have an account?")}{' '}
         <button type="button" onClick={onSwitchToSignup} style={styles.switchLink}>
-          Sign up
+          {t('Sign up')}{' '}
         </button>
       </p>
     </form>

@@ -1,3 +1,4 @@
+import { t, useLanguage } from '../../i18n/i18n';
 import React, { useCallback, useRef, useState } from 'react';
 
 interface ResizableSplitProps {
@@ -33,6 +34,7 @@ const ResizableSplit: React.FC<ResizableSplitProps> = ({
   minRatio = 0.15,
   maxRatio = 0.85,
 }) => {
+  useLanguage();
   const [ratio, setRatio] = useState(defaultRatio);
   const containerRef = useRef<HTMLDivElement>(null);
   const topPanelRef = useRef<HTMLDivElement>(null);
@@ -103,7 +105,7 @@ const ResizableSplit: React.FC<ResizableSplitProps> = ({
         aria-valuenow={Math.round(ratio * 100)}
         aria-valuemin={Math.round(minRatio * 100)}
         aria-valuemax={Math.round(maxRatio * 100)}
-        aria-label="Drag to resize panels"
+        aria-label={t('Drag to resize panels')}
         tabIndex={0}
       >
         <div style={styles.gripIcon} aria-hidden="true">

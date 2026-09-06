@@ -1,3 +1,4 @@
+import { t, useLanguage } from '../../i18n/i18n';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { IngredientStatus, RecipeIngredient } from '../../api/recipes/recipes';
 import IngredientAvailability from '../../pages/RecipesPage/IngredientAvailability';
@@ -37,6 +38,7 @@ const CookingMode: React.FC<CookingModeProps> = ({
   currentStepIndex,
   onStepChange,
 }) => {
+  useLanguage();
   const [showFinishConfirm, setShowFinishConfirm] = useState(false);
   const currentStepRef = useRef<HTMLLIElement>(null);
 
@@ -85,9 +87,9 @@ const CookingMode: React.FC<CookingModeProps> = ({
   const stepsPanel = (
     <div style={styles.panel}>
       <div style={styles.stepHeader}>
-        <span style={styles.stepHeaderTitle}>Steps</span>
+        <span style={styles.stepHeaderTitle}>{t('Steps')}</span>
         <span style={styles.stepCounter}>
-          Step {currentStepIndex + 1} of {totalSteps}
+          {t('Step')} {currentStepIndex + 1} {t('of')} {totalSteps}
         </span>
       </div>
 
@@ -100,9 +102,9 @@ const CookingMode: React.FC<CookingModeProps> = ({
             ...styles.stepNavButton,
             ...(isFirstStep ? styles.stepNavButtonDisabled : {}),
           }}
-          aria-label="Previous step"
+          aria-label={t('Previous step')}
         >
-          Previous
+          {t('Previous')}{' '}
         </button>
         <button
           type="button"
@@ -112,13 +114,13 @@ const CookingMode: React.FC<CookingModeProps> = ({
             ...styles.stepNavButton,
             ...(isLastStep ? styles.stepNavButtonDisabled : {}),
           }}
-          aria-label="Next step"
+          aria-label={t('Next step')}
         >
-          Next
+          {t('Next')}{' '}
         </button>
       </div>
 
-      <ol style={styles.stepList} aria-label="Recipe steps">
+      <ol style={styles.stepList} aria-label={t('Recipe steps')}>
         {instructionSteps.map((step, i) => (
           <li
             key={i}
@@ -133,7 +135,12 @@ const CookingMode: React.FC<CookingModeProps> = ({
             role="button"
             tabIndex={0}
             aria-current={i === currentStepIndex ? 'step' : undefined}
-            aria-label={`Step ${i + 1}${i < currentStepIndex ? ' (completed)' : ''}${i === currentStepIndex ? ' (current)' : ''}`}
+            aria-label={t(
+              'Step {0}{1}{2}',
+              i + 1,
+              i < currentStepIndex ? ' (completed)' : '',
+              i === currentStepIndex ? ' (current)' : '',
+            )}
             data-testid={`cooking-step-${i}`}
             style={getStepStyle(i, currentStepIndex)}
           >
@@ -168,21 +175,21 @@ const CookingMode: React.FC<CookingModeProps> = ({
           type="button"
           onClick={onExit}
           style={styles.backButton}
-          aria-label="Leave cooking mode"
+          aria-label={t('Leave cooking mode')}
         >
-          ← Back
+          {t('← Back')}{' '}
         </button>
         <h2 style={styles.recipeName} title={recipeName}>
           {recipeName}
         </h2>
         <div style={styles.headerRight}>
           {/* Compact portions scaler */}
-          <div style={styles.portionsControls} aria-label="Portions">
+          <div style={styles.portionsControls} aria-label={t('Portions')}>
             <button
               type="button"
               onClick={onPortionsDecrement}
               disabled={selectedPortions === 1}
-              aria-label="Decrease portions"
+              aria-label={t('Decrease portions')}
               style={styles.portionsButton}
             >
               –
@@ -193,7 +200,7 @@ const CookingMode: React.FC<CookingModeProps> = ({
             <button
               type="button"
               onClick={onPortionsIncrement}
-              aria-label="Increase portions"
+              aria-label={t('Increase portions')}
               style={styles.portionsButton}
             >
               +
@@ -205,7 +212,7 @@ const CookingMode: React.FC<CookingModeProps> = ({
             style={styles.finishButton}
             data-testid="finish-cooking-button"
           >
-            Finish
+            {t('Finish')}{' '}
           </button>
         </div>
       </header>
@@ -220,7 +227,7 @@ const CookingMode: React.FC<CookingModeProps> = ({
         aria-valuenow={currentStepIndex + 1}
         aria-valuemin={0}
         aria-valuemax={totalSteps}
-        aria-label="Recipe progress"
+        aria-label={t('Recipe progress')}
       >
         <div
           style={{
@@ -234,9 +241,13 @@ const CookingMode: React.FC<CookingModeProps> = ({
       {/* Finish confirmation dialog */}
       {showFinishConfirm && (
         <ConfirmDialog
-          message={`You've completed ${currentStepIndex + 1} of ${totalSteps} steps. Are you sure you want to finish cooking?`}
-          confirmLabel="Finish Anyway"
-          cancelLabel="Keep Cooking"
+          message={t(
+            "You've completed {0} of {1} steps. Are you sure you want to finish cooking?",
+            currentStepIndex + 1,
+            totalSteps,
+          )}
+          confirmLabel={t('Finish Anyway')}
+          cancelLabel={t('Keep Cooking')}
           onConfirm={handleFinishConfirm}
           onCancel={handleFinishCancel}
         />

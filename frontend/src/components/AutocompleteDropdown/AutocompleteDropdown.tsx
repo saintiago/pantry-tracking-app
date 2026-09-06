@@ -1,3 +1,4 @@
+import { t, useLanguage } from '../../i18n/i18n';
 import React, { useEffect, useRef } from 'react';
 
 export interface InventoryItem {
@@ -37,6 +38,7 @@ const AutocompleteDropdown: React.FC<AutocompleteDropdownProps> = ({
   renderValue,
   ariaLabel,
 }) => {
+  useLanguage();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -156,7 +158,7 @@ const AutocompleteDropdown: React.FC<AutocompleteDropdownProps> = ({
       ref={dropdownRef}
       id={dropdownId}
       role="listbox"
-      aria-label={ariaLabel || 'Autocomplete suggestions'}
+      aria-label={t(ariaLabel || 'Autocomplete suggestions')}
       style={styles.dropdown}
       data-testid="autocomplete-dropdown"
     >

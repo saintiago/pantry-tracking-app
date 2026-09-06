@@ -1,3 +1,4 @@
+import { t, useLanguage } from '../../i18n/i18n';
 import React, { useMemo } from 'react';
 
 interface Rule {
@@ -28,6 +29,7 @@ interface PasswordStrengthProps {
 }
 
 const PasswordStrength: React.FC<PasswordStrengthProps> = ({ password }) => {
+  useLanguage();
   const passed = useMemo(() => rules.map((r) => r.test(password)), [password]);
   const score = passed.filter(Boolean).length;
 
@@ -49,7 +51,7 @@ const PasswordStrength: React.FC<PasswordStrengthProps> = ({ password }) => {
           />
         ))}
       </div>
-      <span style={{ ...styles.label, color }}>{label}</span>
+      <span style={{ ...styles.label, color }}>{t(label)}</span>
       <ul style={styles.ruleList}>
         {rules.map((rule, i) => (
           <li
@@ -59,7 +61,7 @@ const PasswordStrength: React.FC<PasswordStrengthProps> = ({ password }) => {
               color: passed[i] ? 'var(--color-action)' : 'var(--color-secondary)',
             }}
           >
-            {passed[i] ? '✓' : '○'} {rule.label}
+            {passed[i] ? '✓' : '○'} {t(rule.label)}
           </li>
         ))}
       </ul>

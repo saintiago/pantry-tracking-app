@@ -1,3 +1,4 @@
+import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import WeekCalendar from './WeekCalendar';
 import AddRecipeDialog from './AddRecipeDialog';
@@ -29,6 +30,7 @@ function toAssignment(mp: MealPlan): Assignment {
 }
 
 const MealPlanPage: React.FC = () => {
+  useLanguage();
   const [recipes, setRecipes] = useState<PlannableRecipe[]>([]);
   const [recipeError, setRecipeError] = useState<string | null>(null);
   const [recipesLoading, setRecipesLoading] = useState(true);
@@ -280,12 +282,12 @@ const MealPlanPage: React.FC = () => {
           {recipeDrag.drag.name}
         </div>
       )}
-      <h1 style={styles.heading}>Meal Planner</h1>
+      <h1 style={styles.heading}>{t('Meal Planner')}</h1>
       <form
         onSubmit={handleServings}
         style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}
       >
-        <label htmlFor="planner-servings">Servings</label>
+        <label htmlFor="planner-servings">{t('Servings')}</label>
         <input
           id="planner-servings"
           type="number"
@@ -297,20 +299,20 @@ const MealPlanPage: React.FC = () => {
           style={{ width: 72, padding: 8 }}
         />
         <button type="submit" disabled={saving} style={styles.retryButton}>
-          Update future meals
+          {t('Update future meals')}{' '}
         </button>
-        <span>Applies to all planned meals from today onward.</span>
+        <span>{t('Applies to all planned meals from today onward.')}</span>
       </form>
-      {message && <p role="status">{message}</p>}
+      {message && <p role="status">{translateMessage(message)}</p>}
 
       {/* Remove error banner — Req 5.5 */}
       {removeError && (
         <div role="alert" style={styles.removeError}>
-          {removeError}
+          {translateMessage(removeError)}
           <button
             type="button"
             onClick={() => setRemoveError(null)}
-            aria-label="Dismiss error"
+            aria-label={t('Dismiss error')}
             style={styles.dismissButton}
           >
             ×
@@ -320,7 +322,7 @@ const MealPlanPage: React.FC = () => {
 
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 16 }}>
         <aside
-          aria-label="Recipe library"
+          aria-label={t('Recipe library')}
           style={{
             flex: '1 1 200px',
             minWidth: 0,
@@ -331,17 +333,17 @@ const MealPlanPage: React.FC = () => {
             overflowY: 'auto',
           }}
         >
-          <h2 style={{ marginTop: 0, fontSize: '1rem' }}>Recipes</h2>
-          <p>Drag a recipe to a meal, or select it and tap a calendar meal.</p>
-          {recipesLoading && <p role="status">Loading recipes…</p>}
+          <h2 style={{ marginTop: 0, fontSize: '1rem' }}>{t('Recipes')}</h2>
+          <p>{t('Drag a recipe to a meal, or select it and tap a calendar meal.')}</p>
+          {recipesLoading && <p role="status">{t('Loading recipes…')}</p>}
           {recipeError && (
             <div role="alert">
-              {recipeError}
-              <button onClick={loadRecipes}>Retry recipes</button>
+              {translateMessage(recipeError)}
+              <button onClick={loadRecipes}>{t('Retry recipes')}</button>
             </div>
           )}
           {!recipesLoading && !recipeError && recipes.length === 0 && (
-            <p>No recipes yet. Add recipes in the Recipes tab.</p>
+            <p>{t('No recipes yet. Add recipes in the Recipes tab.')}</p>
           )}
           {!recipesLoading &&
             !recipeError &&
@@ -420,7 +422,7 @@ const MealPlanPage: React.FC = () => {
       {error && !loading && (
         <div style={styles.retryRow}>
           <button type="button" onClick={() => loadMealPlans(weekStart)} style={styles.retryButton}>
-            Retry
+            {t('Retry')}{' '}
           </button>
         </div>
       )}

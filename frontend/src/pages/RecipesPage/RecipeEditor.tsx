@@ -1,3 +1,4 @@
+import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   createRecipe,
@@ -9,7 +10,7 @@ import type { RecipeIngredient } from '../../api/recipes/recipes';
 import { searchInventory } from '../../api/inventory/inventory';
 import AutocompleteDropdown from '../../components/AutocompleteDropdown/AutocompleteDropdown';
 import type { InventoryItem } from '../../components/AutocompleteDropdown/AutocompleteDropdown';
-import { VALID_UNITS, getUnitLabel, resolveUnit } from '../../types/units';
+import { localizedUnits, getUnitLabel, resolveUnit } from '../../types/units';
 import { parseFractionalQuantity, formatQuantity } from '../../utils/quantity';
 import TagInput from '../../components/TagInput/TagInput';
 
@@ -85,6 +86,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
   allTags,
   tagsLoading,
 }) => {
+  useLanguage();
   const isEdit = recipeId !== undefined;
 
   const [name, setName] = useState('');
@@ -448,8 +450,8 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
 
   if (loading) {
     return (
-      <div style={styles.centered} role="status" aria-label="Loading recipe">
-        <p style={styles.statusText}>Loading…</p>
+      <div style={styles.centered} role="status" aria-label={t('Loading recipe')}>
+        <p style={styles.statusText}>{t('Loading…')}</p>
       </div>
     );
   }
@@ -457,9 +459,9 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
   if (fetchError) {
     return (
       <div style={styles.centered} role="alert">
-        <p style={styles.errorText}>{fetchError}</p>
+        <p style={styles.errorText}>{translateMessage(fetchError)}</p>
         <button onClick={onCancel} style={styles.cancelButton} type="button">
-          Back
+          {t('Back')}{' '}
         </button>
       </div>
     );
@@ -468,15 +470,20 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
   return (
     <div style={styles.page}>
       <div style={styles.pageHeader}>
-        <button onClick={onCancel} style={styles.backButton} type="button" aria-label="Go back">
-          ← Back
+        <button
+          onClick={onCancel}
+          style={styles.backButton}
+          type="button"
+          aria-label={t('Go back')}
+        >
+          {t('← Back')}{' '}
         </button>
-        <h2 style={styles.pageTitle}>{isEdit ? 'Edit Recipe' : 'New Recipe'}</h2>
+        <h2 style={styles.pageTitle}>{isEdit ? t('Edit Recipe') : t('New Recipe')}</h2>
       </div>
 
       {submitError && (
         <div style={styles.errorBanner} role="alert">
-          {submitError}
+          {translateMessage(submitError)}
         </div>
       )}
 
@@ -484,7 +491,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
         {/* Name */}
         <div style={styles.fieldGroup}>
           <label htmlFor="recipe-name" style={styles.label}>
-            Name <span aria-hidden="true">*</span>
+            {t('Name')} <span aria-hidden="true">*</span>
           </label>
           <input
             id="recipe-name"
@@ -500,7 +507,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
           />
           {errors.name && (
             <span style={styles.fieldError} role="alert">
-              {errors.name}
+              {translateMessage(errors.name)}
             </span>
           )}
         </div>
@@ -508,7 +515,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
         {/* Tags */}
         <div style={styles.fieldGroup}>
           <label style={styles.label}>
-            Tags <span aria-hidden="true">*</span>
+            {t('Tags')} <span aria-hidden="true">*</span>
           </label>
           <TagInput
             tags={tags}
@@ -525,7 +532,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
         {/* Instructions */}
         <div style={styles.fieldGroup}>
           <span style={styles.label}>
-            Instructions <span aria-hidden="true">*</span>
+            {t('Instructions')} <span aria-hidden="true">*</span>
           </span>
           {instructions.map((step, index) => (
             <div key={step._id} style={styles.instructionRow}>
@@ -541,7 +548,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
                 }}
                 style={styles.textarea}
                 rows={2}
-                aria-label={index === 0 ? 'Instructions' : `Instruction step ${index + 1}`}
+                aria-label={index === 0 ? t('Instructions') : t('Instruction step {0}', index + 1)}
                 aria-required="true"
                 aria-invalid={!!errors.instructions}
               />
@@ -553,7 +560,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
                   )
                 }
                 disabled={instructions.length === 1}
-                aria-label={`Remove instruction step ${index + 1}`}
+                aria-label={t('Remove instruction step {0}', index + 1)}
                 style={styles.removeButton}
               >
                 ×
@@ -565,18 +572,18 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
             onClick={() => setInstructions((current) => [...current, makeInstructionRow()])}
             style={styles.addIngredientButton}
           >
-            + Add Step
+            {t('+ Add Step')}{' '}
           </button>
           {errors.instructions && (
             <span style={styles.fieldError} role="alert">
-              {errors.instructions}
+              {translateMessage(errors.instructions)}
             </span>
           )}
         </div>
 
         <div style={styles.fieldGroup}>
           <label htmlFor="recipe-chef-notes" style={styles.label}>
-            Chef&apos;s notes
+            {t("Chef's notes")}{' '}
           </label>
           <textarea
             id="recipe-chef-notes"
@@ -590,7 +597,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
         {/* Source URL */}
         <div style={styles.fieldGroup}>
           <label htmlFor="recipe-source-url" style={styles.label}>
-            Source URL
+            {t('Source URL')}{' '}
           </label>
           <input
             id="recipe-source-url"
@@ -606,7 +613,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
         <div style={styles.timeFieldsRow}>
           <div style={styles.fieldGroup}>
             <label htmlFor="recipe-prep-time" style={styles.label}>
-              Prep time (min)
+              {t('Prep time (min)')}{' '}
             </label>
             <input
               id="recipe-prep-time"
@@ -619,20 +626,20 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
                 setErrors((prev) => ({ ...prev, prepTime: undefined }));
               }}
               style={styles.input}
-              aria-label="Prep time (min)"
+              aria-label={t('Prep time (min)')}
               aria-invalid={!!errors.prepTime}
               placeholder="e.g. 15"
             />
             {errors.prepTime && (
               <span style={styles.fieldError} role="alert">
-                {errors.prepTime}
+                {translateMessage(errors.prepTime)}
               </span>
             )}
           </div>
 
           <div style={styles.fieldGroup}>
             <label htmlFor="recipe-cook-time" style={styles.label}>
-              Cook time (min)
+              {t('Cook time (min)')}{' '}
             </label>
             <input
               id="recipe-cook-time"
@@ -645,13 +652,13 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
                 setErrors((prev) => ({ ...prev, cookTime: undefined }));
               }}
               style={styles.input}
-              aria-label="Cook time (min)"
+              aria-label={t('Cook time (min)')}
               aria-invalid={!!errors.cookTime}
               placeholder="e.g. 30"
             />
             {errors.cookTime && (
               <span style={styles.fieldError} role="alert">
-                {errors.cookTime}
+                {translateMessage(errors.cookTime)}
               </span>
             )}
           </div>
@@ -661,7 +668,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
         {!isEdit && (
           <div style={styles.fieldGroup}>
             <label htmlFor="recipe-portions" style={styles.label}>
-              Portions <span aria-hidden="true">*</span>
+              {t('Portions')} <span aria-hidden="true">*</span>
             </label>
             <input
               id="recipe-portions"
@@ -680,7 +687,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
             />
             {errors.portions && (
               <span style={styles.fieldError} role="alert">
-                {errors.portions}
+                {translateMessage(errors.portions)}
               </span>
             )}
           </div>
@@ -689,22 +696,24 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
         {/* Portions scaler (edit mode only) */}
         {isEdit && (
           <div style={styles.fieldGroup}>
-            <span style={styles.label}>Portions</span>
+            <span style={styles.label}>{t('Portions')}</span>
             <div style={styles.portionsScalerRow}>
               <button
                 type="button"
                 onClick={handlePortionsDecrement}
                 disabled={selectedPortions === 1}
-                aria-label="Decrease portions"
+                aria-label={t('Decrease portions')}
                 style={styles.portionsScalerButton}
               >
                 –
               </button>
-              <span style={styles.portionsScalerValue}>{selectedPortions} portions</span>
+              <span style={styles.portionsScalerValue}>
+                {selectedPortions} {t('portions')}
+              </span>
               <button
                 type="button"
                 onClick={handlePortionsIncrement}
-                aria-label="Increase portions"
+                aria-label={t('Increase portions')}
                 style={styles.portionsScalerButton}
               >
                 +
@@ -717,12 +726,12 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
         <div style={styles.fieldGroup}>
           <div style={styles.ingredientsHeader}>
             <span style={styles.label}>
-              Ingredients <span aria-hidden="true">*</span>
+              {t('Ingredients')} <span aria-hidden="true">*</span>
             </span>
           </div>
           {errors.ingredients && (
             <span style={styles.fieldError} role="alert">
-              {errors.ingredients}
+              {translateMessage(errors.ingredients)}
             </span>
           )}
 
@@ -735,7 +744,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
                     {/* Ingredient name */}
                     <div style={styles.ingredientNameGroup}>
                       <label htmlFor={`ing-name-${row._id}`} style={styles.smallLabel}>
-                        Name
+                        {t('Name')}{' '}
                       </label>
                       <div style={{ position: 'relative' }}>
                         <input
@@ -744,7 +753,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
                           value={row.name}
                           onChange={(e) => handleIngredientNameChange(row._id, e.target.value)}
                           style={styles.input}
-                          aria-label={`Ingredient ${index + 1} name`}
+                          aria-label={t('Ingredient {0} name', index + 1)}
                           aria-invalid={!!rowErr?.name}
                           aria-autocomplete={dropdowns[row._id]?.visible ? 'list' : undefined}
                           aria-expanded={dropdowns[row._id]?.visible ?? false}
@@ -786,14 +795,14 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
                       </div>
                       {rowErr?.name && (
                         <span style={styles.fieldError} role="alert">
-                          {rowErr.name}
+                          {translateMessage(rowErr.name)}
                         </span>
                       )}
                     </div>
 
                     <div style={styles.ingredientNameGroup}>
                       <label htmlFor={`ing-section-${row._id}`} style={styles.smallLabel}>
-                        Section
+                        {t('Section')}{' '}
                       </label>
                       <input
                         id={`ing-section-${row._id}`}
@@ -801,8 +810,8 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
                         value={row.section ?? ''}
                         onChange={(e) => updateIngredientField(row._id, 'section', e.target.value)}
                         style={styles.input}
-                        aria-label={`Ingredient ${index + 1} section`}
-                        placeholder="e.g. For the sauce"
+                        aria-label={t('Ingredient {0} section', index + 1)}
+                        placeholder={t('e.g. For the sauce')}
                       />
                     </div>
 
@@ -810,7 +819,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
                     <div style={styles.qtyUnitRow}>
                       <div style={styles.qtyGroup}>
                         <label htmlFor={`ing-qty-${row._id}`} style={styles.smallLabel}>
-                          Qty
+                          {t('Qty')}{' '}
                         </label>
                         <input
                           id={`ing-qty-${row._id}`}
@@ -820,31 +829,31 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
                             updateIngredientField(row._id, 'quantityStr', e.target.value)
                           }
                           style={styles.input}
-                          aria-label={`Ingredient ${index + 1} quantity`}
+                          aria-label={t('Ingredient {0} quantity', index + 1)}
                           aria-invalid={!!rowErr?.quantity}
                           placeholder="e.g. 1 1/2"
                         />
                         {rowErr?.quantity && (
                           <span style={styles.fieldError} role="alert">
-                            {rowErr.quantity}
+                            {translateMessage(rowErr.quantity)}
                           </span>
                         )}
                       </div>
 
                       <div style={styles.unitGroup}>
                         <label htmlFor={`ing-unit-${row._id}`} style={styles.smallLabel}>
-                          Unit
+                          {t('Unit')}{' '}
                         </label>
                         <select
                           id={`ing-unit-${row._id}`}
                           value={row.unit}
                           onChange={(e) => updateIngredientField(row._id, 'unit', e.target.value)}
                           style={styles.select}
-                          aria-label={`Ingredient ${index + 1} unit`}
+                          aria-label={t('Ingredient {0} unit', index + 1)}
                           aria-invalid={!!rowErr?.unit}
                         >
-                          <option value="">Select unit</option>
-                          {VALID_UNITS.map((u) => (
+                          <option value="">{t('Select unit')}</option>
+                          {localizedUnits().map((u) => (
                             <option key={u} value={u}>
                               {getUnitLabel(u, 1)}
                             </option>
@@ -852,7 +861,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
                         </select>
                         {rowErr?.unit && (
                           <span style={styles.fieldError} role="alert">
-                            {rowErr.unit}
+                            {translateMessage(rowErr.unit)}
                           </span>
                         )}
                       </div>
@@ -865,7 +874,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
                     onClick={() => removeIngredient(row._id)}
                     style={styles.removeButton}
                     disabled={ingredients.length <= 1}
-                    aria-label={`Remove ingredient ${index + 1}`}
+                    aria-label={t('Remove ingredient {0}', index + 1)}
                   >
                     ✕
                   </button>
@@ -875,7 +884,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
           </div>
 
           <button type="button" onClick={addIngredient} style={styles.addIngredientButton}>
-            + Add Ingredient
+            {t('+ Add Ingredient')}{' '}
           </button>
         </div>
 
@@ -886,7 +895,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
       {/* Fixed action bar */}
       <div style={styles.actionBar}>
         <button type="button" onClick={onCancel} style={styles.cancelButton} disabled={submitting}>
-          Cancel
+          {t('Cancel')}{' '}
         </button>
         <button
           type="submit"
@@ -894,7 +903,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
           style={styles.submitButton}
           disabled={submitting}
         >
-          {submitting ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Recipe'}
+          {submitting ? t('Saving…') : isEdit ? t('Save Changes') : t('Create Recipe')}
         </button>
       </div>
     </div>

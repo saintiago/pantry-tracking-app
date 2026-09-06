@@ -117,6 +117,12 @@ e2e/
 
 ## Shopping companion coverage
 
+`language.spec.ts` covers language selection, separate browser contexts sharing an account,
+reload persistence, fallback, async data, unchanged user content, forms, cooking, shopping,
+save failures, and mobile layout. The mock Cognito client optionally routes locale reads
+and writes through `/test-account-language` when `mock-language-api` is set in localStorage.
+This opt-in behavior is used only by the mock-auth Vite plugin, never production builds.
+
 `shopping-list.spec.ts` covers mint week/day/recipe filters, department grouping,
 reserve math, shared basket state, manual edit/remove/undo, full purchase fields and
 partial completion, preferences/package rounding, store shopping, budget/link/export

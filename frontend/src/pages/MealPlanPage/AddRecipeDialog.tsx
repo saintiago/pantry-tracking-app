@@ -1,3 +1,4 @@
+import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   createMealPlan,
@@ -36,6 +37,7 @@ const MEAL_TYPE_OPTIONS: { value: MealType; label: string }[] = [
 ];
 
 const AddRecipeDialog: React.FC<AddRecipeDialogProps> = ({ date, onAdd, onClose }) => {
+  useLanguage();
   const [recipes, setRecipes] = useState<PlannableRecipe[]>([]);
   const [fetchState, setFetchState] = useState<FetchState>('idle');
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -140,12 +142,12 @@ const AddRecipeDialog: React.FC<AddRecipeDialogProps> = ({ date, onAdd, onClose 
       >
         <div style={styles.header}>
           <h2 id="add-recipe-dialog-title" style={styles.title}>
-            Add Recipe
+            {t('Add Recipe')}{' '}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close dialog"
+            aria-label={t('Close dialog')}
             style={styles.closeButton}
           >
             ×
@@ -155,7 +157,7 @@ const AddRecipeDialog: React.FC<AddRecipeDialogProps> = ({ date, onAdd, onClose 
         {/* Meal Type selector */}
         <div style={styles.field}>
           <label htmlFor="meal-type-select" style={styles.label}>
-            Meal
+            {t('Meal')}{' '}
           </label>
           <select
             id="meal-type-select"
@@ -166,7 +168,7 @@ const AddRecipeDialog: React.FC<AddRecipeDialogProps> = ({ date, onAdd, onClose 
           >
             {MEAL_TYPE_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
-                {opt.label}
+                {t(opt.label)}
               </option>
             ))}
           </select>
@@ -174,21 +176,23 @@ const AddRecipeDialog: React.FC<AddRecipeDialogProps> = ({ date, onAdd, onClose 
 
         {/* Recipe list area */}
         <div style={styles.field}>
-          <span style={styles.label}>Recipe</span>
+          <span style={styles.label}>{t('Recipe')}</span>
 
           {/* Loading state — req 6.2 */}
           {fetchState === 'loading' && (
             <div style={styles.stateMessage} aria-live="polite">
-              Loading recipes…
+              {t('Loading recipes…')}{' '}
             </div>
           )}
 
           {/* Error + retry — req 6.5 */}
           {fetchState === 'error' && (
             <div style={styles.errorState} aria-live="polite">
-              <span style={styles.errorText}>{fetchError ?? 'Failed to load recipes.'}</span>
+              <span style={styles.errorText}>
+                {translateMessage(fetchError ?? 'Failed to load recipes.')}
+              </span>
               <button type="button" onClick={loadRecipes} style={styles.retryButton}>
-                Retry
+                {t('Retry')}{' '}
               </button>
             </div>
           )}
@@ -196,13 +200,13 @@ const AddRecipeDialog: React.FC<AddRecipeDialogProps> = ({ date, onAdd, onClose 
           {/* Empty state — req 4.11, 6.4 */}
           {hasNoRecipes && (
             <div style={styles.stateMessage} aria-live="polite">
-              No recipes found. Add some recipes first.
+              {t('No recipes found. Add some recipes first.')}{' '}
             </div>
           )}
 
           {/* Recipe list — req 4.2, 6.3 */}
           {fetchState === 'success' && recipes.length > 0 && (
-            <ul style={styles.recipeList} role="listbox" aria-label="Available recipes">
+            <ul style={styles.recipeList} role="listbox" aria-label={t('Available recipes')}>
               {recipes.map((recipe) => {
                 const isSelected = recipe.recipeId === selectedRecipeId;
                 return (
@@ -223,7 +227,7 @@ const AddRecipeDialog: React.FC<AddRecipeDialogProps> = ({ date, onAdd, onClose 
           {/* Validation message — req 4.6 */}
           {validationMessage && (
             <div style={styles.validationMessage} role="alert">
-              {validationMessage}
+              {translateMessage(validationMessage)}
             </div>
           )}
         </div>
@@ -231,7 +235,7 @@ const AddRecipeDialog: React.FC<AddRecipeDialogProps> = ({ date, onAdd, onClose 
         {/* Submit error — req 4.9, 4.10 */}
         {submitError && (
           <div style={styles.submitError} role="alert" aria-live="assertive">
-            {submitError}
+            {translateMessage(submitError)}
           </div>
         )}
 
@@ -243,7 +247,7 @@ const AddRecipeDialog: React.FC<AddRecipeDialogProps> = ({ date, onAdd, onClose 
             disabled={isSubmitting}
             style={isSubmitting ? styles.cancelButtonDisabled : styles.cancelButton}
           >
-            Cancel
+            {t('Cancel')}{' '}
           </button>
           <button
             type="button"
@@ -252,7 +256,7 @@ const AddRecipeDialog: React.FC<AddRecipeDialogProps> = ({ date, onAdd, onClose 
             aria-disabled={confirmDisabled}
             style={confirmDisabled ? styles.confirmButtonDisabled : styles.confirmButton}
           >
-            {isSubmitting ? 'Adding…' : 'Add'}
+            {isSubmitting ? t('Adding…') : t('Add')}
           </button>
         </div>
       </div>

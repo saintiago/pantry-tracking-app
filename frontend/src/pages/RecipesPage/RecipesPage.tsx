@@ -1,3 +1,4 @@
+import { useLanguage } from '../../i18n/i18n';
 import React, { useEffect, useState } from 'react';
 import RecipeList from './RecipeList';
 import RecipeDetail from './RecipeDetail';
@@ -19,10 +20,8 @@ type RecipeView =
   | { mode: 'editor-new' }
   | { mode: 'editor-edit'; recipeId: string };
 
-const RecipesPage: React.FC<RecipesPageProps> = ({
-  activeCookingSession,
-  onStartCooking,
-}) => {
+const RecipesPage: React.FC<RecipesPageProps> = ({ activeCookingSession, onStartCooking }) => {
+  useLanguage();
   const [view, setView] = useState<RecipeView>({ mode: 'list' });
   const [allTags, setAllTags] = useState<string[]>([]);
   const [tagsLoading, setTagsLoading] = useState(true);
