@@ -231,3 +231,28 @@ test('concurrent threshold rejection preserves the draft, supports retry, and pe
     page.getByRole('button', { name: 'Edit low-stock threshold for Rice' }),
   ).toContainText('0.5 kilograms');
 });
+
+test('typing an existing barcode keeps generic catalog data out of saved autofill', async ({
+  page,
+}) => {
+  await setup(page);
+  let externalLookups = 0;
+  await page.route('https://mock-api.test/inventory/barcode-lookup', (route) => {
+    externalLookups++;
+    return route.fulfill({
+      json: {
+        found: true,
+        product: { name: 'Generic rice', category: 'Generic category', brand: 'Generic brand' },
+      },
+    });
+  });
+  await page.getByRole('button', { name: 'Add item', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Manual Entry' }).click();
+  await page.getByLabel('Barcode', { exact: true }).fill('5901234123457');
+  await page.getByRole('option').filter({ hasText: 'Rice' }).click();
+  await expect(page.getByLabel('Expiration Date')).toHaveValue('2028-02-03');
+  await expect(page.getByLabel('Product Name')).toHaveValue('Rice');
+  await expect(page.getByRole('textbox', { name: 'Category', exact: true })).toHaveValue('Grains');
+  await expect(page.getByLabel('Brand', { exact: true })).toHaveValue('Latest brand');
+  expect(externalLookups).toBe(0);
+});

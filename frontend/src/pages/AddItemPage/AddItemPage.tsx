@@ -300,6 +300,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
           focusedIndex: -1,
         },
       }));
+      return response.count === 0;
     } catch {
       if (controller.signal.aborted) return;
       setAutocompleteDropdowns((prev) => ({
@@ -403,16 +404,13 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
       }
 
       debounceTimers.current[field] = setTimeout(async () => {
-        await triggerSearch(field, value);
-        if (field === 'barcode' && value.length >= 8) {
-          const dropdown = autocompleteDropdowns[field];
-          if (!dropdown.visible || (dropdown.items && dropdown.items.length === 0)) {
-            await triggerExternalLookup(value);
-          }
+        const noLocalMatches = await triggerSearch(field, value);
+        if (field === 'barcode' && value.length >= 8 && noLocalMatches) {
+          await triggerExternalLookup(value);
         }
       }, 300);
     },
-    [triggerSearch, triggerExternalLookup, autocompleteDropdowns],
+    [triggerSearch, triggerExternalLookup],
   );
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {

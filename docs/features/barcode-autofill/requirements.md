@@ -211,3 +211,7 @@ preserves user-entered edits, and defaults the new lot quantity to one.
 After autofill renders, focus the expiration input and request its native date picker.
 Browsers that reject automatic picker opening retain the focused editable date field.
 A saved lot without expiration also focuses that field for entry.
+
+Typed/pasted barcodes wait for the current local search result before deciding whether
+to query the external catalog. A local match must not launch a generic lookup based
+on stale dropdown visibility, which could otherwise fill name/category before selection.
