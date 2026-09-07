@@ -38,6 +38,7 @@ test('slot placement creates a flexible meal; editing and removal persist withou
   await slot(page).locator('[data-plan-open]').click();
   await page.getByLabel('Notes', { exact: true }).fill('Meet at 7');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Meal Planner', exact: true })).toBeVisible();
   expect(model.state().mealPlans[0].notes).toBe('Meet at 7');
   await slot(page)
     .getByRole('button', { name: /^Remove Dinner/ })

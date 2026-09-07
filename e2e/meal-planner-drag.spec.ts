@@ -119,7 +119,8 @@ test('touch press-and-hold schedules a card and exposes a visible return target 
     touchPoints: [{ x: a.x + 20, y: a.y + a.height / 2 }],
   });
   await expect(page.getByTestId('recipe-drag-preview')).toBeVisible();
-  await slot(page).scrollIntoViewIfNeeded();
+  // Keep the drop point clear of the fixed mobile navigation on every platform.
+  await slot(page).evaluate((element) => element.scrollIntoView({ block: 'center' }));
   const b = (await slot(page).boundingBox())!;
   await session.send('Input.dispatchTouchEvent', {
     type: 'touchMove',
