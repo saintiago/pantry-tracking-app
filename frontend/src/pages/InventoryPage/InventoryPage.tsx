@@ -250,14 +250,15 @@ const InventoryPage: React.FC<InventoryPageProps> = ({
   const handleBarcodeDetected = useCallback(
     (result: BarcodeLookupResult) => {
       setScannerOpen(false);
+      const saved = inventoryItems.some((item) => item.barcode === result.barcode);
       onNavigateToAddItem(locations, handleAddItem, {
         barcode: result.barcode,
-        name: result.product?.name,
-        brand: result.product?.brand,
-        category: result.product?.category,
+        name: saved ? undefined : result.product?.name,
+        brand: saved ? undefined : result.product?.brand,
+        category: saved ? undefined : result.product?.category,
       });
     },
-    [locations, onNavigateToAddItem, handleAddItem],
+    [locations, onNavigateToAddItem, handleAddItem, inventoryItems],
   );
 
   const handleRemoveItem = useCallback(async (itemId: string) => {

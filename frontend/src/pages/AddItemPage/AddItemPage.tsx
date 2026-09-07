@@ -152,6 +152,19 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
     document.getElementById('add-item-name')?.focus();
   }, []);
 
+  const [editExpiration, setEditExpiration] = useState(false);
+  useEffect(() => {
+    if (!editExpiration) return;
+    const input = document.getElementById('add-item-expiration') as HTMLInputElement | null;
+    input?.focus();
+    try {
+      input?.showPicker();
+    } catch {
+      // Browsers may require a direct gesture; the date field remains focused for editing.
+    }
+    setEditExpiration(false);
+  }, [editExpiration]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -228,22 +241,8 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
         setPrefilledFields((p) => new Set([...p, ...newPrefilledFields]));
       }
 
-      // When the expiration date was copied into the empty field, prompt the user to
-      // confirm or change it by moving focus to the field and opening its date picker
-      // (Req 4.3). Skip when a user value already exists or the suggestion has none
-      // (Req 4.4, 4.5).
-      if (didFillExpiration) {
-        queueMicrotask(() => {
-          const el = document.getElementById('add-item-expiration') as HTMLInputElement | null;
-          if (el) {
-            el.focus();
-            try {
-              el.showPicker();
-            } catch {
-              /* showPicker not supported */
-            }
-          }
-        });
+      if (didFillExpiration || (triggerField === 'barcode' && !prev.expirationDate)) {
+        setEditExpiration(true);
       }
 
       return { ...prev, ...updates };

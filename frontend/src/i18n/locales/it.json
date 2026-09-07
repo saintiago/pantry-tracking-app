@@ -680,7 +680,9 @@
     "Threshold unit must be compatible with the stock unit": "L’unità della soglia deve essere compatibile con quella delle scorte.",
     "Loading {0}…": "Caricamento di {0}…",
     "Could not load {0}. Check your connection and try again.": "Impossibile caricare {0}. Controlla la connessione e riprova.",
-    "Retry language download": "Riprova a scaricare la lingua"
+    "Retry language download": "Riprova a scaricare la lingua",
+    "Details for {0}": "Dettagli di {0}",
+    "From meal plan to shopping basket.": "Dal piano dei pasti al carrello della spesa."
   },
   "singular": {
     "{0} ingredient(s) missing or partial": "{0} ingrediente mancante o insufficiente",

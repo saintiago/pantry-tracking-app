@@ -72,3 +72,21 @@ carry-forward reconciliation, partial completion and storage validation. Browser
 all new interactions, full purchase form, failure/retry, state restoration, 320/390px
 and desktop layouts, theme across main tabs/auth, budget preview and no order submits.
 Run all checks/hooks, deploy via main workflow, verify production UI and report release.
+
+## Shopping list readability (issues #9)
+
+Ingredient rows initially show the basket checkbox, name, needed/allocated inventory
+and buy quantity. A native, keyboard-accessible "Details for {ingredient}" disclosure
+contains recipe/date/meal references, warnings, reserve explanations, stores/sources,
+notes, package calculations and product/manual/defer actions. Quantity review notices,
+deferred status/Return to list and checked-item purchase actions stay outside it.
+The subtitle is "From meal plan to shopping basket.", also localized into Spanish
+and Italian.
+
+This week, Next week only and Both weeks occupy equal-width columns above the selected
+range. Custom week navigation is inside Day and recipe filters, with 44px arrows and
+a flexible date field aligned along their bottom edges. Existing filters and trip
+restoration are preserved. Shopping headers have separate food-associated pastels
+for all twelve departments; written labels remain and inventory colors are unchanged.
+Purchases continue to compose the full shared AddItemPage, including partial purchases,
+errors/retry and protection against repeating successful writes.

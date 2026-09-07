@@ -201,3 +201,13 @@ The autocomplete and autofill feature enhances the AddItemPage component by prov
 6. WHEN any Autocomplete_Dropdown appears, THE AddItemPage SHALL announce the number of matching items or values to screen readers
 7. WHEN navigating any Autocomplete_Dropdown with keyboard, THE AddItemPage SHALL announce the currently focused item to screen readers
 8. ALL fields with autocomplete SHALL have aria-autocomplete="list" attribute when their dropdown is active
+
+## Saved barcode scan follow-up (issue #7)
+
+A scanned barcode already present in inventory uses the latest saved lot's household
+metadata in preference to generic catalog name/category/brand. The existing full
+autofill copies expiration, storage and shelf, photo, unit and shopping details,
+preserves user-entered edits, and defaults the new lot quantity to one.
+After autofill renders, focus the expiration input and request its native date picker.
+Browsers that reject automatic picker opening retain the focused editable date field.
+A saved lot without expiration also focuses that field for entry.

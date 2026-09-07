@@ -54,3 +54,10 @@ Receipt OCR, IndexedDB entity storage, queued offline mutations and server `/syn
 are roadmap items, not shipped capabilities. Shopping state is per account on the
 current device; there is no shared household synchronization of that local state.
 The service worker caches app assets; it does not make inventory CRUD offline-capable.
+
+Shopping ingredient details collapse by default, retaining visible quantities, review
+notices and purchase actions. Equal-width week shortcuts and distinct shopping-only
+department pastels improve mobile scanning; the subtitle is "From meal plan to shopping
+basket." See the shopping companion feature record. Scanning an existing barcode
+prefers saved household details and focuses expiration for review, requesting the
+native date picker where the browser permits it.

@@ -680,7 +680,9 @@
     "Threshold unit must be compatible with the stock unit": "La unidad del umbral debe ser compatible con la unidad de las existencias.",
     "Loading {0}…": "Cargando {0}…",
     "Could not load {0}. Check your connection and try again.": "No se pudo cargar {0}. Comprueba tu conexión e inténtalo de nuevo.",
-    "Retry language download": "Reintentar la descarga del idioma"
+    "Retry language download": "Reintentar la descarga del idioma",
+    "Details for {0}": "Detalles de {0}",
+    "From meal plan to shopping basket.": "Del plan de comidas a la cesta de la compra."
   },
   "singular": {
     "{0} ingredient(s) missing or partial": "{0} ingrediente faltante o insuficiente",

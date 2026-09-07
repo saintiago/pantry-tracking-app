@@ -329,7 +329,7 @@ test('manual entries carry across weeks, can be edited/removed/undone, and parti
   await expect(entry()).toContainText('Buy 3 piece');
   await page.getByRole('button', { name: 'Next week only' }).click();
   await expect(entry()).toContainText('Costco');
-  await entry().getByText('Options for Sponges').click();
+  await entry().getByText('Details for Sponges').click();
   await entry().getByRole('button', { name: 'Edit manual entry' }).click();
   await page.getByLabel('Notes').fill('Soft sponges');
   await page.getByRole('button', { name: 'Save manual item' }).click();
@@ -350,7 +350,7 @@ test('manual entries carry across weeks, can be edited/removed/undone, and parti
   await page.getByRole('button', { name: 'Back to shopping list' }).click();
   await expect(entry()).toContainText('Buy 2 piece');
   expect(purchases).toHaveLength(1);
-  await entry().getByText('Options for Sponges').click();
+  await entry().getByText('Details for Sponges').click();
   await entry().getByRole('button', { name: 'Remove manual entry' }).click();
   await expect(entry()).toHaveCount(0);
   await page.getByRole('button', { name: 'Undo removal' }).click();
@@ -361,7 +361,7 @@ test('preferences round packages, organize Shopping mode and produce an honest b
   page,
 }) => {
   await setup(page);
-  await rice(page).getByText('Options for Rice').click();
+  await rice(page).getByText('Details for Rice').click();
   await rice(page).getByRole('button', { name: 'Product preferences' }).click();
   await page.getByLabel('Preferred store', { exact: true }).fill('Carrefour');
   await page.getByLabel('Alternative store').fill('Costco');
@@ -402,20 +402,20 @@ test('unavailable, skip and dated postponement retain outstanding items and allo
   page,
 }) => {
   await setup(page);
-  await rice(page).getByText('Options for Rice').click();
+  await rice(page).getByText('Details for Rice').click();
   await rice(page).getByRole('button', { name: 'Unavailable here' }).click();
   const pending = page.getByRole('region', { name: 'Later and unavailable', exact: true });
   await expect(pending).toContainText('Unavailable at this store');
   await pending.getByRole('button', { name: 'Return to list' }).click();
-  await rice(page).getByText('Options for Rice').click();
+  await rice(page).getByText('Details for Rice').click();
   await rice(page).getByRole('button', { name: 'Skip this trip' }).click();
   await expect(pending).toContainText('Skipped for this period');
   await pending.getByRole('button', { name: 'Return to list' }).click();
-  await rice(page).getByText('Options for Rice').click();
+  await rice(page).getByText('Details for Rice').click();
   await rice(page).getByLabel('Buy on date: Rice').fill('2026-09-20');
   await expect(pending).toContainText('Buy on 2026-09-20');
   await pending.getByRole('button', { name: 'Return to list' }).click();
-  await rice(page).getByText('Options for Rice').click();
+  await rice(page).getByText('Details for Rice').click();
   await rice(page).getByRole('button', { name: 'Buy next week' }).click();
   await expect(pending).toContainText('Buy on 2026-09-15');
 });
@@ -501,15 +501,15 @@ test('storage failures are visible and alternate store restores an unavailable p
   page,
 }) => {
   await setup(page);
-  await rice(page).getByText('Options for Rice').click();
+  await rice(page).getByText('Details for Rice').click();
   await rice(page).getByRole('button', { name: 'Product preferences' }).click();
   await page.getByLabel('Preferred store', { exact: true }).fill('Carrefour');
   await page.getByLabel('Alternative store', { exact: true }).fill('Costco');
   await page.getByRole('button', { name: 'Save preferences' }).click();
-  await rice(page).getByText('Options for Rice').click();
+  await rice(page).getByText('Details for Rice').click();
   await rice(page).getByRole('button', { name: 'Unavailable here' }).click();
   const pending = page.getByRole('region', { name: 'Later and unavailable', exact: true });
-  await pending.getByText('Options for Rice').click();
+  await pending.getByText('Details for Rice').click();
   await pending.getByRole('button', { name: 'Try Costco', exact: true }).click();
   await expect(rice(page)).toContainText('Costco');
   await page.evaluate(() => {
@@ -520,3 +520,65 @@ test('storage failures are visible and alternate store restores an unavailable p
   await rice(page).getByRole('checkbox').click();
   await expect(page.getByRole('alert')).toContainText('Basket could not be saved');
 });
+
+test('ingredient disclosures preserve basket state and support keyboard toggling', async ({
+  page,
+}) => {
+  await setup(page);
+  const row = rice(page);
+  const summary = row.getByText('Details for Rice', { exact: true });
+  await expect(row.getByText(/Vegetable curry ·/).first()).toBeHidden();
+  await expect(row).toContainText('Needed 600 g · In inventory for these meals 300 g');
+  await summary.focus();
+  await page.keyboard.press('Enter');
+  await expect(row.getByText(/Vegetable curry ·/).first()).toBeVisible();
+  await expect(row.getByRole('button', { name: 'Product preferences' })).toBeVisible();
+  await page.keyboard.press('Space');
+  await expect(row.getByText(/Vegetable curry ·/).first()).toBeHidden();
+  await expect(row.getByRole('checkbox')).not.toBeChecked();
+  await row.getByRole('checkbox').click();
+  await meals(page).getByText('In basket (1)', { exact: true }).click();
+  await expect(row.getByRole('checkbox')).toBeChecked();
+  await expect(row.getByRole('button', { name: 'Add purchases to inventory' })).toBeVisible();
+});
+
+for (const width of [320, 390, 1440]) {
+  test('compact shopping controls align at ' + width + 'px', async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await setup(page);
+    await expect(page.getByText('From meal plan to shopping basket.')).toBeVisible();
+    const controls = await Promise.all(
+      ['Previous week', 'Week of', 'Next week'].map((name) =>
+        page.getByLabel(name, { exact: true }).boundingBox(),
+      ),
+    );
+    expect(
+      Math.abs(controls[0]!.y + controls[0]!.height - controls[1]!.y - controls[1]!.height),
+    ).toBeLessThan(2);
+    expect(Math.abs(controls[2]!.y - controls[0]!.y)).toBeLessThan(2);
+    await rice(page).getByText('Details for Rice', { exact: true }).click();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await rice(page).getByText('Details for Rice', { exact: true }).click();
+    await page.getByText('Day and recipe filters', { exact: true }).click();
+    await expect(page.getByLabel('Week of')).toBeHidden();
+    const weeks = await Promise.all(
+      ['This week', 'Next week only', 'Both weeks'].map((name) =>
+        page.getByRole('button', { name, exact: true }).boundingBox(),
+      ),
+    );
+    for (const rect of weeks) {
+      expect(rect!.height).toBeGreaterThanOrEqual(44);
+      expect(Math.abs(rect!.width - weeks[0]!.width)).toBeLessThan(2);
+      expect(rect!.y).toBe(weeks[0]!.y);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await expect(meals(page).getByRole('heading', { name: 'Pantry', exact: true })).toHaveCSS(
+      'background-color',
+      'rgb(237, 223, 207)',
+    );
+  });
+}

@@ -71,7 +71,12 @@ export default function ShoppingRows(props: Props) {
       <article
         key={line.id}
         aria-label={translateMessage(label)}
-        style={{ padding: '14px 0', borderBottom: '1px solid var(--color-border)' }}
+        style={{
+          overflowWrap: 'anywhere',
+          minWidth: 0,
+          padding: '14px 0',
+          borderBottom: '1px solid var(--color-border)',
+        }}
       >
         <div style={{ ...rowWrap, justifyContent: 'space-between' }}>
           <label style={{ ...rowWrap, flexWrap: 'nowrap', minHeight: 44, cursor: 'pointer' }}>
@@ -111,122 +116,93 @@ export default function ShoppingRows(props: Props) {
               {t('· In inventory for these meals')} {amount(line.meal.available)}{' '}
               {getUnitLabel(line.unit, line.quantity)}
             </p>
-            <div style={rowWrap}>
-              {[...new Map(line.meal.contributions.map((c) => [c.planId, c])).values()].map((c) => (
-                <span
-                  key={c.planId}
-                  style={{
-                    ...small,
-                    padding: '3px 8px',
-                    borderRadius: 8,
-                    background: 'var(--color-lavender)',
-                  }}
-                >
-                  {c.recipeName} ·{' '}
-                  {new Date(`${c.date}T12:00:00`).toLocaleDateString(getLanguage(), {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                  })}{' '}
-                  · {t(c.mealType)}
-                </span>
-              ))}
-            </div>
-            {line.meal.warnings.map((w) => (
-              <p key={w} style={{ ...small, color: 'var(--color-warning-text)' }}>
-                {translateMessage(w)}
-              </p>
-            ))}
           </>
-        )}
-        {line.sources.includes('Restock') && (
-          <p style={small}>
-            {line.meal
-              ? t(
-                  'Also low stock · {0} {1} extra to keep',
-                  amount(line.extra),
-                  getUnitLabel(line.unit, line.quantity),
-                )
-              : t(
-                  'Buy {0} {1} to complete',
-                  amount(line.extra),
-                  getUnitLabel(line.unit, line.quantity),
-                )}{' '}
-            {t('the')} {amount(line.reserve)} {getUnitLabel(line.unit, line.quantity)}{' '}
-            {pref.reserve === undefined ? t('threshold') : t('desired stock')}
-            {line.meal ? t(' after planned meals.') : '.'}
-          </p>
-        )}
-        {!line.meal && line.sources.includes('Restock') && (
-          <p style={small}>{t('General restock')}</p>
-        )}
-        <p style={small}>
-          {line.sources.map((source) => t(source)).join(' · ')} · {storeLabel(line.store)}
-          {line.carried ? t(' · Still outstanding from an earlier list') : ''}
-        </p>
-        {line.notes && <p style={small}>{line.notes}</p>}
-        {pack && line.quantity > 0 && (
-          <p style={small}>
-            {t(
-              pack.count === 1 ? '{0} package × {1} {2}' : '{0} packages × {1} {2}',
-              pack.count,
-              amount(pref.packageSize!),
-              getUnitLabel(pref.packageUnit ?? line.unit, pref.packageSize ?? 1),
-            )}
-            {' · '}
-            {amount(pack.remainder)} {getUnitLabel(line.unit, line.quantity)}{' '}
-            {t('beyond this list')}{' '}
-            {pack.price === undefined
-              ? ''
-              : t(' · estimated €{0}', number(pack.price, { minimumFractionDigits: 2 }))}
-          </p>
-        )}
-        {pref.packageSize && !pack && (
-          <p style={small}>
-            {t(
-              'Package unit differs. Confirm the package conversion when putting purchases away.',
-            )}{' '}
-          </p>
-        )}
-        {needsReview(basket.checked[line.id], line.quantity, line.meal) && (
-          <p role="status" style={{ ...small, background: 'var(--color-warning)' }}>
-            {t(
-              'Needs review — the meals or quantity increased. Check the amount and tick again.',
-            )}{' '}
-          </p>
-        )}
-        {checked && (
-          <button
-            style={{ ...action, background: 'var(--color-mint)', marginTop: 10 }}
-            disabled={disabled}
-            onClick={() => props.onPurchase(line)}
-          >
-            {t('Add purchases to inventory')}{' '}
-          </button>
-        )}
-        {deferred && (
-          <p style={small}>
-            {companion.deferred[line.id].kind === 'later'
-              ? t('Buy on {0}', companion.deferred[line.id].until)
-              : companion.deferred[line.id].kind === 'skip'
-                ? t('Skipped for this period')
-                : t('Unavailable at this store')}{' '}
-            <button
-              style={action}
-              onClick={() => {
-                const next = { ...companion.deferred };
-                delete next[line.id];
-                props.onUpdate({ ...companion, deferred: next });
-              }}
-            >
-              {t('Return to list')}{' '}
-            </button>
-          </p>
         )}
         <details style={{ marginTop: 8 }}>
           <summary style={{ ...small, minHeight: 44, cursor: 'pointer', padding: '10px 0' }}>
-            {t('Options for')} {line.name}
+            {t('Details for {0}', line.name)}
           </summary>
+          {line.meal && (
+            <>
+              <div style={rowWrap}>
+                {[...new Map(line.meal.contributions.map((c) => [c.planId, c])).values()].map(
+                  (c) => (
+                    <span
+                      key={c.planId}
+                      style={{
+                        ...small,
+                        padding: '3px 8px',
+                        borderRadius: 8,
+                        background: 'var(--color-lavender)',
+                      }}
+                    >
+                      {c.recipeName} ·{' '}
+                      {new Date(`${c.date}T12:00:00`).toLocaleDateString(getLanguage(), {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                      })}{' '}
+                      · {t(c.mealType)}
+                    </span>
+                  ),
+                )}
+              </div>
+              {line.meal.warnings.map((w) => (
+                <p key={w} style={{ ...small, color: 'var(--color-warning-text)' }}>
+                  {translateMessage(w)}
+                </p>
+              ))}
+            </>
+          )}
+          {line.sources.includes('Restock') && (
+            <p style={small}>
+              {line.meal
+                ? t(
+                    'Also low stock · {0} {1} extra to keep',
+                    amount(line.extra),
+                    getUnitLabel(line.unit, line.quantity),
+                  )
+                : t(
+                    'Buy {0} {1} to complete',
+                    amount(line.extra),
+                    getUnitLabel(line.unit, line.quantity),
+                  )}{' '}
+              {t('the')} {amount(line.reserve)} {getUnitLabel(line.unit, line.quantity)}{' '}
+              {pref.reserve === undefined ? t('threshold') : t('desired stock')}
+              {line.meal ? t(' after planned meals.') : '.'}
+            </p>
+          )}
+          {!line.meal && line.sources.includes('Restock') && (
+            <p style={small}>{t('General restock')}</p>
+          )}
+          <p style={small}>
+            {line.sources.map((source) => t(source)).join(' · ')} · {storeLabel(line.store)}
+            {line.carried ? t(' · Still outstanding from an earlier list') : ''}
+          </p>
+          {line.notes && <p style={small}>{line.notes}</p>}
+          {pack && line.quantity > 0 && (
+            <p style={small}>
+              {t(
+                pack.count === 1 ? '{0} package × {1} {2}' : '{0} packages × {1} {2}',
+                pack.count,
+                amount(pref.packageSize!),
+                getUnitLabel(pref.packageUnit ?? line.unit, pref.packageSize ?? 1),
+              )}
+              {' · '}
+              {amount(pack.remainder)} {getUnitLabel(line.unit, line.quantity)}{' '}
+              {t('beyond this list')}{' '}
+              {pack.price === undefined
+                ? ''
+                : t(' · estimated €{0}', number(pack.price, { minimumFractionDigits: 2 }))}
+            </p>
+          )}
+          {pref.packageSize && !pack && (
+            <p style={small}>
+              {t(
+                'Package unit differs. Confirm the package conversion when putting purchases away.',
+              )}{' '}
+            </p>
+          )}
           <div style={rowWrap}>
             <button style={action} onClick={() => props.onPreferences(line)}>
               {t('Product preferences')}{' '}
@@ -333,6 +309,41 @@ export default function ShoppingRows(props: Props) {
             )}
           </div>
         </details>
+        {needsReview(basket.checked[line.id], line.quantity, line.meal) && (
+          <p role="status" style={{ ...small, background: 'var(--color-warning)' }}>
+            {t(
+              'Needs review — the meals or quantity increased. Check the amount and tick again.',
+            )}{' '}
+          </p>
+        )}
+        {checked && (
+          <button
+            style={{ ...action, background: 'var(--color-mint)', marginTop: 10 }}
+            disabled={disabled}
+            onClick={() => props.onPurchase(line)}
+          >
+            {t('Add purchases to inventory')}{' '}
+          </button>
+        )}
+        {deferred && (
+          <p style={small}>
+            {companion.deferred[line.id].kind === 'later'
+              ? t('Buy on {0}', companion.deferred[line.id].until)
+              : companion.deferred[line.id].kind === 'skip'
+                ? t('Skipped for this period')
+                : t('Unavailable at this store')}{' '}
+            <button
+              style={action}
+              onClick={() => {
+                const next = { ...companion.deferred };
+                delete next[line.id];
+                props.onUpdate({ ...companion, deferred: next });
+              }}
+            >
+              {t('Return to list')}{' '}
+            </button>
+          </p>
+        )}
       </article>
     );
   }

@@ -1,16 +1,19 @@
 import { test, expect, type Page } from '@playwright/test';
+import type { InventoryItem } from '../frontend/src/domain/inventory/types';
 
-async function openScanner(page: Page) {
+async function openScanner(page: Page, saved?: InventoryItem) {
   await page.route('https://mock-api.test/**', (route) => {
     const path = new URL(route.request().url()).pathname;
-    if (path === '/inventory') return route.fulfill({ json: { items: [], groups: [] } });
+    if (path === '/inventory')
+      return route.fulfill({ json: { items: saved ? [saved] : [], groups: [] } });
     if (path === '/locations')
       return route.fulfill({ json: { locations: [{ locationId: 'pantry', name: 'Pantry' }] } });
     if (path === '/inventory/barcode-lookup')
       return route.fulfill({
         json: { found: true, product: { name: 'Scanned product', category: 'Groceries' } },
       });
-    if (path === '/inventory/search') return route.fulfill({ json: { items: [], count: 0 } });
+    if (path === '/inventory/search')
+      return route.fulfill({ json: { items: saved ? [saved] : [], count: saved ? 1 : 0 } });
     return route.fulfill({ json: {} });
   });
   await page.goto('/');
@@ -216,4 +219,54 @@ test('manual entry after scan timeout opens the add-item form', async ({ page })
   await page.getByRole('button', { name: 'Enter Manually', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Add Item', exact: true })).toBeVisible();
   await expect(page.getByLabel('Product Name')).toHaveValue('');
+});
+
+test('scanning a saved barcode copies household details and focuses expiration even without picker support', async ({
+  page,
+}) => {
+  await installCamera(page);
+  await page.addInitScript(() => {
+    HTMLInputElement.prototype.showPicker = () => {
+      throw new DOMException('Gesture required', 'NotAllowedError');
+    };
+  });
+  await openScanner(page, {
+    itemId: 'saved',
+    name: 'Saved rice',
+    category: 'Grains',
+    brand: 'Saved brand',
+    barcode: '5901234123457',
+    quantity: 500,
+    unit: 'g',
+    location: 'pantry',
+    locationDetails: 'Shelf 2',
+    expirationDate: '2028-02-03',
+    whereToBuy: 'Local shop',
+    onlineStoreLink: 'https://example.com/rice',
+    pictureUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+    createdAt: '2026-09-07T00:00:00Z',
+    updatedAt: '2026-09-07T00:00:00Z',
+  });
+  await expect(page.getByLabel('Product Name')).toHaveValue('Saved rice', { timeout: 20000 });
+  for (const [label, value] of [
+    ['Category', 'Grains'],
+    ['Brand', 'Saved brand'],
+    ['Quantity', '1'],
+    ['Unit', 'g'],
+    ['Storage Location', 'pantry'],
+    ['Location Details', 'Shelf 2'],
+    ['Where to Buy', 'Local shop'],
+    ['Online Store Link', 'https://example.com/rice'],
+  ])
+    await expect(
+      page.getByRole(label === 'Unit' || label === 'Storage Location' ? 'combobox' : 'textbox', {
+        name: label,
+        exact: true,
+      }),
+    ).toHaveValue(value);
+  await expect(page.getByRole('img', { name: 'Product photo' })).toBeVisible();
+  await expect(page.getByLabel('Expiration Date')).toHaveValue('2028-02-03');
+  await expect(page.getByLabel('Expiration Date')).toBeFocused();
+  await page.getByLabel('Expiration Date').fill('2029-01-01');
+  await expect(page.getByLabel('Expiration Date')).toHaveValue('2029-01-01');
 });

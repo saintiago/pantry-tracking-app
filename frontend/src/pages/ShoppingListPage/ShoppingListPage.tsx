@@ -38,17 +38,13 @@ import ShoppingRows, {
 import type { ShoppingEditRequest } from './ShoppingEditPage';
 import type { PurchaseRequest } from '../PurchasePage/PurchasePage';
 import { storeLabel } from './storeLabel';
-const input: React.CSSProperties = { ...button, width: '100%', boxSizing: 'border-box' };
+import { input, filterStyle, weekNavigation } from './styles';
 const dateLabel = (date: string) =>
   new Date(`${date}T12:00:00`).toLocaleDateString(getLanguage(), {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
   });
-const filterStyle = (selected: boolean): React.CSSProperties => ({
-  ...button,
-  background: selected ? 'var(--color-mint)' : 'var(--color-surface)',
-});
 interface ShoppingView {
   start: string;
   weeks: number;
@@ -303,7 +299,7 @@ export default function ShoppingListPage({
       <div style={{ ...wrap, justifyContent: 'space-between', marginBottom: 18 }}>
         <div>
           <h2>{t('Shopping List')}</h2>
-          <p style={muted}>{t('Plan it once. Shop with a clear list.')}</p>
+          <p style={muted}>{t('From meal plan to shopping basket.')}</p>
         </div>
         <button style={button} disabled={loading} onClick={reload}>
           {t('Refresh')}{' '}
@@ -332,35 +328,7 @@ export default function ShoppingListPage({
         aria-label={t('Shopping filters')}
         style={{ ...panel, background: 'var(--color-canvas)' }}
       >
-        <div style={wrap}>
-          <button
-            aria-label={t('Previous week')}
-            style={{ ...button, padding: 0, width: 44, flexShrink: 0 }}
-            onClick={() => period(addDays(start, -7))}
-          >
-            ←
-          </button>
-          <label style={{ flex: 1, minWidth: 0, maxWidth: 200 }}>
-            {t('Week of')}{' '}
-            <input
-              style={{ ...input, width: '100%', display: 'block' }}
-              aria-label={t('Week of')}
-              type="date"
-              value={start}
-              onChange={(e) => {
-                if (e.target.value) period(getWeekStart(new Date(`${e.target.value}T12:00:00Z`)));
-              }}
-            />
-          </label>
-          <button
-            aria-label={t('Next week')}
-            style={{ ...button, padding: 0, width: 44, flexShrink: 0 }}
-            onClick={() => period(addDays(start, 7))}
-          >
-            →
-          </button>
-        </div>
-        <div style={{ ...wrap, marginTop: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
           <button
             style={filterStyle(start === currentWeek && weeks === 1)}
             aria-pressed={start === currentWeek && weeks === 1}
@@ -395,6 +363,34 @@ export default function ShoppingListPage({
               ? t(' · {0} days, {1} recipes', days.length || t('all'), recipes.length || t('all'))
               : ''}
           </summary>
+          <div style={weekNavigation}>
+            <button
+              aria-label={t('Previous week')}
+              style={{ ...button, padding: 0, width: 44, flexShrink: 0 }}
+              onClick={() => period(addDays(start, -7))}
+            >
+              ←
+            </button>
+            <label style={{ minWidth: 0 }}>
+              {t('Week of')}{' '}
+              <input
+                style={{ ...input, minWidth: 0, width: '100%', display: 'block' }}
+                aria-label={t('Week of')}
+                type="date"
+                value={start}
+                onChange={(e) => {
+                  if (e.target.value) period(getWeekStart(new Date(`${e.target.value}T12:00:00Z`)));
+                }}
+              />
+            </label>
+            <button
+              aria-label={t('Next week')}
+              style={{ ...button, padding: 0, width: 44, flexShrink: 0 }}
+              onClick={() => period(addDays(start, 7))}
+            >
+              →
+            </button>
+          </div>
           <label style={{ ...wrap, minHeight: 44 }}>
             <input
               type="checkbox"
