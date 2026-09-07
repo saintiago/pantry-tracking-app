@@ -1,3 +1,4 @@
+import RecipeDragPreview from './RecipeDragPreview';
 import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import RecipeLibrary from './RecipeLibrary';
@@ -450,27 +451,7 @@ const MealPlanPage: React.FC<Props> = ({
         style={{ ...styles.page, display: detail || moving ? 'none' : 'flex' }}
         ref={recipeDrag.rootRef}
       >
-        {recipeDrag.drag && (
-          <div
-            data-testid="recipe-drag-preview"
-            aria-hidden="true"
-            style={{
-              position: 'fixed',
-              left: recipeDrag.drag.x + 12,
-              top: recipeDrag.drag.y + 12,
-              zIndex: 2000,
-              pointerEvents: 'none',
-              padding: '8px 12px',
-              borderRadius: 8,
-              backgroundColor: 'var(--color-lavender)',
-              border: '1px solid var(--color-muted)',
-              maxWidth: 220,
-              boxShadow: '0 3px 12px #0002',
-            }}
-          >
-            {recipeDrag.drag.name}
-          </div>
-        )}
+        {recipeDrag.drag && <RecipeDragPreview drag={recipeDrag.drag} />}
         <h1 style={styles.heading}>{t('Meal Planner')}</h1>
         {onShopping && (
           <button

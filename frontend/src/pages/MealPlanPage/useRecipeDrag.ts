@@ -1,12 +1,17 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import type { Assignment } from './weekUtils';
 
-interface Drag {
+export interface Drag {
   recipeId: string;
   name: string;
   x: number;
   y: number;
   target: string;
+  offsetX: number;
+  offsetY: number;
+  width: number;
+  height: number;
+  selected: boolean;
 }
 
 interface Gesture extends Drag {
@@ -105,6 +110,9 @@ export function useRecipeDrag(
       if (!event.isPrimary || event.button !== 0 || event.currentTarget.disabled) return;
       suppressClickRef.current = false;
       // The dedicated handle owns touch dragging; recipe names retain native scrolling.
+      const row = event.currentTarget.closest<HTMLElement>('[data-recipe-row]');
+      if (!row) return;
+      const bounds = row.getBoundingClientRect();
       gestureRef.current = {
         recipeId,
         name,
@@ -114,6 +122,11 @@ export function useRecipeDrag(
         originY: event.clientY,
         pointerId: event.pointerId,
         target: '',
+        offsetX: event.clientX - bounds.left,
+        offsetY: event.clientY - bounds.top,
+        width: bounds.width,
+        height: bounds.height,
+        selected: event.currentTarget.getAttribute('aria-pressed') === 'true',
         dragging: false,
         element: event.currentTarget,
       };

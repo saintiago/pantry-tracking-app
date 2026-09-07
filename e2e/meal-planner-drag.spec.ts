@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 
-async function setup(page: Page) {
+async function setup(page: Page, firstName = 'Recipe 00') {
   const writes: unknown[] = [];
   await page.route('https://mock-api.test/**', (route) => {
     const request = route.request();
@@ -10,7 +10,7 @@ async function setup(page: Page) {
         json: {
           recipes: Array.from({ length: 24 }, (_, index) => ({
             recipeId: `recipe-${index}`,
-            name: `Recipe ${String(index).padStart(2, '0')}`,
+            name: index === 0 ? firstName : `Recipe ${String(index).padStart(2, '0')}`,
             tags: ['Dinner'],
             portions: 2,
           })),
@@ -96,7 +96,7 @@ test('drag works when Chrome native dragging is cancelled and highlights the act
   await page.mouse.move(from.x + 15, from.y + 15);
   await page.mouse.down();
   await page.mouse.move(to.x + 15, to.y + 15);
-  await expect(page.getByTestId('recipe-drag-preview')).toHaveText('Recipe 00');
+  await expect(page.getByTestId('recipe-drag-preview')).toContainText('Recipe 00');
   await expect(target).toHaveAttribute('data-drag-over', 'true');
   await page.screenshot({ path: 'test-results/planner-active-drag.png' });
   await page.mouse.up();
@@ -279,7 +279,7 @@ test.describe('touch placement', () => {
           ],
         });
       }
-      await expect(page.getByTestId('recipe-drag-preview')).toHaveText('Recipe 00');
+      await expect(page.getByTestId('recipe-drag-preview')).toContainText('Recipe 00');
       await expect(target).toHaveAttribute('data-drag-over', 'true');
       await session.send('Input.dispatchTouchEvent', {
         type: cancel ? 'touchCancel' : 'touchEnd',
@@ -307,3 +307,49 @@ test.describe('touch placement', () => {
     });
   }
 });
+
+for (const width of [320, 390]) {
+  test.describe(`anchored touch preview at ${width}px`, () => {
+    test.use({ hasTouch: true, isMobile: true, viewport: { width, height: 844 } });
+    test('copies the full row at its original grab offset without a right-edge jump', async ({
+      page,
+      context,
+    }) => {
+      const name = 'A recipe with potatoes, cabbage and roasted vegetables';
+      const writes = await setup(page, name);
+      const source = page.getByRole('button', { name: `Place ${name}`, exact: true });
+      await source.scrollIntoViewIfNeeded();
+      await source.evaluate((element) => element.scrollIntoView({ block: 'center' }));
+      const row = source.locator('..');
+      const before = (await row.boundingBox())!;
+      const handle = (await source.boundingBox())!;
+      const point = { x: handle.x + handle.width / 2, y: handle.y + handle.height / 2 };
+      const session = await context.newCDPSession(page);
+      await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] });
+      await session.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: [{ x: point.x - 8, y: point.y + 12 }],
+      });
+      const preview = page.getByTestId('recipe-drag-preview');
+      await expect(preview).toContainText(name);
+      const copy = (await preview.boundingBox())!;
+      expect(copy.width).toBeCloseTo(before.width, 1);
+      expect(copy.height).toBeCloseTo(before.height, 1);
+      expect(copy.x).toBeCloseTo(before.x - 8, 1);
+      expect(copy.y).toBeCloseTo(before.y + 12, 1);
+      expect(copy.x).toBeGreaterThanOrEqual(0);
+      expect(copy.x + copy.width).toBeLessThanOrEqual(width);
+      const copyHandle = (await preview.locator('button').last().boundingBox())!;
+      expect(copyHandle.x + copyHandle.width / 2).toBeCloseTo(point.x - 8, 1);
+      expect(copyHandle.y + copyHandle.height / 2).toBeCloseTo(point.y + 12, 1);
+      const copyName = (await preview.locator('button').first().boundingBox())!;
+      expect(copyName.x + copyName.width).toBeLessThan(point.x - 8);
+      await expect(preview).toHaveCSS('pointer-events', 'none');
+      await page.screenshot({ path: `test-results/anchored-touch-preview-${width}.png` });
+      await session.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
+      await expect(preview).toHaveCount(0);
+      expect(writes).toHaveLength(0);
+      await session.detach();
+    });
+  });
+}

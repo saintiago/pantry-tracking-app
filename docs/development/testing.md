@@ -126,6 +126,8 @@ No `.env.test` file needed. All config is in `playwright.config.ts`.
   HTML dragging, destination feedback, exact recipe identity after library scrolling,
   cancellation, and edge scrolling. Real browser touch input checks handle dragging,
   cancellation, tap placement and native scrolling from recipe names on mobile.
+  At 320/390px, long-name preview checks assert original row dimensions, the exact
+  handle grab offset, viewport fit at drag start, and non-interference with drop targets.
   Verify one saved meal, not only that a POST occurred.
   To check installed Windows Chrome, run
   `PLAYWRIGHT_CHANNEL=chrome npx playwright test e2e/meal-planner-drag.spec.ts`

@@ -20,6 +20,8 @@ the remaining first-release requirements.
   Multiple categories match any selected tag, with no duplicated recipes. Selected
   categories use mint. Untagged recipes can be filtered as Uncategorized.
 - Use a separate drag/placement handle supporting mouse, pen and touch dragging.
+  The drag preview copies the full original row at its measured size and retains
+  the pointer's original grab offset, keeping its name to the left of the touch handle.
   Swiping recipe names scrolls the library. Touch/keyboard can select the handle then
   activate a dated meal. Provide Move to and Remove in a meal overflow menu.
   Keep one add action per meal slot, with the clicked meal preselected.

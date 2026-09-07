@@ -1,3 +1,4 @@
+import { rowStyle, nameStyle, chip } from './recipeLibraryStyles';
 import React from 'react';
 import { t, useLanguage } from '../../i18n/i18n';
 import type { PlannableRecipe } from '../../api/meal-plans/meal-plans';
@@ -80,30 +81,11 @@ export default function RecipeLibrary({
       <p>{t('Open a recipe by name. Drag its handle, or select the handle and tap a meal.')}</p>
       {visible.length === 0 && recipes.length > 0 && <p>{t('No matching recipes')}</p>}
       {visible.map((recipe) => (
-        <div
-          key={recipe.recipeId}
-          style={{
-            display: 'flex',
-            marginBottom: 6,
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
-            borderRadius: 8,
-          }}
-        >
+        <div key={recipe.recipeId} data-recipe-row style={rowStyle}>
           <button
             data-recipe-open={recipe.recipeId}
             onClick={() => onOpen(recipe.recipeId)}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              textAlign: 'left',
-              padding: 10,
-              border: 0,
-              background: 'transparent',
-              color: 'var(--color-text)',
-              overflowWrap: 'anywhere',
-              cursor: 'pointer',
-            }}
+            style={nameStyle}
           >
             {recipe.name}
           </button>
@@ -137,16 +119,4 @@ export default function RecipeLibrary({
       ))}
     </>
   );
-}
-
-function chip(selected: boolean): React.CSSProperties {
-  return {
-    minHeight: 36,
-    padding: '6px 10px',
-    border: '1px solid var(--color-border)',
-    borderRadius: 8,
-    color: 'var(--color-text)',
-    background: selected ? 'var(--color-mint)' : 'var(--color-surface)',
-    cursor: 'pointer',
-  };
 }
