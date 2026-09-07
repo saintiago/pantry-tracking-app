@@ -3,6 +3,8 @@ import { useAuth } from '../auth/AuthContext/AuthContext';
 import { getAccountLanguage, saveAccountLanguage } from '../auth/cognitoClient/cognitoClient';
 import {
   deviceKey,
+  cancelLanguageLoad,
+  DevicePreference,
   getLanguage,
   Language,
   readDevice,
@@ -37,31 +39,41 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   // Only an explicit choice made on this login screen can be carried into an account.
   const guestChoice = useRef<Language>();
 
+  async function apply(
+    preference: DevicePreference,
+    owner: string | undefined,
+    version: number,
+    persist = true,
+  ) {
+    const applied = await setLanguage(preference.language);
+    if (!applied || identity.current !== owner || revision.current !== version) return;
+    if (persist && !writeDevice(preference, owner)) {
+      setError('Language works for this session, but could not be saved on this device.');
+    }
+  }
+
   useEffect(() => {
-    const local = readDevice(userId);
-    if (local) setLanguage(local.language);
-    else setLanguage(systemLanguage());
-    if (isLoading) return;
     const version = ++revision.current;
+    cancelLanguageLoad();
+    if (isLoading) return;
+    const local = readDevice(userId);
     let cancelled = false;
     setError('');
     setAccountLanguage(undefined);
     setSaving(false);
     if (!userId) {
       setLoading(false);
-      if (!local && !writeDevice({ language: getLanguage(), source: 'system' })) {
-        setError('Language works for this session, but could not be saved on this device.');
-      }
-      return;
+      void apply(local ?? { language: systemLanguage(), source: 'system' }, undefined, version);
+      return () => {
+        revision.current++;
+        cancelLanguageLoad();
+      };
     }
     const explicitGuest = guestChoice.current;
     guestChoice.current = undefined;
-    if (!local && explicitGuest) {
-      setLanguage(explicitGuest);
-      if (!writeDevice({ language: explicitGuest, source: 'explicit' }, userId)) {
-        setError('Language works for this session, but could not be saved on this device.');
-      }
-    }
+    if (local) void apply(local, userId, version, false);
+    else if (explicitGuest)
+      void apply({ language: explicitGuest, source: 'explicit' }, userId, version);
     setLoading(true);
     getAccountLanguage()
       .then((value) => {
@@ -71,14 +83,15 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         // A slow account read must never overwrite a newer selection or another tab's choice.
         if (revision.current !== version || local || explicitGuest || readDevice(userId)) return;
         const next = account ?? systemLanguage();
-        setLanguage(next);
-        if (!writeDevice({ language: next, source: account ? 'account' : 'system' }, userId)) {
-          setError('Language works for this session, but could not be saved on this device.');
-        }
+        void apply({ language: next, source: account ? 'account' : 'system' }, userId, version);
       })
       .catch(() => {
-        if (!cancelled)
+        if (!cancelled) {
           setError('Could not load your account language. Your device language still works.');
+          if (revision.current === version && !local && !explicitGuest && !readDevice(userId)) {
+            void apply({ language: systemLanguage(), source: 'system' }, userId, version, false);
+          }
+        }
         // Do not persist a provisional system fallback after a network failure.
       })
       .finally(() => {
@@ -86,6 +99,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       });
     return () => {
       cancelled = true;
+      revision.current++;
+      cancelLanguageLoad();
     };
   }, [userId, isLoading]);
 
@@ -94,8 +109,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       if (event.key !== deviceKey(userId)) return;
       const saved = readDevice(userId);
       if (saved) {
-        revision.current++;
-        setLanguage(saved.language);
+        void apply(saved, userId, ++revision.current, false);
       }
     };
     window.addEventListener('storage', onStorage);
@@ -103,14 +117,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   }, [userId]);
 
   function choose(language: Language) {
-    revision.current++;
-    setLanguage(language);
     if (!userId) guestChoice.current = language;
-    setError(
-      writeDevice({ language, source: 'explicit' }, userId)
-        ? ''
-        : 'Language works for this session, but could not be saved on this device.',
-    );
+    setError('');
+    void apply({ language, source: 'explicit' }, userId, ++revision.current);
   }
   async function saveDefault() {
     if (!userId || saving) return;

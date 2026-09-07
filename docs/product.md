@@ -27,6 +27,9 @@ or detect a supported browser language and fall back to English. Device choices 
 per account. Saving an account default is explicit and leaves other devices unchanged.
 Translate app-owned UI and standard labels, including asynchronously loaded views; preserve
 user-written names, recipes, notes, tags, and custom categories. See `features/language/`.
+Only the selected language catalog downloads; English uses built-in source labels.
+Switching preserves unsaved work and keeps the current language if downloading fails,
+with a retry action. Previously cached languages work offline; new languages need a connection.
 
 ## Shopping companion and visual system (September 2026)
 

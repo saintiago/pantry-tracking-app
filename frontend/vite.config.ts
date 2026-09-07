@@ -42,16 +42,6 @@ export default defineConfig(({ command }) => {
     build: {
       outDir: 'build',
       commonjsOptions: { include: [/node_modules/, /packages[\\/]domain[\\/]dist/] },
-      rollupOptions: {
-        output: {
-          // Catalogs are cached separately from changing app code and loaded with the app
-          // so switching languages also works offline.
-          manualChunks(id) {
-            if (id.split(path.sep).join('/').endsWith('/src/i18n/messages.ts'))
-              return 'translations';
-          },
-        },
-      },
     },
     define: {
       global: 'globalThis',

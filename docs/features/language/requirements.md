@@ -7,7 +7,10 @@
   read the account locale, then the first supported browser language, then English.
 - When the account or browser supplies the initial language, persist it on this device.
   Later account changes do not override an existing device preference.
-- Selecting a language applies to this device immediately. “Use this language as account
+- Selecting a language loads only that language's catalog, then applies and saves it on
+  this device. Keep the current language and unsaved forms during loading or failure;
+  expose progress and a retry action. Never eagerly download all supported languages.
+  English uses source labels without a separate download. “Use this language as account
   default” explicitly saves the same selection to the account for future devices.
 - Browser preferences are scoped per account. An explicit choice on the current login
   screen can seed an account with no local preference; automatic detection cannot override
@@ -21,6 +24,8 @@
 - Storage/network failures must leave the app usable and explain which preference was
   not saved. A failed account read must not persist a provisional fallback over the account.
 - Late account responses must not overwrite a newer selection or another user's session.
+- Late catalog responses must not overwrite newer choices. Cache successful downloads;
+  previously cached languages work offline, while unvisited languages require a connection.
 
 ## Verification
 
@@ -29,3 +34,5 @@ switches, late responses, account-save retry, interpolation, units, dates, and c
 Browser tests cover separate devices sharing an account, persistence across reloads,
 system fallback, unfinished forms, delayed recipes, unchanged user content, cooking,
 shopping departments, account-save failure, blocked storage, and a 320px menu.
+Production-build browser tests verify actual catalog request counts, selected-language
+startup, cached offline reload and retry after an unavailable catalog download.

@@ -57,6 +57,10 @@ async function login(page: Page) {
 async function choose(page: Page, language: string) {
   await page.locator('header button[aria-controls="language-options"]').click();
   await page.getByRole('button', { name: new RegExp(language) }).click();
+  await expect(page.getByRole('button', { name: new RegExp(language) })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
   await page.locator('#language-options').press('Escape');
 }
 

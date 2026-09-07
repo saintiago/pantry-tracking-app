@@ -3,8 +3,33 @@
 `frontend/src/i18n/i18n.ts` owns the language store and translation/formatting helpers.
 Components subscribe with `useLanguage()` (React `useSyncExternalStore`) and translate at
 render time. This updates mounted and lazy-loaded screens without remounting them.
-English source messages are stable catalog keys in `messages.ts`; Spanish and Italian
-translations ship with the app for offline use. Interpolation never translates its values.
+English source messages are stable catalog keys and the built-in fallback; English needs
+no catalog download. Each other language owns one JSON file in `i18n/locales/`, including
+its singular forms and API error translations. `catalog-urls.ts` imports only hashed asset
+URLs with `?url&no-inline`; catalogs are never embedded in JavaScript or preloaded by HTML.
+`catalogs.ts` fetches only a resolved or explicitly selected language, shares concurrent
+requests, and retains successful downloads in memory. Failed/invalid downloads are not
+cached and can be retried, with a ten-second request deadline.
+
+The active language, dictionary, formatting and document language change together after
+loading succeeds. Until then the current UI and form state remain usable. The selector
+shows download progress and retry errors; failed choices do not overwrite device storage
+or allow saving an unintended account default. A newer selection/account change cancels
+the earlier activation, even if its download finishes later. Account preference resolution
+does not download a provisional system catalog while waiting for the account response.
+Interpolation never translates its values.
+
+The service worker caches requested hashed JSON assets alongside app assets. Previously
+cached languages can be loaded offline with the cached app version; an unvisited language
+requires connectivity. Merely opening the language menu downloads no catalogs. Cache
+eviction and app-version updates can require another download. This does not add offline
+cloud-data reads or writes.
+
+To add a language, add its JSON catalog and URL entry, native-name metadata in `i18n.ts`,
+and the appropriate selector flag. Preserve English keys/interpolation slots and supply
+singular overrides where needed. New languages add only a URL/name to the initial app;
+their dictionary bytes are fetched only when selected. Extend catalog completeness and
+language negotiation tests with the new language.
 
 `LanguageProvider` sits inside `AuthProvider`. It resolves preference precedence and
 guards asynchronous results against account changes, unmounts, and newer device choices.

@@ -43,7 +43,7 @@ test('activation removes only obsolete pantry caches', async () => {
   expect(caches.delete.mock.calls).toEqual([['pantry-app-old']]);
 });
 
-test.each(['index-Bx9_k-Q2.js', 'styles-XaBC12_3.css'])(
+test.each(['index-Bx9_k-Q2.js', 'styles-XaBC12_3.css', 'es-XaBC12_3.json'])(
   'serves Vite asset %s from cache',
   async (asset) => {
     const { listeners, caches, fetch } = worker();

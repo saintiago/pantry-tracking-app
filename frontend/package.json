@@ -1,6 +1,6 @@
 {
   "name": "frontend",
-  "version": "0.0.67",
+  "version": "0.0.68",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,7 +11,7 @@
     "test": "jest",
     "test:unit": "jest --testPathIgnorePatterns=\"\\.property\\.test\\.\"",
     "test:property": "jest --testPathPattern=property",
-    "verify:bundle": "node scripts/verify-bundle-split.mjs"
+    "verify:bundle": "node scripts/verify-bundle-split.mjs && node scripts/verify-language-bundles.mjs"
   },
   "dependencies": {
     "@ericblade/quagga2": "1.12.0",

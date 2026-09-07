@@ -6,6 +6,8 @@ import LanguageSwitcher from '../../components/LanguageSwitcher/LanguageSwitcher
 import { getLanguage, readDevice, setLanguage, writeDevice } from '../i18n';
 import { useAuth } from '../../auth/AuthContext/AuthContext';
 import { getAccountLanguage, saveAccountLanguage } from '../../auth/cognitoClient/cognitoClient';
+import es from '../locales/es.json';
+import it from '../locales/it.json';
 
 jest.mock('../../auth/AuthContext/AuthContext', () => ({ useAuth: jest.fn() }));
 jest.mock('../../auth/cognitoClient/cognitoClient', () => ({
@@ -23,6 +25,10 @@ function view() {
   );
 }
 beforeEach(() => {
+  global.fetch = jest.fn(async (url) => ({
+    ok: true,
+    json: async () => (String(url).includes('/es.') ? es : it),
+  })) as jest.Mock;
   localStorage.clear();
   setLanguage('en');
   auth.mockReturnValue({ user: { userId: 'alice' }, isLoading: false });
@@ -32,7 +38,9 @@ beforeEach(() => {
 afterEach(() => {
   jest.clearAllMocks();
   jest.restoreAllMocks();
-  act(() => setLanguage('en'));
+  act(() => {
+    void setLanguage('en');
+  });
 });
 
 test('seeds the device from the fresh account preference, then keeps the device override', async () => {
@@ -80,7 +88,7 @@ test('account save failure retains the device selection and offers retry', async
 test('automatic login-screen detection does not mask the account language', async () => {
   auth.mockReturnValue({ user: null, isLoading: false });
   const rendered = render(view());
-  expect(readDevice()?.source).toBe('system');
+  await waitFor(() => expect(readDevice()?.source).toBe('system'));
   getAccount.mockResolvedValue('it');
   auth.mockReturnValue({ user: { userId: 'alice' }, isLoading: false });
   rendered.rerender(view());
@@ -133,5 +141,5 @@ test('another tab updates the current device language', async () => {
     writeDevice({ language: 'es', source: 'explicit' }, 'alice');
     window.dispatchEvent(new StorageEvent('storage', { key: 'pantry-language-v1:alice' }));
   });
-  expect(getLanguage()).toBe('es');
+  await waitFor(() => expect(getLanguage()).toBe('es'));
 });

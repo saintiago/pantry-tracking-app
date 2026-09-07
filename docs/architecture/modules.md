@@ -73,5 +73,9 @@ Use inline `React.CSSProperties` (including feature-local style modules) with to
 from `frontend/src/styles/palette.css`; no CSS framework is required. Prefer existing
 accessible controls. Inventory theme tokens alias the shared palette.
 Translated components subscribe with `useLanguage()` and translate at render time.
+One JSON catalog per language is fetched on demand through `i18n/catalogs.ts`; only URL
+metadata belongs in the initial bundle. Do not import catalog contents into production
+TypeScript modules or restore an eager combined translation chunk. Language activation
+and device persistence wait for successful loading and ignore superseded requests.
 Preserve user names, tags, notes, canonical unit keys and IDs. `localizedUnits()` sorts
 display labels; request values and calculations must remain locale-independent.

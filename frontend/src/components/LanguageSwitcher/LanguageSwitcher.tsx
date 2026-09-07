@@ -1,10 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { languages, message as translateMessage, t, useLanguage } from '../../i18n/i18n';
+import {
+  languages,
+  message as translateMessage,
+  t,
+  useLanguage,
+  useLanguageRequest,
+} from '../../i18n/i18n';
 import { useLanguagePreferences } from '../../i18n/LanguageProvider';
 import Flag from './Flag';
 
 export default function LanguageSwitcher() {
   const language = useLanguage();
+  const request = useLanguageRequest();
   const preferences = useLanguagePreferences();
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
@@ -94,7 +101,9 @@ export default function LanguageSwitcher() {
               <button
                 type="button"
                 style={{ ...button, width: '100%' }}
-                disabled={preferences.saving || preferences.loading}
+                disabled={
+                  preferences.saving || preferences.loading || !!request.pending || !!request.failed
+                }
                 onClick={() => void preferences.saveDefault()}
               >
                 {t(preferences.saving ? 'Saving…' : 'Use this language as account default')}
@@ -108,6 +117,28 @@ export default function LanguageSwitcher() {
             <p role="alert" style={{ fontSize: 13, marginTop: 8 }}>
               {translateMessage(preferences.error)}
             </p>
+          )}
+          {request.pending && (
+            <p role="status">
+              {t('Loading {0}…', languages.find((entry) => entry.code === request.pending)?.name)}
+            </p>
+          )}
+          {request.failed && (
+            <div role="alert">
+              <p>
+                {t(
+                  'Could not load {0}. Check your connection and try again.',
+                  languages.find((entry) => entry.code === request.failed)?.name,
+                )}
+              </p>
+              <button
+                type="button"
+                style={button}
+                onClick={() => preferences.choose(request.failed!)}
+              >
+                {t('Retry language download')}
+              </button>
+            </div>
           )}
           <button
             type="button"

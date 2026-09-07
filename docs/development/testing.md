@@ -166,6 +166,19 @@ save failures, and mobile layout. The mock Cognito client optionally routes loca
 and writes through `/test-account-language` when `mock-language-api` is set in localStorage.
 This opt-in behavior is used only by the mock-auth Vite plugin, never production builds.
 
+`language-loading.spec.ts` verifies selected-only fetches, fresh device preferences and
+download-error retry without losing a form. It blocks service workers so intercepted
+failures reach the page instead of a worker's cache fallback. Await the selected
+button's `aria-pressed` state before testing persistence or reloading.
+
+`npm run test:e2e:production` serves the existing production build on port 4176
+(`PLAYWRIGHT_PRODUCTION_PORT` overrides it). It uses the real build without mock auth or
+signing in. `e2e-production/language-catalogs.spec.ts` checks actual emitted JSON requests,
+English/no-download startup, fresh Italian/only-Italian startup, cached offline reload,
+and unavailable-language retry. Outage routes use the context so they cover worker
+fetches too. This lane runs after the regular browser suite in the full gate; build first
+when invoking it directly. The bundle guard also rejects inlined or preloaded dictionaries.
+
 `shopping-list.spec.ts` covers mint week/day/recipe filters, department grouping,
 reserve math, shared basket state, manual edit/remove/undo, full purchase fields and
 partial completion, preferences/package rounding, store shopping, budget/link/export

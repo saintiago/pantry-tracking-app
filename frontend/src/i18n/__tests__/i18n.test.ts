@@ -11,12 +11,19 @@ import {
   t,
   writeDevice,
 } from '../i18n';
-import { messages } from '../messages';
+import es from '../locales/es.json';
+import it from '../locales/it.json';
 import { getUnitLabel, localizedUnits } from '../../types/units';
 import { parseFractionalQuantity } from '../../utils/quantity';
 
-afterEach(() => {
-  setLanguage('en');
+beforeAll(() => {
+  global.fetch = jest.fn(async (url) => ({
+    ok: true,
+    json: async () => (String(url).includes('/es.') ? es : it),
+  })) as jest.Mock;
+});
+afterEach(async () => {
+  await setLanguage('en');
   localStorage.clear();
   jest.restoreAllMocks();
 });
@@ -46,8 +53,8 @@ test('keeps preferences isolated per account and tolerates invalid or unavailabl
   expect(writeDevice({ language: 'es', source: 'explicit' })).toBe(false);
 });
 
-test('translates app messages while preserving interpolated user content and braces', () => {
-  setLanguage('es');
+test('translates app messages while preserving interpolated user content and braces', async () => {
+  await setLanguage('es');
   expect(t('Remove {0}', 'Recipes {1}')).toBe('Eliminar Recipes {1}');
   expect(
     message('Recipe unavailable: My Recipes (r1). Its ingredients could not be calculated.'),
@@ -55,13 +62,13 @@ test('translates app messages while preserving interpolated user content and bra
   expect(message('An unknown original error')).toBe('An unknown original error');
   expect(t(' after planned meals.')).toBe(' tras las comidas planificadas.');
   expect(document.documentElement.lang).toBe('es');
-  setLanguage('it');
+  await setLanguage('it');
   expect(getLanguage()).toBe('it');
   expect(message('Failed to load recipes')).toBe('Impossibile caricare le ricette');
 });
 
-test('formats quantities, dates and units in the selected language without changing unit keys', () => {
-  setLanguage('it');
+test('formats quantities, dates and units in the selected language without changing unit keys', async () => {
+  await setLanguage('it');
   expect(number(1.75)).toBe('1,75');
   expect(date('2028-02-03')).toBe('03/02/2028');
   expect(getUnitLabel('piece', 1)).toBe('pezzo');
@@ -71,9 +78,10 @@ test('formats quantities, dates and units in the selected language without chang
 });
 
 test('every catalog entry has both translations and preserves all interpolation slots', () => {
-  for (const [source, translations] of Object.entries(messages)) {
-    const slots = (text: string) => [...text.matchAll(/\{\d+\}/g)].map((m) => m[0]).sort();
-    for (const value of Object.values(translations)) {
+  expect(Object.keys(es.messages).sort()).toEqual(Object.keys(it.messages).sort());
+  for (const catalog of [es, it]) {
+    for (const [source, value] of Object.entries({ ...catalog.messages, ...catalog.singular })) {
+      const slots = (text: string) => [...text.matchAll(/\{\d+\}/g)].map((m) => m[0]).sort();
       expect(value.trim().length).toBeGreaterThan(0);
       expect(slots(value)).toEqual(slots(source));
     }

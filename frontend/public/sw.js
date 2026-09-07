@@ -44,9 +44,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first for hashed static assets (JS, CSS with content hashes)
+  // Cache-first for requested hashed assets, including on-demand language catalogs.
   // These are immutable — the filename changes when content changes
-  if (/^\/assets\/.+-[A-Za-z0-9_-]{8,}\.(js|css|woff2?|png|jpg|svg)$/.test(url.pathname)) {
+  if (/^\/assets\/.+-[A-Za-z0-9_-]{8,}\.(js|json|css|woff2?|png|jpg|svg)$/.test(url.pathname)) {
     event.respondWith(
       caches.match(event.request).then((cached) => {
         if (cached) return cached;

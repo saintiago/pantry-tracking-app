@@ -1,25 +1,69 @@
 import { useSyncExternalStore } from 'react';
-import { messages as baseMessages } from './messages';
-import { inventoryErrors } from './inventory-errors';
-
-const messages = { ...baseMessages, ...inventoryErrors };
-
-export type Language = 'en' | 'es' | 'it';
+import { cachedCatalog, loadCatalog, type Catalog, type Language } from './catalogs';
+export type { Language } from './catalogs';
 export const languages: { code: Language; name: string }[] = [
   { code: 'en', name: 'English' },
   { code: 'es', name: 'Español' },
   { code: 'it', name: 'Italiano' },
 ];
 let language: Language = 'en';
+let catalog = cachedCatalog('en')!;
+let requestVersion = 0;
+interface LanguageRequest {
+  pending?: Language;
+  failed?: Language;
+}
+let request: LanguageRequest = {};
 const listeners = new Set<() => void>();
 export const getLanguage = () => language;
-export function setLanguage(next: Language): void {
+const notify = () => listeners.forEach((listener) => listener());
+export function cancelLanguageLoad(): void {
+  requestVersion++;
+  request = {};
+  notify();
+}
+export function useLanguageRequest(): LanguageRequest {
+  return useSyncExternalStore(
+    subscribe,
+    () => request,
+    () => request,
+  );
+}
+function activate(next: Language, nextCatalog: Catalog) {
   language = next;
+  catalog = nextCatalog;
+  templates = makeTemplates(catalog.messages);
+  request = {};
   if (typeof document !== 'undefined') {
     document.documentElement.lang = next;
     document.title = t('Pantry Tracking App');
   }
-  listeners.forEach((listener) => listener());
+  notify();
+}
+/** Commit language and catalog together; a late download cannot overwrite a newer choice. */
+export function setLanguage(next: Language): Promise<boolean> {
+  const version = ++requestVersion;
+  const cached = cachedCatalog(next);
+  if (cached) {
+    activate(next, cached);
+    return Promise.resolve(true);
+  }
+  request = { pending: next };
+  notify();
+  return loadCatalog(next).then(
+    (downloaded) => {
+      if (version !== requestVersion) return false;
+      activate(next, downloaded);
+      return true;
+    },
+    () => {
+      if (version === requestVersion) {
+        request = { failed: next };
+        notify();
+      }
+      return false;
+    },
+  );
 }
 function subscribe(listener: () => void) {
   listeners.add(listener);
@@ -34,7 +78,7 @@ export function useLanguage(): Language {
 export function supportedLanguage(value: unknown): Language | undefined {
   if (typeof value !== 'string') return undefined;
   const base = value.toLowerCase().split(/[-_]/)[0];
-  return base === 'en' || base === 'es' || base === 'it' ? base : undefined;
+  return languages.find((entry) => entry.code === base)?.code;
 }
 export function systemLanguage(preferences: readonly string[] = navigator.languages): Language {
   for (const preference of preferences) {
@@ -45,23 +89,15 @@ export function systemLanguage(preferences: readonly string[] = navigator.langua
 }
 
 /** Only app-owned messages belong here. Never pass user names, tags or recipe text. */
-const singularMessages: Record<string, { es: string; it: string }> = {
-  '{0} ingredient(s) missing or partial': {
-    es: '{0} ingrediente faltante o insuficiente',
-    it: '{0} ingrediente mancante o insufficiente',
-  },
-  '{0} ingredient(s) missing': { es: '{0} ingrediente faltante', it: '{0} ingrediente mancante' },
-  '{0} items': { es: '{0} producto', it: '{0} prodotto' },
-};
 export function t(source: string, ...values: (string | number | undefined | null)[]): string {
-  const singular = Number(values[0]) === 1 ? singularMessages[source] : undefined;
+  const singular = Number(values[0]) === 1 ? catalog.singular[source] : undefined;
   const translated =
     language === 'en'
       ? source
-      : (singular?.[language] ??
-        messages[source]?.[language] ??
-        (messages[source.trim()]
-          ? source.replace(source.trim(), messages[source.trim()][language])
+      : (singular ??
+        catalog.messages[source] ??
+        (catalog.messages[source.trim()]
+          ? source.replace(source.trim(), catalog.messages[source.trim()])
           : source));
   return translated.replace(/\{(\d+)\}/g, (match, index: string) =>
     Number(index) < values.length ? String(values[Number(index)] ?? '') : match,
@@ -70,22 +106,25 @@ export function t(source: string, ...values: (string | number | undefined | null
 
 // Legacy/API messages are kept in English in state and translated on render, including
 // after a language switch. Only known app templates are matched; captures are preserved.
-const templates = Object.keys(messages)
-  .filter((key) => /\{\d+\}/.test(key))
-  .map((key) => {
-    const indices: number[] = [];
-    const parts = key.split(/(\{\d+\})/).map((part) => {
-      if (/^\{\d+\}$/.test(part)) {
-        indices.push(Number(part.slice(1, -1)));
-        return '(.*?)';
-      }
-      return part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function makeTemplates(messages: Record<string, string>) {
+  return Object.keys(messages)
+    .filter((key) => /\{\d+\}/.test(key))
+    .map((key) => {
+      const indices: number[] = [];
+      const parts = key.split(/(\{\d+\})/).map((part) => {
+        if (/^\{\d+\}$/.test(part)) {
+          indices.push(Number(part.slice(1, -1)));
+          return '(.*?)';
+        }
+        return part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      });
+      return { key, indices, pattern: new RegExp(`^${parts.join('')}$`, 's') };
     });
-    return { key, indices, pattern: new RegExp(`^${parts.join('')}$`, 's') };
-  });
+}
+let templates = makeTemplates(catalog.messages);
 export function message(source: string | undefined | null): string {
   if (!source) return '';
-  if (language === 'en' || messages[source]) return t(source);
+  if (language === 'en' || catalog.messages[source]) return t(source);
   for (const { key, indices, pattern } of templates) {
     const match = pattern.exec(source);
     if (!match) continue;
@@ -116,7 +155,7 @@ export function readDevice(userId?: string): DevicePreference | undefined {
   try {
     const data = JSON.parse(localStorage.getItem(deviceKey(userId)) ?? 'null');
     if (!data || !['explicit', 'account', 'system'].includes(data.source)) return undefined;
-    if (!['en', 'es', 'it'].includes(data.language)) return undefined;
+    if (!languages.some((entry) => entry.code === data.language)) return undefined;
     return data as DevicePreference;
   } catch {
     return undefined;

@@ -16,6 +16,7 @@
     "test:unit": "npm run test:unit --workspaces --if-present",
     "test:property": "npm run test:property --workspaces --if-present",
     "test:e2e": "playwright test",
+    "test:e2e:production": "playwright test --config playwright.production.config.ts",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "audit:inventory": "npm run build:domain && npm run build --workspace backend && node scripts/audit-inventory.mjs",
@@ -31,7 +32,7 @@
     "check:architecture": "node scripts/check-architecture.mjs",
     "check:docs": "node scripts/check-docs.mjs",
     "verify:static": "npm run type-check && npm run lint && npm run check:architecture && npm run check:docs",
-    "verify": "npm run verify:static && npm test && npm run build --workspace frontend && npm run verify:bundle --workspace frontend && npm run test:e2e"
+    "verify": "npm run verify:static && npm test && npm run build --workspace frontend && npm run verify:bundle --workspace frontend && npm run test:e2e && npm run test:e2e:production"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
