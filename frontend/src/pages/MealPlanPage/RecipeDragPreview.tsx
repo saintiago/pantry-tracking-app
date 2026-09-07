@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Drag } from './useRecipeDrag';
-import { rowStyle, nameStyle, chip } from './recipeLibraryStyles';
+import { rowStyle, nameStyle } from './recipeLibraryStyles';
 
 /** Keep the original grab point under the pointer, including when dragging by touch. */
 export default function RecipeDragPreview({ drag }: { drag: Drag }) {
@@ -11,10 +11,10 @@ export default function RecipeDragPreview({ drag }: { drag: Drag }) {
       style={{
         ...rowStyle,
         position: 'fixed',
-        left: drag.x - drag.offsetX,
+        left: Math.max(0, Math.min(window.innerWidth - drag.width, drag.x - drag.offsetX)),
         top: drag.y - drag.offsetY,
         width: drag.width,
-        height: drag.height,
+        minHeight: drag.height,
         boxSizing: 'border-box',
         margin: 0,
         zIndex: 2000,
@@ -24,9 +24,6 @@ export default function RecipeDragPreview({ drag }: { drag: Drag }) {
     >
       <button type="button" tabIndex={-1} style={nameStyle}>
         {drag.name}
-      </button>
-      <button type="button" tabIndex={-1} style={{ ...chip(drag.selected), minWidth: 44 }}>
-        ⠿
       </button>
     </div>
   );

@@ -111,27 +111,21 @@ No `.env.test` file needed. All config is in `playwright.config.ts`.
 
 ## Issue #4–#6 regression coverage
 
-- `meal-planner-navigation.spec.ts` covers the shared detail/cooking return flow,
-  planned servings save/retry, category unions, calendar views, move/remove actions,
-  mobile meal palette and contextual shopping. Titles open details; use the separate
-  `Place <recipe>` handle for pointer, keyboard and touch placement. Open the meal
-  action summary before removing an assignment.
+- `meal-planner-navigation.spec.ts` covers shared detail/cooking return, serving edits,
+  category union, retained view/search/focus, keyboard placement, move/removal and
+  uncertain-save reconciliation. `meal-planner.spec.ts` covers calendar navigation,
+  flexible entries, reload persistence, X hit targets and idempotent retry.
 
 - `recipe-issue4-edge-cases.spec.ts` adds stateful edit/save coverage for sections,
   handful validation, deferred portion scaling, notes removal, and instruction
   renumbering. It checks compact ingredient layout at desktop and mobile widths.
-- `meal-planner-improvements.spec.ts` checks categorized recipes, real drag/drop,
-  keyboard and mobile selection, two-week navigation, bulk servings and retries.
-- `meal-planner-drag.spec.ts` checks mouse press/move/release independently of native
-  HTML dragging, destination feedback, exact recipe identity after library scrolling,
-  cancellation, and edge scrolling. Real browser touch input checks handle dragging,
-  cancellation, tap placement and native scrolling from recipe names on mobile.
-  At 320/390px, long-name preview checks assert original row dimensions, the exact
-  handle grab offset, viewport fit at drag start, and non-interference with drop targets.
-  Verify one saved meal, not only that a POST occurred.
-  To check installed Windows Chrome, run
-  `PLAYWRIGHT_CHANNEL=chrome npx playwright test e2e/meal-planner-drag.spec.ts`
-  in Bash. Omitting the variable keeps the bundled Chromium default.
+- `meal-planner-improvements.spec.ts` covers batch yield, linked leftovers, prepared
+  consumption, dependent removal/Undo, copy previews, favorite persistence, nutrition
+  subtotals and grocery ranking errors. `meal-planner-drag.spec.ts` uses real pointer
+  and browser touch input for scheduling/moving/removing, occupied targets, cancellation,
+  long libraries, scroll, touch hold and 320/390px previews. Card surfaces replace the
+  superseded handle and overflow menu assertions. The shared stateful API fixture
+  validates the actual planner invariants; backend tests prove transaction behavior.
 - `inventory-improvements.spec.ts` checks photo/expiration/shelf copying, persisted
   grouping, threshold units and errors, and Location Details editing/clearing.
 - `barcode-scanning.spec.ts` substitutes camera hardware with a canvas video stream
@@ -205,3 +199,14 @@ reopening dates, category colors, location summaries, low-stock and removal colo
 confirmation cancel/accept, keyboard removal, failure retry and 320px layout.
 Handler tests exercise null/date transitions and icon persistence through transactions;
 shopping tests verify non-expiring stock allocation and reserve calculations.
+
+## Expanded planner contracts
+
+Meal-plan handler tests retain legacy CRUD and generated validation/persistence checks.
+`planner-v2.test.ts` uses a stateful database double with conditional transactions and
+pagination to cover ownership, conflicting allocations, ambiguous commit receipts,
+cancellation fences, prepared nutrition, actual-yield shortages and consumption history
+through removal/restoration. Pure frontend tests cover recipe/daily calorie arithmetic,
+unknown values, batch shopping, cross-week dependencies, copy identity and pantry scoring.
+These doubles do not prove AWS transaction/IAM integration; verify released UI operations
+against the real authenticated API. Prepared-batch confirmation never deducts raw stock.

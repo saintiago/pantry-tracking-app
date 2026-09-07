@@ -1,5 +1,8 @@
 # Planner recipe navigation — September 2026
 
+The [expanded planner](expanded-planner.md) supersedes this record's handle/overflow
+controls and deferred roadmap. The shared recipe/cooking navigation still applies.
+
 This extension supersedes the repeated tag sections and title-as-placement behavior
 in the original spec and issue #5. Source: the shared chat "Define shopping list
 behavior", approved with the final request to use pasta for lunch and implement

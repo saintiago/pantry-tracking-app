@@ -1,8 +1,9 @@
 import { rowStyle, nameStyle, chip } from './recipeLibraryStyles';
-import React from 'react';
+import React, { useState } from 'react';
+import GroceryRanking, { type GroceryScore } from './GroceryRanking';
+import type { CookingBatch, PlannerEntry } from '@pantry/domain';
 import { t, useLanguage } from '../../i18n/i18n';
 import type { PlannableRecipe } from '../../api/meal-plans/meal-plans';
-import type { useRecipeDrag } from './useRecipeDrag';
 
 export default function RecipeLibrary({
   recipes,
@@ -14,7 +15,8 @@ export default function RecipeLibrary({
   onSelect,
   onOpen,
   saving,
-  drag,
+  plans = [],
+  batches = [],
 }: {
   recipes: PlannableRecipe[];
   search: string;
@@ -25,9 +27,12 @@ export default function RecipeLibrary({
   onSelect: (id: string) => void;
   onOpen: (id: string) => void;
   saving: boolean;
-  drag: ReturnType<typeof useRecipeDrag>;
+  plans?: PlannerEntry[];
+  batches?: CookingBatch[];
 }) {
   useLanguage();
+  const [sort, setSort] = useState('alphabetical');
+  const [scores, setScores] = useState<Record<string, GroceryScore>>({});
   const tags = Array.from(
     new Set(recipes.flatMap((r) => (r.tags?.length ? r.tags : ['Uncategorized']))),
   ).sort();
@@ -38,9 +43,27 @@ export default function RecipeLibrary({
         (!categories.length ||
           (r.tags?.length ? r.tags : ['Uncategorized']).some((tag) => categories.includes(tag))),
     )
-    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    .sort((a, b) => {
+      if (sort === 'groceries') {
+        const score = (id: string) =>
+          !scores[id] || scores[id].uncertain ? Infinity : scores[id].missing;
+        const difference = score(a.recipeId) - score(b.recipeId);
+        if (difference && !Number.isNaN(difference)) return difference;
+      }
+      return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    });
   return (
     <>
+      <label>
+        {t('Sort recipes')}
+        <select value={sort} onChange={(e) => setSort(e.target.value)}>
+          <option value="alphabetical">{t('Alphabetical')}</option>
+          <option value="groceries">{t('Fewest additional groceries')}</option>
+        </select>
+      </label>
+      {sort === 'groceries' && (
+        <GroceryRanking recipes={recipes} plans={plans} batches={batches} onScores={setScores} />
+      )}
       <label>
         {t('Search recipes')}
         <input
@@ -78,17 +101,49 @@ export default function RecipeLibrary({
           </button>
         ))}
       </div>
-      <p>{t('Open a recipe by name. Drag its handle, or select the handle and tap a meal.')}</p>
+      <p>
+        {t('Click a recipe to open it. Drag a card to plan it; on touch, hold before dragging.')}
+      </p>
       {visible.length === 0 && recipes.length > 0 && <p>{t('No matching recipes')}</p>}
+      {recipes.length === 0 && <p>{t('No recipes yet. Add recipes in the Recipes tab.')}</p>}
       {visible.map((recipe) => (
-        <div key={recipe.recipeId} data-recipe-row style={rowStyle}>
+        <div
+          key={recipe.recipeId}
+          data-recipe-row
+          data-drag-id={recipe.recipeId}
+          data-drag-name={recipe.name}
+          aria-disabled={saving}
+          style={{ ...rowStyle, flexDirection: 'column' }}
+        >
           <button
             data-recipe-open={recipe.recipeId}
+            data-drag-id={recipe.recipeId}
+            data-drag-name={recipe.name}
+            disabled={saving}
             onClick={() => onOpen(recipe.recipeId)}
             style={nameStyle}
           >
             {recipe.name}
           </button>
+          {sort === 'groceries' && (
+            <details data-no-drag style={{ padding: '0 10px 8px' }}>
+              <summary>
+                {!scores[recipe.recipeId] || scores[recipe.recipeId].uncertain
+                  ? t('Needs checking')
+                  : scores[recipe.recipeId].missing === 0
+                    ? t('Uses what you have')
+                    : t('{0} ingredients to buy', scores[recipe.recipeId].missing)}
+              </summary>
+              <small>
+                {t('For {0} portions', scores[recipe.recipeId]?.portions ?? recipe.portions ?? 1)}
+              </small>
+              <ul>
+                {scores[recipe.recipeId]?.details.map((detail) => (
+                  <li key={detail}>{detail}</li>
+                ))}
+              </ul>
+            </details>
+          )}
           <button
             type="button"
             aria-label={t('Place {0}', recipe.name)}
@@ -96,15 +151,8 @@ export default function RecipeLibrary({
             disabled={saving}
             draggable={false}
             onDragStart={(e) => e.preventDefault()}
-            onPointerDown={(e) => drag.start(e, recipe.recipeId, recipe.name)}
-            onPointerMove={drag.move}
-            onPointerUp={drag.end}
-            onPointerCancel={drag.cancel}
-            onLostPointerCapture={drag.cancel}
-            onClick={(e) => {
-              if (e.detail > 0 && drag.consumeDragClick()) return;
-              onSelect(selected === recipe.recipeId ? '' : recipe.recipeId);
-            }}
+            data-no-drag
+            onClick={() => onSelect(selected === recipe.recipeId ? '' : recipe.recipeId)}
             style={{
               ...chip(selected === recipe.recipeId),
               minWidth: 44,
@@ -113,7 +161,7 @@ export default function RecipeLibrary({
               userSelect: 'none',
             }}
           >
-            ⠿
+            {t('Plan')}
           </button>
         </div>
       ))}

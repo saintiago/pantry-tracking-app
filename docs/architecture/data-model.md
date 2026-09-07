@@ -707,3 +707,54 @@ box fallback. Photos retain display precedence over the placeholder icon.
 Non-expiring lots count toward shopping availability and reserve stock, after dated
 lots are allocated. They never enter expiring-soon filters or warnings. Missing or
 empty legacy dates are still unknown, not implicitly non-expiring.
+
+## Planner contract version 2 (issue #13)
+
+Canonical runtime-neutral types are in `packages/domain/src/planner.ts`. Existing
+`MEAL#<date>#<mealType>#<planId>` keys/IDs remain unchanged. Missing `entryType` means
+`recipe`; legacy missing servings use recipe yield when displayed. New assignments
+store explicit portions, including compatible positive fractions. Missing kcal is unknown.
+
+- `PlannerEntry` extends meal assignments with `contractVersion: 2`, optional `entryType`
+  (`recipe`, `leftovers`, `eating-out`, `custom`, `leftovers-note`), `notes`,
+  `kcalPerPortion`, `batchId` and `consumed`. Non-recipe notes use an empty recipe ID and
+  store their title in `recipeName` for compatibility with calendar consumers.
+- Recipes gain optional `totalKcal` (finite, nonnegative; null removes it on PUT).
+  Recipe yield remains the single per-portion divisor. Ordinary assignments refresh
+  their displayed nutrition when recipes reload. Prepared batches freeze kcal/portion
+  from the authenticated recipe at confirmation, rather than trusting the client.
+- `CookingBatch` stores source assignment/recipe IDs and name, cooking date,
+  `plannedYield`, status `planned|prepared`, optional actual yield/preparation date/
+  storage/use-by/kcal per portion, total consumed/discarded, and a server-owned
+  `consumedAllocations` ledger. Allocations live on meal entries. Uneaten entries reserve
+  portions; eating records consumption once. Removing/restoring an eaten entry retains
+  the ledger, preventing double consumption. Prepared batches cannot be deleted or
+  changed back to planned. Cooking does not mutate raw inventory.
+- `FavoriteWeek` stores ID, name, entries with day offsets 0–6 and included planned
+  batches. Applying creates new entry/batch IDs and clears consumption/prepared status.
+  An omitted cooking source or unavailable recipe blocks the preview.
+
+`GET /meal-plans?view=workspace` returns the complete `PlannerSnapshot` (version,
+revision, mealPlans, batches, favorites). Date-range GET retains `mealPlans` and adds
+all batch metadata so shopping resolves dependencies outside the selected dates.
+
+`POST /meal-plans` also accepts `{ action: 'change', change: PlannerChange }`, containing
+an operation ID, expected revision, upsert arrays and removal ID arrays. All writes,
+including legacy CRUD/bulk routes, use a conditional transaction coordinated by the
+permanent `USER#<userId>/PLANNER_STATE` row. This row stores revision, version, batches
+and favorites (maximum serialized metadata 350 KB). Reads check the revision before
+and after all meal pages. Conflicts return 409, validation returns 400, and foreign
+assignment lookups through legacy routes return 404. Upserts are always scoped to the
+verified caller's partition, never a body user ID.
+
+`PLANNER_OP#<operationId>` is a durable receipt with a request fingerprint and committed
+revision. Identical retries read saved state; changed payloads cannot reuse a receipt.
+`{ action: 'reconcile', change }` returns saved state or atomically writes a cancellation
+receipt plus a revision fence. This prevents a delayed request from committing after
+the user resumes editing. Undo is an inverse mutation against the saved revision; it
+cannot overwrite intervening edits. A response reflecting a later revision offers no Undo.
+
+Operations accept at most 90 records per array and 98 changed meal rows (a date move
+uses two), reserving transaction slots for revision and receipt. Oversized changes fail
+before persistence. Legacy bulk servings now completes atomically and excludes batch-linked
+entries; those need individual allocation review. There is no offline mutation queue.

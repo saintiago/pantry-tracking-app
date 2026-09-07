@@ -14,7 +14,7 @@ export async function fetchShoppingData(
   const [stock, recipes, plans] = await Promise.all([
     fetchInventory(signal),
     get<{ recipes: ShoppingData['recipes'] }>('/recipes'),
-    get<{ mealPlans: ShoppingData['plans'] }>(
+    get<{ mealPlans: ShoppingData['plans']; batches?: ShoppingData['batches'] }>(
       `/meal-plans?startDate=${encodeURIComponent(start)}&endDate=${encodeURIComponent(end)}`,
     ),
   ]);
@@ -23,5 +23,6 @@ export async function fetchShoppingData(
     groups: stock.groups ?? [],
     recipes: recipes.recipes,
     plans: plans.mealPlans,
+    batches: plans.batches,
   };
 }

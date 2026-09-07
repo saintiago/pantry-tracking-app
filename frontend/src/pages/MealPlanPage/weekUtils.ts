@@ -105,6 +105,8 @@ export function getMonthYearLabel(weekDates: string[]): string {
 }
 
 export interface Assignment {
+  entryType?: import('@pantry/domain').EntryType;
+  kcalPerPortion?: number;
   servings?: number;
   planId: string;
   date: string;

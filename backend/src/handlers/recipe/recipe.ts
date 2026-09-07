@@ -1,3 +1,5 @@
+import { recipeTags } from './recipe-queries';
+import { validKcal } from '@pantry/domain';
 import { readRecipePages } from './recipe-queries';
 import { autoCreateMissingIngredients } from './recipe-inventory';
 import { recipeImageRequest, validateRecipeImages } from './recipe-images';
@@ -48,6 +50,8 @@ async function createRecipe(userId: string, body: string | null): Promise<APIGat
   let parsed: Record<string, unknown>;
   try {
     parsed = parseObject(body);
+    if (parsed.totalKcal !== null && !validKcal(parsed.totalKcal))
+      return response(400, { message: 'Calories must be finite and non-negative' });
   } catch {
     return response(400, { error: 'VALIDATION_ERROR', message: 'Invalid JSON body' });
   }
@@ -145,6 +149,7 @@ async function createRecipe(userId: string, body: string | null): Promise<APIGat
     recipe.chefNotes = parsed.chefNotes;
   }
 
+  if (parsed.totalKcal != null) recipe.totalKcal = parsed.totalKcal;
   if (parsed.prepTime !== undefined) recipe.prepTime = parsed.prepTime as number;
   if (parsed.cookTime !== undefined) recipe.cookTime = parsed.cookTime as number;
 
@@ -210,6 +215,8 @@ async function updateRecipe(
   let parsed: Record<string, unknown>;
   try {
     parsed = parseObject(body);
+    if (parsed.totalKcal !== null && !validKcal(parsed.totalKcal))
+      return response(400, { message: 'Calories must be finite and non-negative' });
   } catch {
     return response(400, { error: 'VALIDATION_ERROR', message: 'Invalid JSON body' });
   }
@@ -285,6 +292,7 @@ async function updateRecipe(
     prepTime: 'prepTime',
     cookTime: 'cookTime',
     portions: 'portions',
+    totalKcal: 'totalKcal',
     chefNotes: 'chefNotes',
     imageId: 'imageId',
     instructionImageIds: 'instructionImageIds',
@@ -315,6 +323,7 @@ async function updateRecipe(
   if (parsed.instructions !== undefined && parsed.instructionImageIds === undefined)
     parsed.instructionImageIds = null;
   for (const field of [
+    'totalKcal',
     'prepTime',
     'cookTime',
     'chefNotes',
@@ -368,21 +377,7 @@ async function updateRecipe(
 async function listRecipeTags(userId: string): Promise<APIGatewayProxyResult> {
   const items = await readRecipePages(docClient, TABLE_NAME, userId, 'tags');
 
-  const allTags: string[] = [];
-  for (const item of items) {
-    if (Array.isArray(item.tags)) {
-      for (const tag of item.tags) {
-        if (typeof tag === 'string') {
-          allTags.push(tag.trim().toLowerCase());
-        }
-      }
-    }
-  }
-
-  // Deduplicate and sort
-  const uniqueTags = [...new Set(allTags)].sort();
-
-  return response(200, { tags: uniqueTags });
+  return response(200, { tags: recipeTags(items) });
 }
 
 async function deleteRecipe(userId: string, recipeId: string): Promise<APIGatewayProxyResult> {

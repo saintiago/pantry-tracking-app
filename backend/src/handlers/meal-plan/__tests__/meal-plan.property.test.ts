@@ -13,9 +13,15 @@ let store: Map<string, Record<string, unknown>> = new Map();
 const mockSend = jest.fn(async (command: Record<string, unknown>) => {
   const type = command._type as string;
 
+  if (type === 'Get') {
+    const key = command.Key as Record<string, unknown>;
+    return { Item: store.get(`${key.PK}|${key.SK}`) };
+  }
   if (type === 'Query') {
     const pk = (command.ExpressionAttributeValues as Record<string, string>)[':pk'];
-    const skPrefix = (command.ExpressionAttributeValues as Record<string, string>)[':skPrefix'];
+    const skPrefix =
+      (command.ExpressionAttributeValues as Record<string, string>)[':prefix'] ??
+      (command.ExpressionAttributeValues as Record<string, string>)[':skPrefix'];
     const planIdFilter = (command.ExpressionAttributeValues as Record<string, unknown>)?.[
       ':planId'
     ] as string | undefined;
@@ -96,6 +102,7 @@ jest.mock('@aws-sdk/client-dynamodb', () => ({
 }));
 jest.mock('@aws-sdk/lib-dynamodb', () => ({
   DynamoDBDocumentClient: { from: jest.fn(() => ({ send: mockSend })) },
+  GetCommand: jest.fn((input) => ({ ...input, _type: 'Get' })),
   QueryCommand: jest.fn((input) => ({ ...input, _type: 'Query' })),
   PutCommand: jest.fn((input) => ({ ...input, _type: 'Put' })),
   UpdateCommand: jest.fn((input) => ({ ...input, _type: 'Update' })),
@@ -105,6 +112,7 @@ jest.mock('@aws-sdk/lib-dynamodb', () => ({
 
 let uuidCounter = 0;
 jest.mock('crypto', () => ({
+  ...jest.requireActual('crypto'),
   randomUUID: jest.fn(() => `plan-uuid-${++uuidCounter}`),
 }));
 
@@ -170,9 +178,15 @@ describe('MealPlan Lambda Property Tests', () => {
     mockSend.mockImplementation(async (command: Record<string, unknown>) => {
       const type = command._type as string;
 
+      if (type === 'Get') {
+        const key = command.Key as Record<string, unknown>;
+        return { Item: store.get(`${key.PK}|${key.SK}`) };
+      }
       if (type === 'Query') {
         const pk = (command.ExpressionAttributeValues as Record<string, string>)[':pk'];
-        const skPrefix = (command.ExpressionAttributeValues as Record<string, string>)[':skPrefix'];
+        const skPrefix =
+          (command.ExpressionAttributeValues as Record<string, string>)[':prefix'] ??
+          (command.ExpressionAttributeValues as Record<string, string>)[':skPrefix'];
         const planIdFilter = (command.ExpressionAttributeValues as Record<string, unknown>)?.[
           ':planId'
         ] as string | undefined;
@@ -251,109 +265,112 @@ describe('MealPlan Lambda Property Tests', () => {
   // Validates: Requirements 7.1, 7.4, 7.7, 7.9
   it('Property 7: Meal plan CRUD persistence (round trip)', async () => {
     await fc.assert(
-      fc.asyncProperty(validMealPlanBodyArb, recipeIdArb, recipeNameArb, async (body, newRecipeId, newRecipeName) => {
-        store = new Map();
-        uuidCounter = 0;
+      fc.asyncProperty(
+        validMealPlanBodyArb,
+        recipeIdArb,
+        recipeNameArb,
+        async (body, newRecipeId, newRecipeName) => {
+          store = new Map();
+          uuidCounter = 0;
 
-        // ── POST: create ──────────────────────────────────────────────────────
-        const createRes = await handler(
-          makeEvent({
-            httpMethod: 'POST',
-            body: JSON.stringify(body),
-          }),
-        );
-        expect(createRes.statusCode).toBe(201);
-        const createBody = JSON.parse(createRes.body);
-        const mealPlan = createBody.mealPlan;
-        expect(mealPlan.planId).toBeDefined();
-        expect(mealPlan.date).toBe(body.date);
-        expect(mealPlan.mealType).toBe(body.mealType);
-        expect(mealPlan.recipeId).toBe(body.recipeId);
-        expect(mealPlan.recipeName).toBe(body.recipeName);
-        expect(mealPlan.createdAt).toBeDefined();
-        expect(mealPlan.updatedAt).toBeDefined();
+          // ── POST: create ──────────────────────────────────────────────────────
+          const createRes = await handler(
+            makeEvent({
+              httpMethod: 'POST',
+              body: JSON.stringify(body),
+            }),
+          );
+          expect(createRes.statusCode).toBe(201);
+          const createBody = JSON.parse(createRes.body);
+          const mealPlan = createBody.mealPlan;
+          expect(mealPlan.planId).toBeDefined();
+          expect(mealPlan.date).toBe(body.date);
+          expect(mealPlan.mealType).toBe(body.mealType);
+          expect(mealPlan.recipeId).toBe(body.recipeId);
+          expect(mealPlan.recipeName).toBe(body.recipeName);
+          expect(mealPlan.createdAt).toBeDefined();
+          expect(mealPlan.updatedAt).toBeDefined();
 
-        const planId = mealPlan.planId as string;
+          const planId = mealPlan.planId as string;
 
-        // ── GET: list with date range covering the record ─────────────────────
-        const listRes = await handler(
-          makeEvent({
-            httpMethod: 'GET',
-            queryStringParameters: {
-              startDate: body.date,
-              endDate: body.date,
-            },
-          }),
-        );
-        expect(listRes.statusCode).toBe(200);
-        const listBody = JSON.parse(listRes.body);
-        const found = listBody.mealPlans.find(
-          (mp: { planId: string }) => mp.planId === planId,
-        );
-        expect(found).toBeDefined();
-        expect(found.date).toBe(body.date);
-        expect(found.mealType).toBe(body.mealType);
-        expect(found.recipeId).toBe(body.recipeId);
-        expect(found.recipeName).toBe(body.recipeName);
+          // ── GET: list with date range covering the record ─────────────────────
+          const listRes = await handler(
+            makeEvent({
+              httpMethod: 'GET',
+              queryStringParameters: {
+                startDate: body.date,
+                endDate: body.date,
+              },
+            }),
+          );
+          expect(listRes.statusCode).toBe(200);
+          const listBody = JSON.parse(listRes.body);
+          const found = listBody.mealPlans.find((mp: { planId: string }) => mp.planId === planId);
+          expect(found).toBeDefined();
+          expect(found.date).toBe(body.date);
+          expect(found.mealType).toBe(body.mealType);
+          expect(found.recipeId).toBe(body.recipeId);
+          expect(found.recipeName).toBe(body.recipeName);
 
-        // ── PUT: update recipeId and recipeName ───────────────────────────────
-        const updateRes = await handler(
-          makeEvent({
-            httpMethod: 'PUT',
-            pathParameters: { planId },
-            body: JSON.stringify({ recipeId: newRecipeId, recipeName: newRecipeName }),
-          }),
-        );
-        expect(updateRes.statusCode).toBe(200);
-        const updateBody = JSON.parse(updateRes.body);
-        expect(updateBody.mealPlan.recipeId).toBe(newRecipeId);
-        expect(updateBody.mealPlan.recipeName).toBe(newRecipeName);
+          // ── PUT: update recipeId and recipeName ───────────────────────────────
+          const updateRes = await handler(
+            makeEvent({
+              httpMethod: 'PUT',
+              pathParameters: { planId },
+              body: JSON.stringify({ recipeId: newRecipeId, recipeName: newRecipeName }),
+            }),
+          );
+          expect(updateRes.statusCode).toBe(200);
+          const updateBody = JSON.parse(updateRes.body);
+          expect(updateBody.mealPlan.recipeId).toBe(newRecipeId);
+          expect(updateBody.mealPlan.recipeName).toBe(newRecipeName);
 
-        // ── GET again: confirm updated fields are returned ────────────────────
-        const listAfterUpdateRes = await handler(
-          makeEvent({
-            httpMethod: 'GET',
-            queryStringParameters: {
-              startDate: body.date,
-              endDate: body.date,
-            },
-          }),
-        );
-        expect(listAfterUpdateRes.statusCode).toBe(200);
-        const listAfterUpdateBody = JSON.parse(listAfterUpdateRes.body);
-        const updatedRecord = listAfterUpdateBody.mealPlans.find(
-          (mp: { planId: string }) => mp.planId === planId,
-        );
-        expect(updatedRecord).toBeDefined();
-        expect(updatedRecord.recipeId).toBe(newRecipeId);
-        expect(updatedRecord.recipeName).toBe(newRecipeName);
+          // ── GET again: confirm updated fields are returned ────────────────────
+          const listAfterUpdateRes = await handler(
+            makeEvent({
+              httpMethod: 'GET',
+              queryStringParameters: {
+                startDate: body.date,
+                endDate: body.date,
+              },
+            }),
+          );
+          expect(listAfterUpdateRes.statusCode).toBe(200);
+          const listAfterUpdateBody = JSON.parse(listAfterUpdateRes.body);
+          const updatedRecord = listAfterUpdateBody.mealPlans.find(
+            (mp: { planId: string }) => mp.planId === planId,
+          );
+          expect(updatedRecord).toBeDefined();
+          expect(updatedRecord.recipeId).toBe(newRecipeId);
+          expect(updatedRecord.recipeName).toBe(newRecipeName);
 
-        // ── DELETE ────────────────────────────────────────────────────────────
-        const deleteRes = await handler(
-          makeEvent({
-            httpMethod: 'DELETE',
-            pathParameters: { planId },
-          }),
-        );
-        expect(deleteRes.statusCode).toBe(200);
+          // ── DELETE ────────────────────────────────────────────────────────────
+          const deleteRes = await handler(
+            makeEvent({
+              httpMethod: 'DELETE',
+              pathParameters: { planId },
+            }),
+          );
+          expect(deleteRes.statusCode).toBe(200);
 
-        // ── GET after delete: confirm absent ──────────────────────────────────
-        const listAfterDeleteRes = await handler(
-          makeEvent({
-            httpMethod: 'GET',
-            queryStringParameters: {
-              startDate: body.date,
-              endDate: body.date,
-            },
-          }),
-        );
-        expect(listAfterDeleteRes.statusCode).toBe(200);
-        const listAfterDeleteBody = JSON.parse(listAfterDeleteRes.body);
-        const absent = listAfterDeleteBody.mealPlans.find(
-          (mp: { planId: string }) => mp.planId === planId,
-        );
-        expect(absent).toBeUndefined();
-      }),
+          // ── GET after delete: confirm absent ──────────────────────────────────
+          const listAfterDeleteRes = await handler(
+            makeEvent({
+              httpMethod: 'GET',
+              queryStringParameters: {
+                startDate: body.date,
+                endDate: body.date,
+              },
+            }),
+          );
+          expect(listAfterDeleteRes.statusCode).toBe(200);
+          const listAfterDeleteBody = JSON.parse(listAfterDeleteRes.body);
+          const absent = listAfterDeleteBody.mealPlans.find(
+            (mp: { planId: string }) => mp.planId === planId,
+          );
+          expect(absent).toBeUndefined();
+        },
+      ),
       { numRuns: 100 },
     );
   });
@@ -521,9 +538,7 @@ describe('MealPlan Lambda Property Tests', () => {
         store = new Map();
         uuidCounter = 0;
 
-        const res = await handler(
-          makeEvent({ httpMethod: 'POST', body: JSON.stringify(body) }),
-        );
+        const res = await handler(makeEvent({ httpMethod: 'POST', body: JSON.stringify(body) }));
         expect(res.statusCode).toBe(400);
         expect(JSON.parse(res.body).error).toBe('VALIDATION_ERROR');
 

@@ -9,6 +9,8 @@ Key precedence notes:
 
 - `shopping-list/second-brain.md` extends its initial requirements/design.
 - `meal-planner/recipe-navigation.md` and `open-issues-4-6/` record later planner behavior.
+- `meal-planner/expanded-planner.md` supersedes their drag handles, overflow menus and
+  deferred batches/templates/calories roadmap with issue #13.
 - `language/` owns multilingual acceptance details.
 - `recipe-units-format/` describes the original duplicated modules; the shared domain
   package now supersedes that implementation decision while preserving stored values.

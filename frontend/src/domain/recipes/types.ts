@@ -2,6 +2,7 @@ import type { RecipeIngredient, IngredientStatus } from '@pantry/domain';
 export type { RecipeIngredient, IngredientStatus } from '@pantry/domain';
 
 export interface Recipe {
+  totalKcal?: number;
   recipeId: string;
   userId: string;
   name: string;

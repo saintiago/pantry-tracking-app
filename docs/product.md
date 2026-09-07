@@ -10,8 +10,8 @@ A Progressive Web App (PWA) for household inventory management. Users track food
 - Recipe management with ingredient availability checking
 - Day/week/two-week meal planner with pastel breakfast/lunch/dinner slots, a single
   alphabetical recipe library with tag filters, shared recipe/cooking navigation,
-  per-meal and bulk servings, mouse/pen/touch drag handles with a row copy anchored at the grab point,
-  and accessible move/remove actions
+  per-meal and bulk servings, direct card dragging with touch press-and-hold,
+  pastel removal buttons, saved-state Undo and accessible meal editing
 - Shopping list generation from meal plans minus current inventory
 - Installable app shell with service worker caching; cloud reads and writes require connectivity
 - Cognito-based authentication (email/password)
@@ -79,7 +79,7 @@ and invalid dates are excluded. Inventory read failures offer a retry.
 
 Settings now owns storage-location add/rename/remove using the existing IDs and API.
 Inventory keeps location filtering and uses pastel green Add and pastel red Remove.
-Calendar recipe names and servings use smaller text for narrow screens.
+Calendar recipe names wrap at readable size, with servings and kcal on a secondary line.
 
 ## Inventory improvements (issues #11–#12)
 
@@ -90,3 +90,36 @@ share Shopping's department colors. Category and product groups show their locat
 or Mixed locations; individual lots and details show the actual location. Tags
 reflect the currently filtered inventory. Low-stock badges and each lot's quick
 remove X use pastel red. Removal asks for confirmation and exposes failures for retry.
+
+## Expanded meal planning (issue #13)
+
+The library and scheduled titles are drag surfaces. Mouse/pen use a movement threshold;
+touch uses a hold before dragging, with ordinary swipes left available for scrolling.
+Scheduled cards have a pastel red X, and dragging back to the recipe library removes
+only the assignment. On narrow screens a recipe drawer and visible return target keep
+these actions reachable. Detail actions and slot controls provide non-drag alternatives.
+Move/remove supports Undo against saved state. Uncertain saves have a durable retry and
+an explicit refresh/reconciliation action; other writes wait until it is resolved.
+
+Meals support recipes, linked leftovers, eating out, custom notes and untracked-leftover
+notes. Batch plans separate cooking yield from meal portions. Confirmation records actual
+yield, preparation date, storage and an optional use-by date, without deducting raw
+stock. Reservations, eaten portions and discarded portions are distinct. Removing a
+planned source requires resolving its leftovers; already prepared food remains available
+in the prepared-batch list. Shortages require explicit allocation changes.
+
+Copy day/week previews add independent assignments to the destination. Named favorite
+weeks persist per account and can be renamed, updated, removed and applied. Copies reset
+prepared-food status; missing recipes or omitted cooking sources block application.
+Bulk transactions support at most 90 submitted records and 98 meal row writes; oversized
+operations fail before saving. Favorite/batch metadata has a bounded account storage
+limit and reports an actionable error when full.
+
+Recipe kcal are optional manual estimates stored for the whole recipe. Yield changes
+keep total kcal fixed. Calendar figures show one portion of every dish and all planned
+portions, clearly marking unknown entries. Ordinary meals use current recipe nutrition;
+prepared food retains its cooking snapshot. Shopping counts planned cooking yield once,
+including a source outside the selection with a notice; prepared portions and notes add
+no ingredient demand. The optional Fewest additional groceries sort compares independent
+candidates against stock remaining after planned cooking, flags uncertainty, and counts
+missing ingredient lines rather than price.

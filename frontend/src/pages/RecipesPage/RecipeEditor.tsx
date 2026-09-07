@@ -1,3 +1,6 @@
+import { validateTimeField, validatePortionsField } from './recipeFormRules';
+import { validKcal } from '@pantry/domain';
+import RecipeCalories from './RecipeCalories';
 import RecipeInstructionsEditor, { makeInstructionRow } from './RecipeInstructionsEditor';
 import type { InstructionRow } from './RecipeInstructionsEditor';
 import RecipePhotoField from '../../components/RecipePhoto/RecipePhotoField';
@@ -36,6 +39,7 @@ interface FormErrors {
   instructions?: string;
   ingredients?: string;
   ingredientRows?: Record<number, { name?: string; quantity?: string; unit?: string }>;
+  totalKcal?: string;
   prepTime?: string;
   cookTime?: string;
   portions?: string;
@@ -50,32 +54,6 @@ interface DropdownState {
 
 let nextId = 0;
 const makeRow = (): IngredientRow => ({ _id: ++nextId, name: '', quantityStr: '', unit: '' });
-
-/**
- * Validates a time field string value.
- * Returns an error message if the value is non-empty and not a non-negative integer.
- */
-function validateTimeField(value: string, fieldName: string): string | undefined {
-  if (value === '') return undefined;
-  const n = Number(value);
-  if (!Number.isInteger(n) || n < 0) {
-    return `${fieldName} must be a non-negative whole number.`;
-  }
-  return undefined;
-}
-
-/**
- * Validates the portions field string value.
- * Returns an error message if empty or not a positive integer.
- */
-function validatePortionsField(value: string): string | undefined {
-  if (value === '') return 'Portions is required.';
-  const n = Number(value);
-  if (!Number.isInteger(n) || n < 1) {
-    return 'Portions must be a positive whole number (at least 1).';
-  }
-  return undefined;
-}
 
 const RecipeEditor: React.FC<RecipeEditorProps> = ({
   recipeId,
@@ -105,6 +83,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
   const [tags, setTags] = useState<string[]>([]);
 
   // Time fields (stored as strings for controlled number inputs)
+  const [totalKcal, setTotalKcal] = useState<number | undefined>();
   const [prepTime, setPrepTime] = useState('');
   const [cookTime, setCookTime] = useState('');
   // Original values to distinguish "never set" from "cleared" in edit mode
@@ -168,6 +147,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
         // Pre-populate time fields
         setPrepTime(recipe.prepTime !== undefined ? String(recipe.prepTime) : '');
         setCookTime(recipe.cookTime !== undefined ? String(recipe.cookTime) : '');
+        setTotalKcal(recipe.totalKcal ?? undefined);
         setOriginalPrepTime(recipe.prepTime);
         setOriginalCookTime(recipe.cookTime);
         setSelectedPortions(recipe.portions ?? 1);
@@ -302,6 +282,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
 
   const validate = useCallback((): FormErrors => {
     const errs: FormErrors = {};
+    if (!validKcal(totalKcal)) errs.totalKcal = 'Calories must be finite and non-negative';
     if (!name.trim()) errs.name = 'Recipe name is required.';
     if (instructions.every((step) => !step.value.trim())) {
       errs.instructions = 'Instructions are required.';
@@ -334,7 +315,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
     if (tags.length === 0) errs.tags = 'At least one tag is required.';
 
     return errs;
-  }, [name, instructions, ingredients, prepTime, cookTime, portions, isEdit, tags]);
+  }, [name, instructions, ingredients, prepTime, cookTime, portions, isEdit, tags, totalKcal]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -374,6 +355,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
       }
 
       const baseData = {
+        totalKcal,
         imageId: imageId ?? undefined,
         instructionImageIds: instructions
           .filter((step) => step.value.trim())
@@ -411,6 +393,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
           await updateRecipe(recipeId, {
             ...baseData,
             ...timeFields,
+            totalKcal: totalKcal ?? null,
             chefNotes: chefNotes.trim() || null,
             imageId,
             portions: selectedPortions,
@@ -452,6 +435,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
       onSaved,
       prepTime,
       cookTime,
+      totalKcal,
       originalPrepTime,
       originalCookTime,
       portions,
@@ -501,6 +485,12 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
       )}
 
       <form id="recipe-editor-form" onSubmit={handleSubmit} noValidate style={styles.form}>
+        <RecipeCalories
+          total={totalKcal}
+          portions={isEdit ? selectedPortions : Number(portions) || 1}
+          onChange={setTotalKcal}
+        />
+        {errors.totalKcal && <p role="alert">{translateMessage(errors.totalKcal)}</p>}
         {/* Name */}
         <div style={styles.fieldGroup}>
           <label htmlFor="recipe-name" style={styles.label}>

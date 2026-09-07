@@ -1,6 +1,7 @@
 import { apiRequest } from '../client';
+import type { PlannerEntry, RecipeIngredient } from '@pantry/domain';
 
-export interface MealPlan {
+export interface MealPlan extends PlannerEntry {
   servings?: number;
   planId: string;
   date: string; // YYYY-MM-DD
@@ -20,6 +21,8 @@ export interface CreateMealPlanInput {
 }
 
 export interface PlannableRecipe {
+  totalKcal?: number;
+  ingredients?: RecipeIngredient[];
   recipeId: string;
   name: string;
   tags?: string[];
@@ -74,6 +77,8 @@ export async function fetchRecipesForPlanning(): Promise<{ recipes: PlannableRec
   );
   return {
     recipes: (data.recipes ?? []).map((recipe) => ({
+      ...(recipe.ingredients ? { ingredients: recipe.ingredients } : {}),
+      ...(recipe.totalKcal != null ? { totalKcal: recipe.totalKcal } : {}),
       recipeId: recipe.recipeId,
       name: recipe.name,
       ...(recipe.tags ? { tags: recipe.tags } : {}),

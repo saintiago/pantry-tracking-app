@@ -91,3 +91,14 @@ Inventory item cards and location/stock tags are reusable components under
 `components/InventoryList/`. Its department palette is also re-exported by Shopping.
 `ExpirationField` owns the date/Not applicable control; `ItemIconField` owns emoji
 selection. Add form contracts/defaults live alongside the page in `form.ts`.
+
+Planner version 2 contracts and portion/calorie arithmetic live in `@pantry/domain`.
+The MealPlan Lambda delegates routes to `planner-handler.ts`, invariant checks to
+`planner-rules.ts`, and all persisted meal mutations to `PlannerStore`. Legacy routes
+participate in the same revision guard. `usePlannerWorkspace` owns complete snapshots,
+pending operation reconciliation and revision-checked Undo. Planner entry, batch and
+copy UI are separate page components; recipe editing and cooking remain shared.
+Copy/template transformation is a pure frontend domain rule. Grocery ranking reuses
+Shopping's existing calculator and remaining-stock map; it never mutates stock.
+`RecipeCalories` owns the nutrition input and header display; `recipeFormRules` owns
+the existing editor's time/yield validation. No new Lambda or infrastructure is needed.

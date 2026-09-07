@@ -1,240 +1,144 @@
-import { test, expect, type Page } from '@playwright/test';
-
-const recipes = [
-  { recipeId: 'soup', name: 'Tomato soup', tags: ['dinner', 'vegetarian'], portions: 4 },
-  { recipeId: 'toast', name: 'Avocado toast', tags: ['breakfast'], portions: 2 },
-  { recipeId: 'legacy', name: 'Family recipe', portions: 3 },
-];
-
-async function setup(
-  page: Page,
-  options: { empty?: boolean; recipesFail?: boolean; saveFail?: boolean; bulkFail?: boolean } = {},
-) {
-  await page.clock.setFixedTime(new Date('2026-09-04T12:00:00Z'));
-  const plans = [
-    {
-      planId: 'past',
-      date: '2026-09-03',
-      mealType: 'dinner',
-      recipeId: 'soup',
-      recipeName: 'Yesterday soup',
-      servings: 4,
-      createdAt: '2026-09-01',
-    },
-    {
-      planId: 'today',
-      date: '2026-09-04',
-      mealType: 'lunch',
-      recipeId: 'soup',
-      recipeName: 'Today soup',
-      servings: 4,
-      createdAt: '2026-09-01',
-    },
-    {
-      planId: 'future',
-      date: '2026-10-20',
-      mealType: 'dinner',
-      recipeId: 'soup',
-      recipeName: 'Future soup',
-      servings: 4,
-      createdAt: '2026-09-01',
-    },
-  ];
-  const requests: { method: string; body: Record<string, unknown> }[] = [];
-  await page.route('https://mock-api.test/**', async (route) => {
-    const req = route.request();
-    const url = new URL(req.url());
-    const json = (body: unknown, status = 200) => route.fulfill({ status, json: body });
-    if (url.pathname === '/inventory') return json({ items: [], groups: [] });
-    if (url.pathname === '/locations') return json({ locations: [] });
-    if (url.pathname === '/auth/verify') return json({ valid: true });
-    if (url.pathname === '/recipes') {
-      if (options.recipesFail) return json({ message: 'Recipes unavailable' }, 500);
-      return json({ recipes: options.empty ? [] : recipes });
-    }
-    if (url.pathname === '/meal-plans') {
-      if (req.method() === 'GET')
-        return json({
-          mealPlans: plans.filter(
-            (p) =>
-              p.date >= url.searchParams.get('startDate')! &&
-              p.date <= url.searchParams.get('endDate')!,
-          ),
-        });
-      const body = req.postDataJSON();
-      requests.push({ method: req.method(), body });
-      if (req.method() === 'POST') {
-        if (options.saveFail) return json({ message: 'Could not save meal' }, 500);
-        const plan = { ...body, planId: `new-${plans.length}`, createdAt: '2026-09-04' };
-        plans.push(plan);
-        return json({ mealPlan: plan }, 201);
-      }
-      if (req.method() === 'PUT') {
-        if (options.bulkFail) return json({ message: 'Could not update meals' }, 500);
-        const selected = plans.filter((p) => p.date >= body.startDate);
-        selected.forEach((p) => {
-          p.servings = body.servings;
-        });
-        return json({ updatedCount: selected.length });
-      }
-    }
-    return json({});
+import { test, expect } from '@playwright/test';
+import { setupPlanner, slot, monday, meal } from './helpers/planner';
+test('batch yield and linked leftovers persist, shopping counts once, and source removal resolves dependents', async ({
+  page,
+}) => {
+  const model = await setupPlanner(page, [meal('source', monday)]);
+  await page.locator('[data-plan-open="source"]').click();
+  await page.getByRole('button', { name: 'Edit / move meal' }).click();
+  await page.getByLabel('Plan batch cooking').check();
+  await page.getByLabel('Total portions to prepare').fill('6');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(slot(page).locator('[data-plan-open]')).toBeVisible();
+  await slot(page, '2026-09-08').getByRole('button').click();
+  await page.getByLabel('Entry type').selectOption('leftovers');
+  await page
+    .getByRole('combobox', { name: 'Source batch', exact: true })
+    .selectOption(model.state().batches[0].batchId);
+  await page.getByLabel('Portions for this meal').fill('2');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(slot(page, '2026-09-08').locator('[data-plan-open]')).toHaveText('Pasta');
+  await slot(page)
+    .getByRole('button', { name: /^Remove Pasta/ })
+    .click();
+  await expect(page.getByRole('dialog', { name: 'Resolve dependent leftovers' })).toBeVisible();
+  await page.getByRole('button', { name: 'Remove cooking and dependent entries' }).click();
+  await expect(page.locator('[data-plan-open]')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  await expect(page.locator('[data-plan-open]')).toHaveCount(2);
+  expect(model.state().batches).toHaveLength(1);
+});
+test('prepared food confirmation, allocation and eating distinguish reserved and consumed portions', async ({
+  page,
+}) => {
+  const model = await setupPlanner(page, [meal('source', monday)]);
+  await page.locator('[data-plan-open="source"]').click();
+  await page.getByRole('button', { name: 'Edit / move meal' }).click();
+  await page.getByLabel('Plan batch cooking').check();
+  await page.getByLabel('Total portions to prepare').fill('6');
+  await page.getByLabel('Confirm batch as cooked').check();
+  await page.getByLabel('Storage (for example, fridge or freezer)').fill('Freezer');
+  await page.getByLabel('Mark these portions eaten').check();
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(slot(page).locator('[data-plan-open]')).toBeVisible();
+  expect(model.state().batches[0]).toMatchObject({
+    actualYield: 6,
+    consumed: 2,
+    status: 'prepared',
   });
-  await page.goto('/');
+  await page.locator('summary').filter({ hasText: 'Prepared batches' }).click();
+  await expect(
+    page.getByText('Available: 4. Reserved: 0. Consumed: 2. Discarded: 0.'),
+  ).toBeVisible();
+});
+test('copy week previews occupied meals, persists fresh IDs and reusable favorite weeks', async ({
+  page,
+}) => {
+  const model = await setupPlanner(page, [meal('source', monday)]);
+  await page.getByText('Copy plans / Favorite weeks', { exact: true }).click();
+  await page.getByLabel('Destination start date').fill(monday);
+  await page.getByRole('button', { name: 'Preview copy' }).click();
+  await expect(page.getByLabel('Copy preview')).toContainText('Adds to occupied meal');
+  await page.getByRole('button', { name: 'Apply copy' }).click();
+  await expect(slot(page).locator('[data-plan-open]')).toHaveCount(2);
+  expect(new Set(model.state().mealPlans.map((e) => e.planId)).size).toBe(2);
+  await page.getByLabel('Favorite week name').fill('Easy week');
+  await page.getByRole('button', { name: 'Save favorite week' }).click();
+  await expect.poll(() => model.state().favorites.length).toBe(1);
+  await page.reload();
   await page.locator('input[type=email]').fill('test@example.com');
   await page.locator('input[type=password]').fill('TestPassword123!');
   await page.locator('button[type=submit]').click();
-  await page.getByRole('heading', { name: 'Inventory', exact: true }).waitFor();
   await page.getByRole('button', { name: 'Meal Plan', exact: true }).click();
-  await expect(page.locator('[data-date]')).toHaveCount(14);
-  return { plans, requests };
-}
-
-test('recipes appear once alphabetically with category filters to the left of two complete weeks', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  await setup(page);
-  const library = page.getByRole('complementary', { name: 'Recipe library' });
-  await expect(library.locator('[data-recipe-open]')).toHaveText([
-    'Avocado toast',
-    'Family recipe',
-    'Tomato soup',
+  await page.getByText('Copy plans / Favorite weeks', { exact: true }).click();
+  await page.getByLabel('Copy from').selectOption(model.state().favorites[0].favoriteId);
+  await page.getByLabel('Destination start date').fill('2026-09-14');
+  await page.getByRole('button', { name: 'Preview copy' }).click();
+  await page.getByRole('button', { name: 'Apply copy' }).click();
+  await expect(slot(page, '2026-09-14').locator('[data-plan-open]')).toHaveCount(2);
+});
+test('calorie estimates show per-person, all-portions and unknown subtotals', async ({ page }) => {
+  await setupPlanner(page, [
+    { ...meal('first', monday), servings: 2 },
+    { ...meal('note', monday), entryType: 'custom', recipeId: '', recipeName: 'Unknown snack' },
   ]);
-  await library.getByRole('button', { name: 'dinner', exact: true }).click();
-  await library.getByRole('button', { name: 'vegetarian', exact: true }).click();
-  await expect(library.locator('[data-recipe-open]')).toHaveText(['Tomato soup']);
-  await library.getByRole('button', { name: 'All', exact: true }).click();
-  await expect(page.locator('[data-date]').first()).toHaveAttribute('data-date', '2026-08-31');
-  await expect(page.locator('[data-date]').last()).toHaveAttribute('data-date', '2026-09-13');
-  const left = (await library.boundingBox())!;
-  const calendar = (await page.locator('[data-date]').first().boundingBox())!;
-  expect(left.x + left.width).toBeLessThanOrEqual(calendar.x);
-  await page.screenshot({ path: 'test-results/meal-planner-desktop.png', fullPage: true });
+  const day = page.locator(`[data-date="${monday}"]`);
+  await expect(day).toContainText('kcal per person: 400');
+  await expect(day).toContainText('All planned portions: 800 kcal');
+  await expect(day).toContainText('Incomplete: 1 entries unknown');
 });
-
-test('real drag and drop saves the recipe in the selected second-week meal slot', async ({
+test('fewest groceries ranks independently and shows stock loading failures honestly', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  const { requests } = await setup(page);
-  const source = page
-    .getByRole('complementary')
-    .getByRole('button', { name: 'Place Avocado toast' });
-  await source.dragTo(page.getByRole('button', { name: 'Plan dinner on 2026-09-08' }));
-  const day = page.locator('[data-date="2026-09-08"]');
-  await expect(day.getByText('Avocado toast', { exact: true })).toBeVisible();
-  await expect(day.getByText('2 servings')).toBeVisible();
-  expect(requests).toEqual([
-    {
-      method: 'POST',
-      body: {
-        recipeId: 'toast',
-        recipeName: 'Avocado toast',
-        date: '2026-09-08',
-        mealType: 'dinner',
-        servings: 2,
-      },
-    },
-  ]);
-  await page.getByRole('button', { name: 'Next week', exact: true }).click();
-  await expect(day.getByText('Avocado toast', { exact: true })).toBeVisible();
+  const model = await setupPlanner(page, []);
+  model.options.inventoryFail = true;
+  await page.getByLabel('Sort recipes').selectOption('groceries');
+  await expect(page.getByRole('alert')).toContainText('Stock load failed');
+  await expect(page.getByRole('complementary')).not.toContainText('Uses what you have');
+  model.options.inventoryFail = false;
+  await page.getByRole('button', { name: 'Refresh inventory' }).click();
+  await expect(page.getByRole('complementary').getByText('1 ingredients to buy')).toHaveCount(2);
+  expect(model.writes).toHaveLength(0);
 });
 
-test('keyboard selection and calendar activation add meals without dragging', async ({ page }) => {
-  await setup(page);
-  const source = page
-    .getByRole('complementary')
-    .getByRole('button', { name: 'Place Family recipe' });
-  await source.focus();
-  await page.keyboard.press('Enter');
-  await expect(source).toHaveAttribute('aria-pressed', 'true');
-  await page.getByRole('button', { name: 'Plan breakfast on 2026-09-05' }).focus();
-  await page.keyboard.press('Enter');
-  await expect(page.locator('[data-date="2026-09-05"]').getByText('Family recipe')).toBeVisible();
-  await expect(source).toHaveAttribute('aria-pressed', 'false');
-});
-
-test('bulk servings persist for today and all future meals while past meals and source recipes stay unchanged', async ({
+test('recipe calorie input derives one stored total, retains it on yield edits and clears to unknown', async ({
   page,
 }) => {
-  const { plans, requests } = await setup(page);
-  await page.getByLabel('Servings', { exact: true }).fill('2');
-  await page.getByRole('button', { name: 'Update future meals' }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'Updated' })).toHaveText(
-    'Updated 2 planned meals to 2 servings.',
-  );
-  expect(requests).toEqual([{ method: 'PUT', body: { startDate: '2026-09-04', servings: 2 } }]);
-  expect(plans.map((p) => p.servings)).toEqual([4, 2, 2]);
-  expect(recipes[0].portions).toBe(4);
-  await expect(page.locator('[data-date="2026-09-03"]').getByText('4 servings')).toBeVisible();
-  await expect(page.locator('[data-date="2026-09-04"]').getByText('2 servings')).toBeVisible();
-  await page.getByRole('button', { name: 'Next week', exact: true }).click();
-  await page.getByRole('button', { name: 'Previous week', exact: true }).click();
-  await expect(page.locator('[data-date="2026-09-04"]').getByText('2 servings')).toBeVisible();
+  const model = await setupPlanner(page, []);
+  await page.locator('[data-recipe-open="pasta"]').click();
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Calorie input basis' }).selectOption('portion');
+  await expect(page.getByLabel('Calories (kcal)', { exact: true })).toHaveValue('400');
+  await page.getByLabel('Calories (kcal)', { exact: true }).fill('450');
+  await page.getByRole('button', { name: 'Increase portions', exact: true }).click();
+  await expect(page.getByLabel('Calories (kcal)', { exact: true })).toHaveValue('360');
+  await page.getByRole('button', { name: 'Save Changes', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Pasta', exact: true })).toBeVisible();
+  expect(model.recipes[0]).toMatchObject({ totalKcal: 1800, portions: 5 });
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByLabel('Calories (kcal)', { exact: true }).fill('');
+  await page.getByRole('button', { name: 'Save Changes', exact: true }).click();
+  await expect(page.getByText('Calories unknown', { exact: false })).toBeVisible();
 });
-
-test('invalid servings do not submit, and failed updates show a retryable error', async ({
-  page,
-}) => {
-  const options = { bulkFail: true };
-  const { requests } = await setup(page, options);
-  for (const value of ['', '0', '-1', '1.5']) {
-    await page.getByLabel('Servings', { exact: true }).fill(value);
-    await page.getByRole('button', { name: 'Update future meals' }).click();
-  }
-  expect(requests).toHaveLength(0);
-  await page.getByLabel('Servings', { exact: true }).fill('3');
-  await page.getByRole('button', { name: 'Update future meals' }).click();
-  await expect(page.getByRole('alert')).toContainText('Could not update meals');
-  await expect(page.locator('[data-date="2026-09-04"]').getByText('4 servings')).toBeVisible();
-  options.bulkFail = false;
-  await page.getByRole('button', { name: 'Update future meals' }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'Updated' })).toContainText('3 servings');
-});
-
-test('failed meal creation retains selection for retry and does not add a card', async ({
-  page,
-}) => {
-  const options = { saveFail: true };
-  await setup(page, options);
-  const source = page
-    .getByRole('complementary')
-    .getByRole('button', { name: 'Place Family recipe' });
-  await source.click();
-  await page.getByRole('button', { name: 'Plan lunch on 2026-09-07' }).click();
-  await expect(page.getByRole('alert')).toContainText('Could not save meal');
-  await expect(source).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('[data-date="2026-09-07"]').getByText('Family recipe')).toHaveCount(0);
-  options.saveFail = false;
-  await page.getByRole('button', { name: 'Plan lunch on 2026-09-07' }).click();
-  await expect(page.locator('[data-date="2026-09-07"]').getByText('Family recipe')).toBeVisible();
-});
-
-test('recipe loading failures can be retried and empty libraries are explained', async ({
-  page,
-}) => {
-  const options = { recipesFail: true, empty: true };
-  await setup(page, options);
-  await expect(page.getByRole('alert')).toContainText('Recipes unavailable');
-  options.recipesFail = false;
-  await page.getByRole('button', { name: 'Retry recipes' }).click();
-  await expect(page.getByText('No recipes yet. Add recipes in the Recipes tab.')).toBeVisible();
-});
-
-test('mobile planner supports selection and keeps the page within the viewport', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await setup(page);
-  await page
-    .getByRole('complementary')
-    .getByRole('button', { name: 'Place Avocado toast' })
-    .click();
-  await page.getByRole('button', { name: 'Plan lunch on 2026-09-12' }).click();
-  await expect(page.locator('[data-date="2026-09-12"]').getByText('Avocado toast')).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
-    true,
-  );
-  await page.screenshot({ path: 'test-results/meal-planner-mobile.png', fullPage: true });
-});
+for (const [language, plannerLabel, copyLabel, drawer] of [
+  ['Español', 'Planificador de comidas', 'Copiar planes / Semanas favoritas', 'Panel de recetas'],
+  ['Italiano', 'Pianificazione pasti', 'Copia piani / Settimane preferite', 'Pannello ricette'],
+])
+  test(`${language} expanded planner controls remain usable at 320px`, async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 850 });
+    await setupPlanner(page, []);
+    await page.locator('header button[aria-controls="language-options"]').click();
+    await page.getByRole('button', { name: new RegExp(language) }).click();
+    await expect(page.getByRole('button', { name: new RegExp(language) })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await page.locator('#language-options').press('Escape');
+    await expect(page.getByRole('heading', { name: plannerLabel, exact: true })).toBeVisible();
+    await expect(page.getByText(copyLabel, { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: drawer, exact: true }).click();
+    await expect(page.locator('[data-recipe-open="pasta"]')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      320,
+    );
+  });

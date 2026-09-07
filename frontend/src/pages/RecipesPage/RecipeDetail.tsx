@@ -1,5 +1,6 @@
-import { styles } from './detailStyles';
 import RecipePhoto from '../../components/RecipePhoto/RecipePhoto';
+import { styles } from './detailStyles';
+import { RecipeHeaderMedia } from './RecipeCalories';
 import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -172,7 +173,6 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
     ? recipe.instructions
     : [recipe.instructions];
 
-  // Cook button state
   const hasActiveSession = activeCookingSession != null;
   const isSameRecipe = hasActiveSession && activeCookingSession!.recipeId === recipe.recipeId;
   const isDifferentRecipe = hasActiveSession && activeCookingSession!.recipeId !== recipe.recipeId;
@@ -201,7 +201,7 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
         <h2 style={styles.pageTitle}>{recipe.name}</h2>
       </div>
 
-      <RecipePhoto imageId={recipe.imageId} alt={t('Recipe image')} />
+      <RecipeHeaderMedia recipe={recipe} />
 
       {/* Error banner (delete errors) */}
       {error && (

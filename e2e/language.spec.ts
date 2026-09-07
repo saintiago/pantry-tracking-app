@@ -43,7 +43,10 @@ async function setup(context: BrowserContext, account: Account = {}) {
           ],
         },
       });
-    if (path === '/meal-plans') return route.fulfill({ json: { mealPlans: [] } });
+    if (path === '/meal-plans')
+      return route.fulfill({
+        json: { contractVersion: 2, revision: 0, mealPlans: [], batches: [], favorites: [] },
+      });
     return route.fulfill({ json: { items: [], values: [], count: 0 } });
   });
 }

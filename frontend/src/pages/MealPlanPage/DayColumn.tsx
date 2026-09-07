@@ -42,6 +42,27 @@ const DayColumn: React.FC<DayColumnProps> = ({
         <span style={styles.dayLabel}>{getDayLabel(date)}</span>
         <span style={styles.dayNumber}>{getDayNumber(date)}</span>
       </div>
+      <div style={{ fontSize: 12, lineHeight: 1.4 }}>
+        <div>
+          {t('kcal per person')}:{' '}
+          {Math.round(assignments.reduce((sum, a) => sum + (a.kcalPerPortion ?? 0), 0))}
+        </div>
+        <div>
+          {t('All planned portions')}:{' '}
+          {Math.round(
+            assignments.reduce((sum, a) => sum + (a.kcalPerPortion ?? 0) * (a.servings ?? 1), 0),
+          )}{' '}
+          kcal
+        </div>
+        {assignments.some((a) => a.kcalPerPortion === undefined) && (
+          <strong>
+            {t(
+              'Incomplete: {0} entries unknown',
+              assignments.filter((a) => a.kcalPerPortion === undefined).length,
+            )}
+          </strong>
+        )}
+      </div>
       {(['breakfast', 'lunch', 'dinner'] as const).map((mealType) => (
         <section
           key={mealType}

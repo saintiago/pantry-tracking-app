@@ -24,9 +24,7 @@ function makeAssignment(overrides: Partial<Assignment> = {}): Assignment {
 
 const noop = () => {};
 
-function renderCalendar(
-  props: Partial<React.ComponentProps<typeof WeekCalendar>> = {},
-) {
+function renderCalendar(props: Partial<React.ComponentProps<typeof WeekCalendar>> = {}) {
   const defaults: React.ComponentProps<typeof WeekCalendar> = {
     weekDates,
     assignments: [],
@@ -163,7 +161,7 @@ describe('WeekCalendar — remove callback', () => {
     const assignments = [makeAssignment({ planId: 'plan-abc', date: weekDates[0] })];
     renderCalendar({ assignments, onRemove });
 
-    await userEvent.click(screen.getByRole('button', { name: 'Remove assignment' }));
+    await userEvent.click(screen.getByRole('button', { name: /^Remove .+ from/ }));
     expect(onRemove).toHaveBeenCalledWith('plan-abc');
   });
 
@@ -171,13 +169,13 @@ describe('WeekCalendar — remove callback', () => {
     const assignments = [makeAssignment({ planId: 'plan-deleting' })];
     renderCalendar({ assignments, removingPlanIds: new Set(['plan-deleting']) });
 
-    expect(screen.getByRole('button', { name: 'Remove assignment' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^Remove .+ from/ })).toBeDisabled();
   });
 
   it('remove button is enabled when planId is not in removingPlanIds', () => {
     const assignments = [makeAssignment({ planId: 'plan-1' })];
     renderCalendar({ assignments, removingPlanIds: new Set() });
 
-    expect(screen.getByRole('button', { name: 'Remove assignment' })).not.toBeDisabled();
+    expect(screen.getByRole('button', { name: /^Remove .+ from/ })).not.toBeDisabled();
   });
 });

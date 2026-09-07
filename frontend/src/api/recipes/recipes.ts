@@ -41,6 +41,7 @@ export async function updateRecipe(
     Pick<Recipe, 'name' | 'ingredients' | 'instructions' | 'sourceUrl' | 'portions' | 'tags'>
   > & {
     chefNotes?: string | null;
+    totalKcal?: number | null;
     imageId?: string | null;
     instructionImageIds?: (string | null)[] | null;
     prepTime?: number | null;

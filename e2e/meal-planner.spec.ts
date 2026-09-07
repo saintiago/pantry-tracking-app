@@ -1,430 +1,86 @@
-import { test, expect, Page } from '@playwright/test';
-
-/**
- * E2E Test Suite: Meal Planner
- *
- * Tests the meal planner calendar: view the current week, add a recipe to a day,
- * navigate weeks, and remove a recipe.
- *
- * Requires VITE_MOCK_AUTH=true (set in playwright.config.ts webServer env).
- * Backend API calls are mocked via Playwright route interception using a
- * stateful in-memory store so POST/DELETE are reflected by subsequent GETs.
- *
- * Requirements: 1.1, 3.2, 3.3, 4.5, 4.7, 5.2, 5.4
- */
-
-// ─── Date helpers (mirror frontend weekUtils, UTC-based) ─────────────────────
-
-/** Returns the Monday of the UTC week that contains the reference date. */
-function getWeekStartIso(reference: Date = new Date()): string {
-  const dayOfWeek = reference.getUTCDay(); // 0=Sun, 1=Mon ... 6=Sat
-  const daysSinceMonday = (dayOfWeek + 6) % 7;
-  const monday = new Date(
-    Date.UTC(
-      reference.getUTCFullYear(),
-      reference.getUTCMonth(),
-      reference.getUTCDate() - daysSinceMonday,
-    ),
-  );
-  return monday.toISOString().slice(0, 10);
-}
-
-function addDaysIso(isoDate: string, days: number): string {
-  const [year, month, day] = isoDate.split('-').map(Number);
-  const d = new Date(Date.UTC(year, month - 1, day + days));
-  return d.toISOString().slice(0, 10);
-}
-
-function getDayNumber(isoDate: string): number {
-  return Number(isoDate.split('-')[2]);
-}
-
-const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-
-/** Mirrors frontend getMonthYearLabel for the visible week (start … start+6). */
-function getMonthYearLabel(start: string): string {
-  const end = addDaysIso(start, 13);
-  const [fy, fm] = start.split('-').map(Number);
-  const [ly, lm] = end.split('-').map(Number);
-  if (fy === ly && fm === lm) return `${MONTH_NAMES[fm - 1]} ${fy}`;
-  if (fy === ly) return `${MONTH_NAMES[fm - 1]} – ${MONTH_NAMES[lm - 1]} ${ly}`;
-  return `${MONTH_NAMES[fm - 1]} ${fy} – ${MONTH_NAMES[lm - 1]} ${ly}`;
-}
-
-// ─── Mock data ───────────────────────────────────────────────────────────────
-
-interface MockMealPlan {
-  planId: string;
-  date: string;
-  mealType: 'breakfast' | 'lunch' | 'dinner';
-  recipeId: string;
-  recipeName: string;
-  createdAt: string;
-  updatedAt: string;
-  syncVersion: number;
-}
-
-const mockRecipes = [
-  { recipeId: 'recipe-1', name: 'Pasta Carbonara' },
-  { recipeId: 'recipe-2', name: 'Tomato Soup' },
-  { recipeId: 'recipe-3', name: 'Pancakes' },
-];
-
-const weekStart = getWeekStartIso();
-const weekEnd = addDaysIso(weekStart, 6);
-
-/** Builds the seed plans for a fresh test: two on Monday (breakfast then lunch). */
-function seedPlans(): MockMealPlan[] {
-  return [
-    {
-      planId: 'plan-breakfast',
-      date: weekStart, // Monday
-      mealType: 'breakfast',
-      recipeId: 'recipe-1',
-      recipeName: 'Pasta Carbonara',
-      createdAt: '2024-01-01T08:00:00Z',
-      updatedAt: '2024-01-01T08:00:00Z',
-      syncVersion: 1,
-    },
-    {
-      planId: 'plan-lunch',
-      date: weekStart, // Monday
-      mealType: 'lunch',
-      recipeId: 'recipe-2',
-      recipeName: 'Tomato Soup',
-      createdAt: '2024-01-01T12:00:00Z',
-      updatedAt: '2024-01-01T12:00:00Z',
-      syncVersion: 1,
-    },
-  ];
-}
-
-// ─── API mock setup ───────────────────────────────────────────────────────────
-
-/** Tracks DELETE calls so a test can assert the planId used. */
-const deletedPlanIds: string[] = [];
-
-async function setupMockAPI(page: Page) {
-  // Stateful in-memory store, fresh per test (setupMockAPI runs in beforeEach).
-  const store: MockMealPlan[] = seedPlans();
-  let createdCounter = 0;
-  deletedPlanIds.length = 0;
-
-  await page.route('**/auth/verify', (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ valid: true, userId: 'test-user' }),
-    }),
-  );
-
-  await page.route('**/locations', (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ locations: [] }),
-    }),
-  );
-
-  await page.route('**/inventory', (route) => {
-    if (route.request().method() === 'GET') {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ items: [] }),
-      });
-    }
-    return route.fallback();
+import { test, expect } from '@playwright/test';
+import { setupPlanner, slot, monday, meal } from './helpers/planner';
+test('two weeks, chronological meal sections, calendar navigation and persisted legacy entries', async ({
+  page,
+}) => {
+  await setupPlanner(page, [meal('source', monday)]);
+  await expect(page.locator('[data-date]')).toHaveCount(14);
+  await expect(slot(page).locator('[data-plan-open]')).toHaveText('Pasta');
+  await page.getByRole('button', { name: 'Week', exact: true }).click();
+  await expect(page.locator('[data-date]')).toHaveCount(7);
+  await page.getByRole('button', { name: 'Next week' }).click();
+  await expect(page.locator('[data-date]').first()).toHaveAttribute('data-date', '2026-09-14');
+  await page.getByRole('button', { name: 'Previous week' }).click();
+  await expect(slot(page).locator('[data-plan-open]')).toHaveText('Pasta');
+  await page.reload();
+  await page.locator('input[type=email]').fill('test@example.com');
+  await page.locator('input[type=password]').fill('TestPassword123!');
+  await page.locator('button[type=submit]').click();
+  await page.getByRole('button', { name: 'Meal Plan', exact: true }).click();
+  await expect(slot(page).locator('[data-plan-open]')).toHaveText('Pasta');
+});
+test('slot placement creates a flexible meal; editing and removal persist without a recipe', async ({
+  page,
+}) => {
+  const model = await setupPlanner(page, []);
+  await slot(page).getByRole('button').click();
+  await page.getByLabel('Entry type').selectOption('eating-out');
+  await page.getByLabel('Title', { exact: true }).fill('Dinner with friends');
+  await page.getByLabel('Portions for this meal').fill('2');
+  await page.getByLabel('Estimated kcal/portion (optional)').fill('650');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(slot(page).locator('[data-plan-open]')).toHaveText('Dinner with friends');
+  expect(model.state().mealPlans[0]).toMatchObject({
+    entryType: 'eating-out',
+    kcalPerPortion: 650,
+    recipeId: '',
   });
-
-  // GET /recipes — used by AddRecipeDialog. Registered before /meal-plans so the
-  // more specific glob below takes LIFO precedence where they could overlap.
-  await page.route('**/recipes', (route) => {
-    if (route.request().method() === 'GET') {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ recipes: mockRecipes }),
-      });
-    }
-    return route.fallback();
-  });
-
-  // DELETE /meal-plans/{planId}
-  // NOTE: anchored to the mock API origin (not a bare **/meal-plans glob).
-  // A glob like `**/meal-plans**` also matches the Vite module request
-  // http://localhost:5173/src/api/meal-plans/meal-plans.ts, which would make
-  // the mock return JSON instead of the JS module and crash the app at load.
-  await page.route('https://mock-api.test/meal-plans/*', (route) => {
-    if (route.request().method() === 'DELETE') {
-      const url = route.request().url();
-      const planId = url.split('/meal-plans/')[1].split('?')[0];
-      deletedPlanIds.push(planId);
-      const idx = store.findIndex((p) => p.planId === planId);
-      if (idx >= 0) store.splice(idx, 1);
-      return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
-    }
-    return route.fallback();
-  });
-
-  // GET (range-filtered) and POST /meal-plans — anchored to the mock API origin
-  // so the trailing wildcard can't match the Vite source module URL.
-  await page.route('https://mock-api.test/meal-plans**', (route) => {
-    const method = route.request().method();
-
-    if (method === 'GET') {
-      const url = new URL(route.request().url());
-      const startDate = url.searchParams.get('startDate') ?? '';
-      const endDate = url.searchParams.get('endDate') ?? '';
-      const mealPlans = store.filter((p) => p.date >= startDate && p.date <= endDate);
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ mealPlans }),
-      });
-    }
-
-    if (method === 'POST') {
-      const body = JSON.parse(route.request().postData() ?? '{}');
-      createdCounter += 1;
-      const now = new Date().toISOString();
-      const created: MockMealPlan = {
-        planId: `plan-new-${createdCounter}`,
-        date: body.date,
-        mealType: body.mealType,
-        recipeId: body.recipeId,
-        recipeName: body.recipeName,
-        createdAt: now,
-        updatedAt: now,
-        syncVersion: 1,
-      };
-      store.push(created);
-      return route.fulfill({
-        status: 201,
-        contentType: 'application/json',
-        body: JSON.stringify({ mealPlan: created }),
-      });
-    }
-
-    return route.fallback();
-  });
-}
-
-async function loginAndGoToMealPlan(page: Page) {
-  await page.goto('/');
-  await page.waitForSelector('input[type="email"]', { timeout: 15000 });
-  await page.fill('input[type="email"]', 'test@example.com');
-  await page.fill('input[type="password"]', 'TestPassword123!');
-  await page.click('button[type="submit"]');
-  // Wait for inventory page to load, then navigate to Meal Plan
-  await page.waitForSelector('h2:has-text("Inventory")', { timeout: 15000 });
-  await page.getByRole('button', { name: 'Meal Plan' }).click();
-  await page.waitForSelector('h1:has-text("Meal Planner")', { timeout: 10000 });
-}
-
-// ─── Tests ────────────────────────────────────────────────────────────────────
-
-test.describe('Meal Planner', () => {
-  test.beforeEach(async ({ page }) => {
-    await setupMockAPI(page);
-    await loginAndGoToMealPlan(page);
-  });
-
-  for (const mealType of ['breakfast', 'lunch', 'dinner']) {
-    test(`issue 8: dragging into ${mealType} populates that section and persists`, async ({
-      page,
-    }) => {
-      await page.setViewportSize({ width: 1440, height: 1000 });
-      const date = addDaysIso(weekStart, 1);
-      const slot = page.getByRole('region', { name: `${mealType} on ${date}`, exact: true });
-      const recipe = page
-        .getByRole('complementary')
-        .getByRole('button', { name: 'Place Pancakes', exact: true });
-      await recipe.dragTo(slot.getByRole('button', { name: `Plan ${mealType} on ${date}` }));
-      await expect(slot.getByText('Pancakes', { exact: true })).toBeVisible();
-      await expect(page.locator('[data-date]').getByText('Pancakes', { exact: true })).toHaveCount(
-        1,
-      );
-      for (const other of ['breakfast', 'lunch', 'dinner'].filter((meal) => meal !== mealType)) {
-        await expect(
-          page
-            .getByRole('region', { name: `${other} on ${date}`, exact: true })
-            .getByText('Pancakes'),
-        ).toHaveCount(0);
-      }
-      await page.getByRole('button', { name: 'Next week', exact: true }).click();
-      await page.getByRole('button', { name: 'Previous week', exact: true }).click();
-      await expect(slot.getByText('Pancakes', { exact: true })).toBeVisible();
-      await slot.getByLabel(/Meal actions for/).click();
-      await slot.getByRole('button', { name: 'Remove assignment' }).click();
-      await expect(slot.getByText('Pancakes', { exact: true })).toHaveCount(0);
-      await expect(slot.getByRole('button', { name: `Plan ${mealType} on ${date}` })).toBeVisible();
-    });
-  }
-
-  test('issue 8: an existing recipe remains part of the drop target without losing other meals', async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width: 1440, height: 1000 });
-    const breakfast = page.getByRole('region', { name: `breakfast on ${weekStart}`, exact: true });
-    const lunch = page.getByRole('region', { name: `lunch on ${weekStart}`, exact: true });
-    await expect(breakfast.getByText('Pasta Carbonara')).toBeVisible();
-    await expect(lunch.getByText('Tomato Soup')).toBeVisible();
-    const recipe = page
-      .getByRole('complementary')
-      .getByRole('button', { name: 'Place Pancakes', exact: true });
-    await recipe.dragTo(breakfast.getByText('Pasta Carbonara'));
-    await expect(breakfast.getByText('Pancakes')).toBeVisible();
-    await expect(breakfast.getByLabel(/Meal actions for/)).toHaveCount(2);
-    await expect(lunch.getByText('Tomato Soup')).toBeVisible();
-  });
-
-  // ── 1. View current week ─────────────────────────────────────────────────
-
-  test('shows 14 day columns with Mon–Sun labels and an Add button each (Req 1.1)', async ({
-    page,
-  }) => {
-    const expectedDayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    for (const label of expectedDayLabels) {
-      await expect(page.getByText(label, { exact: true }).first()).toBeVisible();
-    }
-
-    const addButtons = page.getByRole('button', { name: /Plan breakfast on/ });
-    await expect(addButtons).toHaveCount(14);
-  });
-
-  test('day columns show numeric dates matching the current week (Req 1.1)', async ({ page }) => {
-    await expect(page.getByText(String(getDayNumber(weekStart))).first()).toBeVisible();
-    await expect(page.getByText(String(getDayNumber(weekEnd))).first()).toBeVisible();
-  });
-
-  test('shows the month/year label for the visible week', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: getMonthYearLabel(weekStart) })).toBeVisible();
-  });
-
-  test('renders seeded meal plan cards for the current week (Req 1.1)', async ({ page }) => {
-    await expect(page.locator('[data-date]').getByText('Pasta Carbonara')).toBeVisible();
-    await expect(page.locator('[data-date]').getByText('Tomato Soup')).toBeVisible();
-  });
-
-  test('breakfast card appears before lunch card on the same day (Req 1.1 ordering)', async ({
-    page,
-  }) => {
-    await expect(page.locator('[data-plan-open]')).toHaveText(['Pasta Carbonara', 'Tomato Soup']);
-  });
-
-  // ── 2. Add a recipe to a day ─────────────────────────────────────────────
-
-  test('can add a recipe to a day and the card appears (Req 4.5, 4.7)', async ({ page }) => {
-    // Open the Add dialog on Tuesday (second column)
-    const addButtons = page.getByRole('button', { name: /Plan breakfast on/ });
-    await addButtons.nth(1).click();
-
-    // Dialog appears
-    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByRole('heading', { name: 'Add Recipe' })).toBeVisible();
-
-    // Meal type defaults to breakfast (Req 4.4)
-    await expect(page.getByRole('combobox')).toHaveValue('breakfast');
-
-    // Recipe list loads (Req 4.2)
-    await expect(page.getByRole('option', { name: 'Pancakes' })).toBeVisible({ timeout: 5000 });
-
-    // Select Pancakes (unique — not in the seed) and confirm.
-    // Scope to the dialog and use an exact name so the seven "Add recipe"
-    // buttons (still in the DOM behind the modal) don't match "Add".
-    await page.getByRole('option', { name: 'Pancakes' }).click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Add', exact: true }).click();
-
-    // Dialog closes and the new card appears
-    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5000 });
-    await expect(page.locator('[data-date]').getByText('Pancakes')).toBeVisible({ timeout: 5000 });
-  });
-
-  test('cancelling the Add Recipe dialog does not create a meal plan (Req 4.8)', async ({
-    page,
-  }) => {
-    await page
-      .getByRole('button', { name: /Plan breakfast on/ })
-      .nth(1)
-      .click();
-    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5000 });
-
-    await page.getByRole('button', { name: 'Cancel' }).click();
-
-    await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 3000 });
-    // No Pancakes card created
-    await expect(page.locator('[data-date]').getByText('Pancakes')).not.toBeVisible();
-  });
-
-  // ── 3. Navigate weeks ────────────────────────────────────────────────────
-
-  test('Next week shows an empty week, Previous returns to the seeded week (Req 3.2, 3.3)', async ({
-    page,
-  }) => {
-    // Seeded cards are on the current week
-    await expect(page.locator('[data-date]').getByText('Pasta Carbonara')).toBeVisible();
-
-    // Advance to next week — no plans there
-    await page.getByRole('button', { name: 'Next week' }).click();
-
-    const nextMondayNumber = getDayNumber(addDaysIso(weekStart, 7));
-    await expect(page.getByText(String(nextMondayNumber)).first()).toBeVisible({ timeout: 5000 });
-    await expect(page.locator('[data-date]').getByText('Pasta Carbonara')).not.toBeVisible();
-
-    // Go back — seeded cards return
-    await page.getByRole('button', { name: 'Previous week' }).click();
-    await expect(page.getByText(String(getDayNumber(weekStart))).first()).toBeVisible({
-      timeout: 5000,
-    });
-    await expect(page.locator('[data-date]').getByText('Pasta Carbonara')).toBeVisible({
-      timeout: 5000,
-    });
-  });
-
-  test('Previous then Next week returns to the original week (Req 3.2, 3.3)', async ({ page }) => {
-    const currentMondayNumber = getDayNumber(weekStart);
-
-    await page.getByRole('button', { name: 'Previous week' }).click();
-    const prevMondayNumber = getDayNumber(addDaysIso(weekStart, -7));
-    await expect(page.getByText(String(prevMondayNumber)).first()).toBeVisible({ timeout: 5000 });
-
-    await page.getByRole('button', { name: 'Next week' }).click();
-    await expect(page.getByText(String(currentMondayNumber)).first()).toBeVisible({
-      timeout: 5000,
-    });
-  });
-
-  // ── 4. Remove a recipe ──────────────────────────────────────────────────
-
-  test('can remove an existing recipe card and it disappears (Req 5.2, 5.4)', async ({ page }) => {
-    await expect(page.locator('[data-date]').getByText('Tomato Soup')).toBeVisible({
-      timeout: 5000,
-    });
-
-    // Remove the lunch card (Tomato Soup is the second card). Target its remove button.
-    await page.getByLabel('Meal actions for Tomato Soup').click();
-    await page.getByRole('button', { name: 'Remove assignment' }).click();
-
-    // After successful delete + re-fetch the card disappears
-    await expect(page.locator('[data-date]').getByText('Tomato Soup')).not.toBeVisible({
-      timeout: 5000,
-    });
-
-    // The DELETE used the lunch plan's id (Req 5.2)
-    expect(deletedPlanIds).toContain('plan-lunch');
-  });
+  await slot(page).locator('[data-plan-open]').click();
+  await page.getByLabel('Notes', { exact: true }).fill('Meet at 7');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  expect(model.state().mealPlans[0].notes).toBe('Meet at 7');
+  await slot(page)
+    .getByRole('button', { name: /^Remove Dinner/ })
+    .click();
+  await expect(slot(page).locator('[data-plan-open]')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  await expect(slot(page).locator('[data-plan-open]')).toHaveText('Dinner with friends');
+});
+test('slot recipe placement and cancellation use the shared editor without side effects', async ({
+  page,
+}) => {
+  const model = await setupPlanner(page, []);
+  await slot(page).getByRole('button').click();
+  await page.getByRole('combobox', { name: 'Recipe', exact: true }).selectOption('pasta');
+  await page.getByRole('button', { name: 'Back to meal planner', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Meal Planner', exact: true })).toBeVisible();
+  expect(model.writes).toHaveLength(0);
+  await slot(page).getByRole('button').click();
+  await page.getByRole('combobox', { name: 'Recipe', exact: true }).selectOption('pasta');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(slot(page).locator('[data-plan-open]')).toHaveText('Pasta');
+});
+test('an uncertain save retries its durable operation once and never duplicates the meal', async ({
+  page,
+}) => {
+  const model = await setupPlanner(page, []);
+  model.options.loseResponse = true;
+  await page.getByRole('button', { name: 'Place Pasta', exact: true }).click();
+  await slot(page).getByRole('button').click();
+  await expect(page.getByRole('button', { name: 'Retry pending save' })).toBeVisible();
+  await page.getByRole('button', { name: 'Retry pending save' }).click();
+  await expect(slot(page).locator('[data-plan-open]')).toHaveCount(1);
+  expect(model.state().mealPlans).toHaveLength(1);
+  expect(model.writes[1].operationId).toBe(model.writes[0].operationId);
+});
+test('pastel X has a descriptive label and a full hit target without an overflow menu', async ({
+  page,
+}) => {
+  await setupPlanner(page, [meal('source', monday)]);
+  const remove = slot(page).getByRole('button', { name: `Remove Pasta from ${monday} lunch` });
+  await expect(remove).toHaveCSS('background-color', 'rgb(255, 229, 229)');
+  const box = (await remove.boundingBox())!;
+  expect(box.width).toBeGreaterThanOrEqual(44);
+  expect(box.height).toBeGreaterThanOrEqual(44);
+  await expect(slot(page).locator('summary')).toHaveCount(0);
 });

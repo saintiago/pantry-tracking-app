@@ -1,164 +1,85 @@
 import { t, useLanguage } from '../../i18n/i18n';
 import React from 'react';
 import type { Assignment } from './weekUtils';
-
-interface RecipeCardProps {
+interface Props {
   assignment: Assignment;
   isRemoving: boolean;
-  onRemove: (planId: string) => void;
-  onOpen?: (planId: string) => void;
-  onMove?: (planId: string) => void;
+  onRemove: (id: string) => void;
+  onOpen?: (id: string) => void;
+  onMove?: (id: string) => void;
 }
-
-const MEAL_TYPE_LABELS: Record<Assignment['mealType'], string> = {
-  breakfast: 'Breakfast',
-  lunch: 'Lunch',
-  dinner: 'Dinner',
-};
-
-const RecipeCard: React.FC<RecipeCardProps> = ({
-  assignment,
-  isRemoving,
-  onRemove,
-  onOpen,
-  onMove,
-}) => {
+export default function RecipeCard({ assignment: a, isRemoving, onRemove, onOpen }: Props) {
   useLanguage();
-  const handleRemove = () => {
-    onRemove(assignment.planId);
-  };
-
   return (
-    <div style={styles.card}>
-      <div style={styles.content}>
-        <span style={styles.mealType}>{t(MEAL_TYPE_LABELS[assignment.mealType])}</span>
-        <button
-          data-plan-open={assignment.planId}
-          onClick={() => onOpen?.(assignment.planId)}
-          style={{
-            ...styles.recipeName,
-            textAlign: 'left',
-            border: 0,
-            background: 'transparent',
-            padding: 0,
-            minHeight: 36,
-            cursor: 'pointer',
-          }}
-        >
-          {assignment.recipeName}
-        </button>
-        {assignment.servings !== undefined && (
-          <span style={{ fontSize: '0.6875rem', lineHeight: 1.4 }}>
-            {assignment.servings} {t('servings')}
-          </span>
-        )}
+    <div
+      data-recipe-row
+      data-drag-id={`plan:${a.planId}`}
+      data-drag-name={a.recipeName}
+      aria-disabled={isRemoving}
+      onClick={(event) => {
+        if (!(event.target as Element).closest('button') && !isRemoving) onOpen?.(a.planId);
+      }}
+      style={{
+        position: 'relative',
+        background: 'var(--color-surface)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 8,
+        minWidth: 0,
+        padding: 6,
+      }}
+    >
+      <button
+        type="button"
+        data-no-drag
+        onClick={() => onRemove(a.planId)}
+        disabled={isRemoving}
+        aria-label={t('Remove {0} from {1} {2}', a.recipeName, a.date, t(a.mealType))}
+        style={{
+          display: 'block',
+          marginLeft: 'auto',
+          minWidth: 44,
+          minHeight: 44,
+          border: 0,
+          borderRadius: 8,
+          background: 'var(--color-danger)',
+          color: 'var(--color-danger-text)',
+          fontSize: 22,
+          cursor: 'pointer',
+        }}
+      >
+        ×
+      </button>
+      <button
+        type="button"
+        data-plan-open={a.planId}
+        data-drag-id={`plan:${a.planId}`}
+        data-drag-name={a.recipeName}
+        disabled={isRemoving}
+        onClick={() => onOpen?.(a.planId)}
+        style={{
+          width: '100%',
+          minHeight: 44,
+          textAlign: 'left',
+          border: 0,
+          background: 'transparent',
+          color: 'var(--color-text)',
+          padding: '4px 2px',
+          fontSize: 15,
+          lineHeight: 1.4,
+          overflowWrap: 'anywhere',
+          cursor: 'grab',
+          userSelect: 'none',
+        }}
+      >
+        {a.recipeName}
+      </button>
+      {a.entryType && a.entryType !== 'recipe' && <small>{t(a.entryType)}</small>}
+      <div style={{ fontSize: 12, lineHeight: 1.5 }}>
+        {a.servings ?? 1} {t('servings')}
+        {a.kcalPerPortion !== undefined
+          ? ` · ${Math.round(a.kcalPerPortion)} ${t('kcal/portion')}`
+          : ` · ${t('Calories unknown')}`}
       </div>
-      <details style={{ position: 'relative' }}>
-        <summary
-          aria-label={t('Meal actions for {0}', assignment.recipeName)}
-          style={{ cursor: 'pointer', padding: 6 }}
-        >
-          ⋯
-        </summary>
-        <div
-          style={{
-            position: 'absolute',
-            right: 0,
-            zIndex: 5,
-            padding: 8,
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
-            borderRadius: 8,
-            minWidth: 120,
-          }}
-        >
-          {onMove && (
-            <button disabled={isRemoving} onClick={() => onMove(assignment.planId)}>
-              {t('Move to…')}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={handleRemove}
-            disabled={isRemoving}
-            aria-label={t('Remove assignment')}
-            style={isRemoving ? styles.removeButtonDisabled : styles.removeButton}
-          >
-            {t('Remove assignment')}
-          </button>
-        </div>
-      </details>
     </div>
   );
-};
-
-export default RecipeCard;
-
-const styles: Record<string, React.CSSProperties> = {
-  card: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: '0.5rem',
-    padding: '0.5rem 0.75rem',
-    backgroundColor: 'var(--color-surface)',
-    border: '1px solid var(--color-border)',
-    borderRadius: 8,
-    minHeight: 52,
-  },
-  content: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.125rem',
-    flex: 1,
-    minWidth: 0,
-  },
-  mealType: {
-    fontSize: '0.6875rem',
-    fontWeight: 600,
-    color: 'var(--color-secondary)',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-  },
-  recipeName: {
-    fontSize: '0.8125rem',
-    fontWeight: 500,
-    color: 'var(--color-text)',
-    overflow: 'hidden',
-    overflowWrap: 'anywhere',
-    whiteSpace: 'normal',
-  },
-  removeButton: {
-    flexShrink: 0,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 36,
-    minHeight: 36,
-    padding: '0.25rem',
-    fontSize: '1.25rem',
-    lineHeight: 1,
-    color: 'var(--color-secondary)',
-    backgroundColor: 'transparent',
-    border: '1px solid var(--color-border)',
-    borderRadius: 6,
-    cursor: 'pointer',
-  },
-  removeButtonDisabled: {
-    flexShrink: 0,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 36,
-    minHeight: 36,
-    padding: '0.25rem',
-    fontSize: '1.25rem',
-    lineHeight: 1,
-    color: 'var(--color-border)',
-    backgroundColor: 'var(--color-canvas)',
-    border: '1px solid var(--color-border)',
-    borderRadius: 6,
-    cursor: 'not-allowed',
-    opacity: 0.6,
-  },
-};
+}

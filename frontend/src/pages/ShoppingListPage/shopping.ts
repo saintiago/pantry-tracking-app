@@ -61,7 +61,22 @@ export function calculateShopping(data: ShoppingData, plans: MealPlan[], today: 
       order[a.mealType] - order[b.mealType] ||
       a.planId.localeCompare(b.planId),
   );
+  const countedBatches = new Set<string>();
   for (const plan of sorted) {
+    if (plan.entryType && !['recipe', 'leftovers'].includes(plan.entryType)) continue;
+    const batch = data.batches?.find((b) => b.batchId === plan.batchId);
+    if (plan.batchId && !batch) {
+      warnings.add(`Batch unavailable: ${plan.recipeName} (${plan.date}).`);
+      continue;
+    }
+    if (batch) {
+      if (batch.status === 'prepared' || countedBatches.has(batch.batchId)) continue;
+      countedBatches.add(batch.batchId);
+      if (!plans.some((p) => p.planId === batch.sourcePlanId))
+        warnings.add(
+          `Cooking required outside this selection: ${batch.recipeName} on ${batch.cookingDate}. Batch ingredients included once.`,
+        );
+    }
     const recipe = data.recipes.find((r) => r.recipeId === plan.recipeId);
     if (!recipe) {
       warnings.add(
@@ -127,14 +142,16 @@ export function calculateShopping(data: ShoppingData, plans: MealPlan[], today: 
             lot.quantity > 0 &&
             lot.expirationDate !== null &&
             lot.expirationDate >= today &&
-            lot.expirationDate < plan.date,
+            lot.expirationDate < (batch?.cookingDate ?? plan.date),
         )
       )
         warn('Stock expires before a planned meal');
       const quantity =
         ingredient.quantity === null
           ? null
-          : (ingredient.quantity * factor * (plan.servings ?? recipe.portions ?? 1)) /
+          : (ingredient.quantity *
+              factor *
+              (batch?.plannedYield ?? plan.servings ?? recipe.portions ?? 1)) /
             (recipe.portions ?? 1);
       row.contributions.push({
         planId: plan.planId,
@@ -155,7 +172,9 @@ export function calculateShopping(data: ShoppingData, plans: MealPlan[], today: 
       )) {
         if (
           lot.expirationDate !== null &&
-          (!lot.expirationDate || lot.expirationDate < today || lot.expirationDate < plan.date)
+          (!lot.expirationDate ||
+            lot.expirationDate < today ||
+            lot.expirationDate < (batch?.cookingDate ?? plan.date))
         )
           continue;
         const used = Math.min(missing, remaining.get(lot.itemId) ?? 0);
