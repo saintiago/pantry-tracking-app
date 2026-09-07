@@ -188,7 +188,7 @@ test('holding a drag near the window edge scrolls to the second week', async ({ 
   expect(writes).toHaveLength(1);
 });
 
-test.describe('touch selection', () => {
+test.describe('touch placement', () => {
   test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
 
   test('swiping recipe buttons scrolls the library without placing a meal', async ({
@@ -196,7 +196,7 @@ test.describe('touch selection', () => {
     context,
   }) => {
     const writes = await setup(page);
-    const source = page.getByRole('button', { name: 'Place Recipe 00', exact: true });
+    const source = page.locator('[data-recipe-open="recipe-0"]');
     const bounds = (await source.boundingBox())!;
     const session = await context.newCDPSession(page);
     const x = bounds.x + 50;
@@ -231,4 +231,79 @@ test.describe('touch selection', () => {
     ).toBeVisible();
     expect(writes).toEqual([expect.objectContaining({ recipeId: 'recipe-0', mealType: 'lunch' })]);
   });
+
+  for (const cancel of [false, true]) {
+    test(`touch handle drag ${cancel ? 'cancels cleanly' : 'saves the exact meal once'}`, async ({
+      page,
+      context,
+    }) => {
+      const writes = await setup(page);
+      const source = page.getByRole('button', { name: 'Place Recipe 00', exact: true });
+      const target = page
+        .locator('[data-date]')
+        .first()
+        .getByRole('button', { name: /Plan lunch/ });
+      await source.scrollIntoViewIfNeeded();
+      const from = (await source.boundingBox())!;
+      let to = (await target.boundingBox())!;
+      const session = await context.newCDPSession(page);
+      const start = { x: from.x + from.width / 2, y: from.y + from.height / 2 };
+      await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
+      if (to.y + to.height > 700) {
+        await session.send('Input.dispatchTouchEvent', {
+          type: 'touchMove',
+          touchPoints: [{ x: 195, y: 745 }],
+        });
+        await expect
+          .poll(async () => {
+            const bounds = (await target.boundingBox())!;
+            return bounds.y + bounds.height;
+          })
+          .toBeLessThan(700);
+        // Move away from the edge to stop scrolling before measuring the destination.
+        await session.send('Input.dispatchTouchEvent', {
+          type: 'touchMove',
+          touchPoints: [{ x: 195, y: 600 }],
+        });
+        to = (await target.boundingBox())!;
+      }
+      const end = { x: to.x + to.width / 2, y: to.y + to.height / 2 };
+      for (let step = 1; step <= 10; step++) {
+        await session.send('Input.dispatchTouchEvent', {
+          type: 'touchMove',
+          touchPoints: [
+            {
+              x: start.x + ((end.x - start.x) * step) / 10,
+              y: start.y + ((end.y - start.y) * step) / 10,
+            },
+          ],
+        });
+      }
+      await expect(page.getByTestId('recipe-drag-preview')).toHaveText('Recipe 00');
+      await expect(target).toHaveAttribute('data-drag-over', 'true');
+      await session.send('Input.dispatchTouchEvent', {
+        type: cancel ? 'touchCancel' : 'touchEnd',
+        touchPoints: [],
+      });
+      await expect(page.getByTestId('recipe-drag-preview')).toHaveCount(0);
+      await expect(source).toHaveAttribute('aria-pressed', 'false');
+      if (cancel) {
+        expect(writes).toHaveLength(0);
+        await source.tap();
+        await expect(source).toHaveAttribute('aria-pressed', 'true');
+        await target.tap();
+      }
+      await expect(
+        page.locator('[data-date]').first().getByText('Recipe 00', { exact: true }),
+      ).toBeVisible();
+      expect(writes).toEqual([
+        expect.objectContaining({
+          recipeId: 'recipe-0',
+          mealType: 'lunch',
+          date: await page.locator('[data-date]').first().getAttribute('data-date'),
+        }),
+      ]);
+      await session.detach();
+    });
+  }
 });

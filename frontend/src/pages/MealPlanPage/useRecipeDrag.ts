@@ -104,8 +104,7 @@ export function useRecipeDrag(
     start: (event: ReactPointerEvent<HTMLButtonElement>, recipeId: string, name: string) => {
       if (!event.isPrimary || event.button !== 0 || event.currentTarget.disabled) return;
       suppressClickRef.current = false;
-      // Touch keeps native list scrolling and tap-to-place. Mouse/pen own dragging.
-      if (event.pointerType === 'touch') return;
+      // The dedicated handle owns touch dragging; recipe names retain native scrolling.
       gestureRef.current = {
         recipeId,
         name,

@@ -127,7 +127,7 @@ export default function RecipeLibrary({
               ...chip(selected === recipe.recipeId),
               minWidth: 44,
               cursor: 'grab',
-              touchAction: 'pan-y',
+              touchAction: 'none',
               userSelect: 'none',
             }}
           >

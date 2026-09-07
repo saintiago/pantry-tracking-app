@@ -124,7 +124,9 @@ No `.env.test` file needed. All config is in `playwright.config.ts`.
   keyboard and mobile selection, two-week navigation, bulk servings and retries.
 - `meal-planner-drag.spec.ts` checks mouse press/move/release independently of native
   HTML dragging, destination feedback, exact recipe identity after library scrolling,
-  cancellation, and edge scrolling. Verify one saved meal, not only that a POST occurred.
+  cancellation, and edge scrolling. Real browser touch input checks handle dragging,
+  cancellation, tap placement and native scrolling from recipe names on mobile.
+  Verify one saved meal, not only that a POST occurred.
   To check installed Windows Chrome, run
   `PLAYWRIGHT_CHANNEL=chrome npx playwright test e2e/meal-planner-drag.spec.ts`
   in Bash. Omitting the variable keeps the bundled Chromium default.

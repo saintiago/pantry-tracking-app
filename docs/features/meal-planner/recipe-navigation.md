@@ -19,7 +19,8 @@ the remaining first-release requirements.
 - Show a single alphabetical name-only library, search and existing tag filters.
   Multiple categories match any selected tag, with no duplicated recipes. Selected
   categories use mint. Untagged recipes can be filtered as Uncategorized.
-- Use a separate drag/placement handle. Touch/keyboard can select the handle then
+- Use a separate drag/placement handle supporting mouse, pen and touch dragging.
+  Swiping recipe names scrolls the library. Touch/keyboard can select the handle then
   activate a dated meal. Provide Move to and Remove in a meal overflow menu.
   Keep one add action per meal slot, with the clicked meal preselected.
 - Breakfast is cream #FFF2CC with ☀️; lunch terracotta #F4D1C1 with 🍝;
