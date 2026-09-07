@@ -250,6 +250,12 @@ test('Settings owns existing locations and renamed data refreshes in Inventory a
     'background-color',
     'rgb(216, 243, 220)',
   );
+  const remove = page.getByRole('button', { name: 'Remove item', exact: true });
+  await expect(remove).toHaveCSS('background-color', 'rgb(255, 229, 229)');
+  await remove.click();
+  await expect(remove).toHaveAttribute('aria-pressed', 'true');
+  await expect(remove).toHaveCSS('background-color', 'rgb(255, 229, 229)');
+  await remove.click();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('button', { name: 'Rename Pantry', exact: true }).click();
   await page.getByRole('textbox', { name: 'Rename Pantry', exact: true }).fill('Kitchen');
