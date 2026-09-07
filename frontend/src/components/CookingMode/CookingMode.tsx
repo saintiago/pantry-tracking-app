@@ -1,3 +1,4 @@
+import RecipePhoto from '../RecipePhoto/RecipePhoto';
 import { t, useLanguage } from '../../i18n/i18n';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { IngredientStatus, RecipeIngredient } from '../../api/recipes/recipes';
@@ -9,6 +10,7 @@ interface CookingModeProps {
   backLabel?: string;
   recipeName: string;
   instructionSteps: string[];
+  instructionImageIds?: (string | null)[];
   ingredients: RecipeIngredient[];
   availability: IngredientStatus[];
   missingCount: number;
@@ -28,6 +30,7 @@ interface CookingModeProps {
 const CookingMode: React.FC<CookingModeProps> = ({
   recipeName,
   instructionSteps,
+  instructionImageIds,
   ingredients,
   availability,
   missingCount,
@@ -147,7 +150,13 @@ const CookingMode: React.FC<CookingModeProps> = ({
             style={getStepStyle(i, currentStepIndex)}
           >
             <span style={getStepNumberStyle(i, currentStepIndex)}>{i + 1}</span>
-            <span style={styles.stepText}>{step}</span>
+            <div style={styles.stepText}>
+              {step}
+              <RecipePhoto
+                imageId={instructionImageIds?.[i]}
+                alt={t('Image for step {0}', i + 1)}
+              />
+            </div>
             {i < currentStepIndex && (
               <span style={styles.checkmark} aria-hidden="true">
                 ✓

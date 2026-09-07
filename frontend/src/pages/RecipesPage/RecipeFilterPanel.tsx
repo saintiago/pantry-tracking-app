@@ -7,6 +7,7 @@ export interface RecipeFilterPanelValue {
   maxCookTimeInput: string;
   maxTotalTimeInput: string;
   onlyAllAvailable: boolean;
+  expiringWithinDays?: number;
 }
 
 export const EMPTY_PANEL_VALUE: RecipeFilterPanelValue = {
@@ -14,6 +15,7 @@ export const EMPTY_PANEL_VALUE: RecipeFilterPanelValue = {
   maxCookTimeInput: '',
   maxTotalTimeInput: '',
   onlyAllAvailable: false,
+  expiringWithinDays: 0,
 };
 
 export function isAllInactive(value: RecipeFilterPanelValue): boolean {
@@ -21,7 +23,8 @@ export function isAllInactive(value: RecipeFilterPanelValue): boolean {
     value.maxPrepTimeInput === '' &&
     value.maxCookTimeInput === '' &&
     value.maxTotalTimeInput === '' &&
-    !value.onlyAllAvailable
+    !value.onlyAllAvailable &&
+    !value.expiringWithinDays
   );
 }
 
@@ -31,6 +34,7 @@ export interface RecipeFilterPanelProps {
   isAllInactive: boolean;
   onClear: () => void;
   inventoryLoading?: boolean;
+  inventoryUnavailable?: boolean;
 }
 
 const RecipeFilterPanel: React.FC<RecipeFilterPanelProps> = ({
@@ -39,6 +43,7 @@ const RecipeFilterPanel: React.FC<RecipeFilterPanelProps> = ({
   isAllInactive,
   onClear,
   inventoryLoading,
+  inventoryUnavailable,
 }) => {
   useLanguage();
   const prepValidation = validateMaxTimeInput(value.maxPrepTimeInput);
@@ -59,6 +64,22 @@ const RecipeFilterPanel: React.FC<RecipeFilterPanelProps> = ({
         </button>
       </div>
 
+      <label style={styles.fieldGroup}>
+        {t('Ingredients expiring soon')}
+        <select
+          aria-label={t('Ingredients expiring soon')}
+          disabled={inventoryLoading || inventoryUnavailable}
+          value={value.expiringWithinDays ?? 0}
+          onChange={(event) =>
+            onChange({ ...value, expiringWithinDays: Number(event.target.value) })
+          }
+          style={{ minHeight: 44, maxWidth: '100%' }}
+        >
+          <option value={0}>{t('Any expiration')}</option>
+          <option value={7}>{t('Within 1 week')}</option>
+          <option value={14}>{t('Within 2 weeks')}</option>
+        </select>
+      </label>
       {/* Max prep time */}
       <div style={styles.fieldGroup}>
         <label htmlFor="filter-max-prep-time" style={styles.label}>
@@ -134,6 +155,7 @@ const RecipeFilterPanel: React.FC<RecipeFilterPanelProps> = ({
           <input
             id="filter-only-all-available"
             type="checkbox"
+            disabled={inventoryUnavailable}
             checked={value.onlyAllAvailable}
             onChange={(e) => onChange({ ...value, onlyAllAvailable: e.target.checked })}
             style={styles.checkbox}

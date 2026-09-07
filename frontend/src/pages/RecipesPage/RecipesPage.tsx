@@ -1,3 +1,4 @@
+import type { InventoryItem } from '../../domain/inventory/types';
 import { useLanguage } from '../../i18n/i18n';
 import React, { useEffect, useState } from 'react';
 import RecipeList from './RecipeList';
@@ -27,6 +28,9 @@ const RecipesPage: React.FC<RecipesPageProps> = ({ activeCookingSession, onStart
   const [tagsLoading, setTagsLoading] = useState(true);
   const [inventoryIndex, setInventoryIndex] = useState<InventoryIndex>(new Map());
   const [inventoryLoading, setInventoryLoading] = useState(true);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [inventoryError, setInventoryError] = useState(false);
+  const [inventoryAttempt, setInventoryAttempt] = useState(0);
 
   // Re-fetch all tags from the API and update allTags state.
   // Called on mount and after any recipe save so newly added tags are reflected immediately.
@@ -49,14 +53,16 @@ const RecipesPage: React.FC<RecipesPageProps> = ({ activeCookingSession, onStart
   useEffect(() => {
     let cancelled = false;
     setInventoryLoading(true);
+    setInventoryError(false);
     fetchInventory()
       .then((res) => {
         if (!cancelled) {
           setInventoryIndex(buildInventoryIndex(res.items));
+          setInventoryItems(res.items);
         }
       })
       .catch(() => {
-        // silent fail — inventoryIndex stays as the initial empty Map
+        if (!cancelled) setInventoryError(true);
       })
       .finally(() => {
         if (!cancelled) setInventoryLoading(false);
@@ -64,7 +70,7 @@ const RecipesPage: React.FC<RecipesPageProps> = ({ activeCookingSession, onStart
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [inventoryAttempt]);
 
   if (view.mode === 'list') {
     return (
@@ -75,6 +81,9 @@ const RecipesPage: React.FC<RecipesPageProps> = ({ activeCookingSession, onStart
         tagsLoading={tagsLoading}
         inventoryIndex={inventoryIndex}
         inventoryLoading={inventoryLoading}
+        inventoryItems={inventoryItems}
+        inventoryError={inventoryError}
+        onRetryInventory={() => setInventoryAttempt((n) => n + 1)}
         activeCookingSession={activeCookingSession}
       />
     );

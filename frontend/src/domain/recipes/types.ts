@@ -9,6 +9,8 @@ export interface Recipe {
   ingredients: RecipeIngredient[];
   instructions: string | string[];
   chefNotes?: string;
+  imageId?: string;
+  instructionImageIds?: (string | null)[];
   sourceUrl?: string;
   prepTime?: number;
   cookTime?: number;

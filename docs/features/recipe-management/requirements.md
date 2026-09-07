@@ -135,3 +135,16 @@ _For any_ recipe ingredient and inventory state, the Availability_Calculator SHA
 _For any_ recipe, `missingCount` SHALL equal the number of ingredients whose status is `partial` or `missing`.
 
 **Validates: Requirement 2.4**
+
+## Issue #10 extension (September 2026)
+
+- Optional header and per-step photos upload independently and remain aligned when
+  steps are removed. Upload/save failures retain the editor for retry. Legacy recipes
+  without photos and string instructions remain supported. Show photos in detail and cooking.
+- Accept bounded JPG/PNG/WebP files; keep binaries outside recipe database records.
+  See the [data contract](../../architecture/data-model.md) for image references,
+  account scoping, read URLs, removal semantics and upload limits.
+- Add one-/two-week expiration filtering with earliest-first order, composing with
+  existing filters. Use positive unexpired lots, compatible units and linked group
+  identity; otherwise normalized ingredient names. Show matching ingredients/dates.
+- Translate the new controls and errors into Spanish and Italian.

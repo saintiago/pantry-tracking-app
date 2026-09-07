@@ -51,3 +51,5 @@ Extend stateful browser tests for detail/cooking/return, servings, search/catego
 union, views, move/removal, errors, keyboard/touch, palette and canonical translated
 drag targets. Retain real pointer-drag regression coverage. Run type checking,
 unit/property tests, lint, full browser tests, build, deployment and live UI checks.
+
+Calendar recipe titles use 13px text and servings use 11px text for narrow layouts (issue #10).

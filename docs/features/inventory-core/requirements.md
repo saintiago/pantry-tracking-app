@@ -124,3 +124,11 @@ This feature covers manual inventory item management across multiple storage loc
 6. THE Pantry_App SHALL prevent the beautiful user from removing the last remaining Storage_Location
 7. IF a beautiful user attempts to add a Storage_Location with a name that already exists, THEN THE Pantry_App SHALL display a validation error indicating the name is already in use
 8. THE Pantry_App SHALL display the list of Storage_Locations in the order they were created
+
+## Issue #10 settings move (September 2026)
+
+Storage-location setup is accessed from the Settings navigation section. Existing
+locations, IDs, inventory references, validation and deletion confirmation are retained.
+Returning to Inventory refreshes location labels. Inventory Add is pastel green and
+Remove pastel red. A failed refresh after a confirmed location write offers a read-only
+retry rather than repeating that write.

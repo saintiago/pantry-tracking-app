@@ -5,6 +5,7 @@ import OnlineIndicator from '../OnlineIndicator/OnlineIndicator';
 import { APP_VERSION } from '../../config';
 
 export type PageId =
+  | 'settings'
   | 'inventory'
   | 'recipes'
   | 'meal-plan'
@@ -26,6 +27,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'recipes', label: 'Recipes', icon: '📖' },
   { id: 'meal-plan', label: 'Meal Plan', icon: '📅' },
   { id: 'shopping-list', label: 'Shopping List', icon: '🛒' },
+  { id: 'settings', label: 'Settings', icon: '⚙️' },
 ];
 
 interface LayoutProps {
@@ -209,7 +211,9 @@ const styles: Record<string, React.CSSProperties> = {
     flex: 1,
     minHeight: 56,
     minWidth: 44,
-    padding: '6px 4px',
+    padding: '4px 4px',
+    height: 56,
+    boxSizing: 'border-box',
     background: 'none',
     border: 'none',
     transition: 'color 0.15s',
@@ -220,6 +224,9 @@ const styles: Record<string, React.CSSProperties> = {
   },
   navLabel: {
     fontSize: '0.6875rem',
+    lineHeight: 1.1,
+    maxWidth: '100%',
+    overflowWrap: 'anywhere',
     marginTop: 2,
   },
   cookingBanner: {

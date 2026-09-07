@@ -1,3 +1,5 @@
+import { styles } from './detailStyles';
+import RecipePhoto from '../../components/RecipePhoto/RecipePhoto';
 import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -199,6 +201,8 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
         <h2 style={styles.pageTitle}>{recipe.name}</h2>
       </div>
 
+      <RecipePhoto imageId={recipe.imageId} alt={t('Recipe image')} />
+
       {/* Error banner (delete errors) */}
       {error && (
         <div style={styles.errorBanner} role="alert">
@@ -305,6 +309,10 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
             {instructionSteps.filter(Boolean).map((step, index) => (
               <li key={index} style={styles.instructions}>
                 <strong>{index + 1}.</strong> {step}
+                <RecipePhoto
+                  imageId={recipe.instructionImageIds?.[index]}
+                  alt={t('Image for step {0}', index + 1)}
+                />
               </li>
             ))}
           </ol>
@@ -379,245 +387,3 @@ const RecipeDetail: React.FC<RecipeDetailProps> = ({
 };
 
 export default RecipeDetail;
-
-const styles: Record<string, React.CSSProperties> = {
-  page: {
-    display: 'flex',
-    flexDirection: 'column',
-    minHeight: '100%',
-    position: 'relative',
-  },
-  pageHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.75rem',
-    marginBottom: '1rem',
-    flexWrap: 'wrap',
-  },
-  backButton: {
-    minWidth: 44,
-    minHeight: 44,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '0.5rem 0.75rem',
-    background: 'none',
-    border: '1px solid var(--color-border)',
-    borderRadius: 8,
-    cursor: 'pointer',
-    fontSize: '0.9375rem',
-    color: 'var(--color-text)',
-  },
-  pageTitle: {
-    fontSize: '1.25rem',
-    fontWeight: 700,
-    margin: 0,
-    flex: 1,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-  loadingState: {
-    padding: '2rem 1rem',
-    textAlign: 'center',
-    color: 'var(--color-secondary)',
-    fontSize: '1rem',
-  },
-  errorBanner: {
-    padding: '0.75rem 1rem',
-    backgroundColor: 'var(--color-danger)',
-    color: 'var(--color-danger-text)',
-    borderRadius: 8,
-    fontSize: '0.9375rem',
-    fontWeight: 600,
-    marginBottom: '0.75rem',
-  },
-  content: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1rem',
-  },
-  section: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.5rem',
-  },
-  sectionTitle: {
-    fontSize: '1rem',
-    fontWeight: 700,
-    margin: 0,
-    color: 'var(--color-text)',
-  },
-  instructions: {
-    fontSize: '0.9375rem',
-    color: 'var(--color-text)',
-    lineHeight: 1.6,
-    margin: 0,
-    whiteSpace: 'pre-wrap',
-  },
-  instructionsList: {
-    margin: 0,
-    paddingLeft: '1.5rem',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.4rem',
-  },
-  sourceLink: {
-    fontSize: '0.9375rem',
-    color: 'var(--color-action)',
-    textDecoration: 'underline',
-  },
-  actionBar: {
-    position: 'fixed',
-    bottom: 56,
-    left: 0,
-    right: 0,
-    display: 'flex',
-    gap: '0.75rem',
-    padding: '0.75rem 1rem',
-    backgroundColor: 'var(--color-surface)',
-    borderTop: '1px solid var(--color-border)',
-    zIndex: 20,
-    maxWidth: 1920,
-    margin: '0 auto',
-    height: 72,
-    boxSizing: 'border-box',
-  },
-  deleteButton: {
-    flex: 1,
-    minHeight: 44,
-    minWidth: 44,
-    padding: '0.625rem 1rem',
-    fontSize: '1rem',
-    fontWeight: 600,
-    color: 'var(--color-danger-text)',
-    backgroundColor: 'var(--color-danger)',
-    border: '1px solid var(--color-danger)',
-    borderRadius: 8,
-    cursor: 'pointer',
-  },
-  editButton: {
-    flex: 2,
-    minHeight: 44,
-    minWidth: 44,
-    padding: '0.625rem 1rem',
-    fontSize: '1rem',
-    fontWeight: 700,
-    color: 'var(--color-text)',
-    backgroundColor: 'var(--color-mint)',
-    border: 'none',
-    borderRadius: 8,
-    cursor: 'pointer',
-  },
-  disabledButton: {
-    opacity: 0.5,
-    cursor: 'not-allowed',
-  },
-  cookButton: {
-    flex: 1,
-    minHeight: 44,
-    minWidth: 44,
-    padding: '0.625rem 0.5rem',
-    fontSize: '0.9375rem',
-    fontWeight: 700,
-    color: 'var(--color-text)',
-    backgroundColor: 'var(--color-mint)',
-    border: 'none',
-    borderRadius: 8,
-    cursor: 'pointer',
-  },
-  cookButtonDisabled: {
-    backgroundColor: 'var(--color-border)',
-    color: 'var(--color-secondary)',
-    cursor: 'not-allowed',
-  },
-  cookButtonResume: {
-    backgroundColor: 'var(--color-mint)',
-  },
-  timeSection: {
-    display: 'flex',
-    flexWrap: 'wrap' as const,
-    gap: '0.75rem',
-    padding: '0.75rem 1rem',
-    backgroundColor: 'var(--color-canvas)',
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  timeItem: {
-    fontSize: '0.9375rem',
-    color: 'var(--color-text)',
-  },
-  totalTime: {
-    fontWeight: 700,
-    color: 'var(--color-text)',
-  },
-  portionsSection: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '0.75rem 1rem',
-    backgroundColor: 'var(--color-canvas)',
-    borderRadius: 8,
-  },
-  portionsLabel: {
-    fontSize: '0.9375rem',
-    fontWeight: 600,
-    color: 'var(--color-text)',
-  },
-  portionsControls: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.75rem',
-  },
-  portionsButton: {
-    minWidth: 44,
-    minHeight: 44,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '0.5rem',
-    background: 'var(--color-surface)',
-    border: '1px solid var(--color-border)',
-    borderRadius: 8,
-    cursor: 'pointer',
-    fontSize: '1.25rem',
-    fontWeight: 700,
-    color: 'var(--color-text)',
-  },
-  portionsValue: {
-    fontSize: '1rem',
-    fontWeight: 700,
-    color: 'var(--color-text)',
-    minWidth: 32,
-    textAlign: 'center' as const,
-  },
-  ingredientList: {
-    listStyle: 'none',
-    margin: 0,
-    padding: 0,
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '0.5rem',
-  },
-  ingredientItem: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    fontSize: '0.9375rem',
-    color: 'var(--color-text)',
-    padding: '0.25rem 0',
-    borderBottom: '1px solid var(--color-canvas)',
-  },
-  tagsSection: {
-    display: 'flex',
-    flexWrap: 'wrap' as const,
-    gap: '0.4rem',
-  },
-  tagChip: {
-    backgroundColor: 'var(--color-sky)',
-    color: 'var(--color-action)',
-    borderRadius: 16,
-    fontWeight: 600,
-    fontSize: '0.875rem',
-    padding: '0.2rem 0.5rem',
-  },
-};

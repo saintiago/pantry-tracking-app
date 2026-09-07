@@ -1,17 +1,19 @@
+import { readRecipePages } from './recipe-queries';
+import { autoCreateMissingIngredients } from './recipe-inventory';
+import { recipeImageRequest, validateRecipeImages } from './recipe-images';
 import { queryAll } from '../../db/query';
 import { parseObject } from '../../http/request';
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
   DynamoDBDocumentClient,
-  QueryCommand,
   PutCommand,
   GetCommand,
   UpdateCommand,
   DeleteCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { randomUUID } from 'crypto';
-import { InventoryRepository, InventoryWriteError } from '../../inventory/repository';
+import { InventoryWriteError } from '../../inventory/repository';
 
 const TABLE_NAME = process.env.TABLE_NAME ?? 'PantryApp';
 
@@ -32,44 +34,10 @@ import {
 import type { RecipeIngredient, InventoryItem } from './recipe-rules';
 export * from './recipe-rules';
 
-// ─── Auto-create placeholder inventory items for unrecognized ingredients ────
-
-async function autoCreateMissingIngredients(
-  userId: string,
-  ingredients: RecipeIngredient[],
-): Promise<void> {
-  const inventory = new InventoryRepository(docClient, TABLE_NAME);
-  for (const ingredient of ingredients) {
-    await inventory.ensurePlaceholder(userId, ingredient.name, ingredient.unit);
-  }
-}
-
 // ─── Handlers ────────────────────────────────────────────────────────────────
 
 async function listRecipes(userId: string): Promise<APIGatewayProxyResult> {
-  return response(200, { recipes: await readRecipePages(userId) });
-}
-
-async function readRecipePages(
-  userId: string,
-  projection?: string,
-): Promise<Record<string, unknown>[]> {
-  const items: Record<string, unknown>[] = [];
-  let cursor: Record<string, unknown> | undefined;
-  do {
-    const result = await docClient.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
-        ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':skPrefix': 'RECIPE#' },
-        ...(projection ? { ProjectionExpression: projection } : {}),
-        ...(cursor ? { ExclusiveStartKey: cursor } : {}),
-      }),
-    );
-    items.push(...(result.Items ?? []));
-    cursor = result.LastEvaluatedKey;
-  } while (cursor);
-  return items;
+  return response(200, { recipes: await readRecipePages(docClient, TABLE_NAME, userId) });
 }
 
 async function createRecipe(userId: string, body: string | null): Promise<APIGatewayProxyResult> {
@@ -109,6 +77,9 @@ async function createRecipe(userId: string, body: string | null): Promise<APIGat
       details: [{ field: 'instructions', message: instructionsError }],
     });
   }
+
+  const imageError = validateRecipeImages(parsed);
+  if (imageError) return response(400, { error: 'VALIDATION_ERROR', message: imageError });
 
   const invalidTimeField = validateTimeFields(parsed);
   if (invalidTimeField) {
@@ -177,10 +148,18 @@ async function createRecipe(userId: string, body: string | null): Promise<APIGat
   if (parsed.prepTime !== undefined) recipe.prepTime = parsed.prepTime as number;
   if (parsed.cookTime !== undefined) recipe.cookTime = parsed.cookTime as number;
 
+  if (parsed.imageId != null) recipe.imageId = parsed.imageId;
+  if (parsed.instructionImageIds != null) recipe.instructionImageIds = parsed.instructionImageIds;
+
   await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: recipe }));
 
   // Auto-create placeholder inventory items for any unrecognized ingredients
-  await autoCreateMissingIngredients(userId, parsed.ingredients as RecipeIngredient[]);
+  await autoCreateMissingIngredients(
+    docClient,
+    TABLE_NAME,
+    userId,
+    parsed.ingredients as RecipeIngredient[],
+  );
 
   return response(201, { recipe });
 }
@@ -259,6 +238,9 @@ async function updateRecipe(
     }
   }
 
+  const imageError = validateRecipeImages(parsed);
+  if (imageError) return response(400, { error: 'VALIDATION_ERROR', message: imageError });
+
   const invalidTimeField = validateTimeFields(parsed);
   if (invalidTimeField) {
     return response(400, {
@@ -304,6 +286,8 @@ async function updateRecipe(
     cookTime: 'cookTime',
     portions: 'portions',
     chefNotes: 'chefNotes',
+    imageId: 'imageId',
+    instructionImageIds: 'instructionImageIds',
   };
 
   for (const [field, dbField] of Object.entries(updatableFields)) {
@@ -328,7 +312,15 @@ async function updateRecipe(
 
   // Handle explicit null values for optional fields — use REMOVE to delete the attribute.
   const removeParts: string[] = [];
-  for (const field of ['prepTime', 'cookTime', 'chefNotes'] as const) {
+  if (parsed.instructions !== undefined && parsed.instructionImageIds === undefined)
+    parsed.instructionImageIds = null;
+  for (const field of [
+    'prepTime',
+    'cookTime',
+    'chefNotes',
+    'imageId',
+    'instructionImageIds',
+  ] as const) {
     if (parsed[field] === null) {
       const alias = `#f_${field}`;
       expressionAttrNames[alias] = field;
@@ -356,7 +348,12 @@ async function updateRecipe(
 
     // Auto-create placeholder inventory items for any unrecognized ingredients
     if (parsed.ingredients !== undefined) {
-      await autoCreateMissingIngredients(userId, parsed.ingredients as RecipeIngredient[]);
+      await autoCreateMissingIngredients(
+        docClient,
+        TABLE_NAME,
+        userId,
+        parsed.ingredients as RecipeIngredient[],
+      );
     }
 
     return response(200, { recipe: result.Attributes });
@@ -369,7 +366,7 @@ async function updateRecipe(
 }
 
 async function listRecipeTags(userId: string): Promise<APIGatewayProxyResult> {
-  const items = await readRecipePages(userId, 'tags');
+  const items = await readRecipePages(docClient, TABLE_NAME, userId, 'tags');
 
   const allTags: string[] = [];
   for (const item of items) {
@@ -443,6 +440,8 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
   const recipeId = event.pathParameters?.recipeId ?? null;
 
   try {
+    if (event.resource?.startsWith('/recipe-images'))
+      return await recipeImageRequest(userId, method, event.pathParameters?.imageId, event.body);
     if (method === 'GET' && !recipeId) {
       return await listRecipes(userId);
     }

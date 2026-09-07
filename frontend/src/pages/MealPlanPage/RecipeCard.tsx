@@ -48,7 +48,7 @@ const RecipeCard: React.FC<RecipeCardProps> = ({
           {assignment.recipeName}
         </button>
         {assignment.servings !== undefined && (
-          <span>
+          <span style={{ fontSize: '0.6875rem', lineHeight: 1.4 }}>
             {assignment.servings} {t('servings')}
           </span>
         )}
@@ -121,7 +121,7 @@ const styles: Record<string, React.CSSProperties> = {
     letterSpacing: '0.05em',
   },
   recipeName: {
-    fontSize: '0.9375rem',
+    fontSize: '0.8125rem',
     fontWeight: 500,
     color: 'var(--color-text)',
     overflow: 'hidden',

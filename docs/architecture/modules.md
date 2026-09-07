@@ -79,3 +79,10 @@ TypeScript modules or restore an eager combined translation chunk. Language acti
 and device persistence wait for successful loading and ignore superseded requests.
 Preserve user names, tags, notes, canonical unit keys and IDs. `localizedUnits()` sorts
 display labels; request values and calculations must remain locale-independent.
+
+Recipe photo transport belongs to `api/recipes/images.ts`; shared photo display/upload
+controls are in `components/RecipePhoto/`. The existing Recipe Lambda also serves
+`/recipe-images`, with account-scoped S3 access in its feature-local helper. Recipe
+query pagination and placeholder orchestration have separate feature helpers.
+Expiration prioritization is a pure rule under `domain/recipes/`. Settings composes
+the existing shared StorageLocationManager and location API; it creates no new data store.

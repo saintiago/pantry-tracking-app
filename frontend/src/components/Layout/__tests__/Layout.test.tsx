@@ -24,12 +24,13 @@ describe('Layout', () => {
     expect(screen.getByRole('status')).toBeInTheDocument();
   });
 
-  it('renders all four navigation items', () => {
+  it('renders all five navigation items', () => {
     render(<Layout {...defaultProps} />);
     expect(screen.getByText('Inventory')).toBeInTheDocument();
     expect(screen.getByText('Recipes')).toBeInTheDocument();
     expect(screen.getByText('Meal Plan')).toBeInTheDocument();
     expect(screen.getByText('Shopping List')).toBeInTheDocument();
+    expect(screen.getByText('Settings')).toBeInTheDocument();
   });
 
   it('renders children in the main content area', () => {

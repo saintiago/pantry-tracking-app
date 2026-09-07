@@ -1191,3 +1191,74 @@ describe('Recipe Lambda handler', () => {
     });
   });
 });
+
+describe('recipe photo references', () => {
+  const imageId = '11111111-1111-4111-8111-111111111111';
+  beforeEach(() => {
+    mockSend.mockReset();
+    mockSend.mockResolvedValue({});
+  });
+  it('stores header and aligned instruction image IDs without embedding files', async () => {
+    const result = await handler(
+      makeEvent({
+        httpMethod: 'POST',
+        body: JSON.stringify({
+          ...validRecipe,
+          imageId,
+          instructions: ['Mix', 'Cook'],
+          instructionImageIds: [imageId, null],
+        }),
+      }),
+    );
+    expect(result.statusCode).toBe(201);
+    expect(JSON.parse(result.body).recipe).toMatchObject({
+      imageId,
+      instructionImageIds: [imageId, null],
+    });
+    expect(mockSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        _type: 'Put',
+        Item: expect.objectContaining({ imageId, instructionImageIds: [imageId, null] }),
+      }),
+    );
+  });
+  it('rejects misaligned steps before writing', async () => {
+    const result = await handler(
+      makeEvent({
+        httpMethod: 'POST',
+        body: JSON.stringify({ ...validRecipe, instructionImageIds: [imageId, null] }),
+      }),
+    );
+    expect(result.statusCode).toBe(400);
+    expect(mockSend).not.toHaveBeenCalled();
+  });
+  it('clears step image links when an older client replaces instructions', async () => {
+    const result = await handler(
+      makeEvent({
+        httpMethod: 'PUT',
+        pathParameters: { recipeId: 'r' },
+        body: JSON.stringify({ instructions: ['New step'], imageId: null }),
+      }),
+    );
+    expect(result.statusCode).toBe(200);
+    expect(mockSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        _type: 'Update',
+        UpdateExpression: expect.stringContaining('REMOVE #f_imageId, #f_instructionImageIds'),
+      }),
+    );
+  });
+  it('requires authentication for image upload and read routes', async () => {
+    for (const httpMethod of ['GET', 'POST']) {
+      const result = await handler(
+        makeEvent({
+          httpMethod,
+          resource: '/recipe-images/{imageId}',
+          pathParameters: { imageId },
+          requestContext: {} as APIGatewayProxyEvent['requestContext'],
+        }),
+      );
+      expect(result.statusCode).toBe(401);
+    }
+  });
+});

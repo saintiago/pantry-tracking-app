@@ -1,7 +1,6 @@
 import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 import '../../styles/inventory-theme.css';
-import StorageLocationManager from '../../components/StorageLocationManager/StorageLocationManager';
 import InventoryList from '../../components/InventoryList/InventoryList';
 import { InAppNotification } from '../../components/InventoryList/InventoryList';
 // Type-only import — erased at compile time, does not pull in Quagga
@@ -14,12 +13,7 @@ import type { StorageLocation } from '../../api/locations/locations';
 import type { InventoryGroup, InventoryItem } from '../../domain/inventory/types';
 import { replaceInventoryGroup } from '../../domain/inventory/grouping';
 import type { PageId } from '../../components/Layout/Layout';
-import {
-  fetchLocations,
-  createLocation,
-  renameLocation,
-  deleteLocation,
-} from '../../api/locations/locations';
+import { fetchLocations } from '../../api/locations/locations';
 import {
   fetchInventory,
   addInventoryItem,
@@ -174,48 +168,6 @@ const InventoryPage: React.FC<InventoryPageProps> = ({
   useEffect(() => {
     loadAll();
   }, [loadAll]);
-
-  const handleAddLocation = useCallback(
-    async (name: string): Promise<{ error?: string }> => {
-      try {
-        await createLocation(name);
-        await loadLocations();
-        return {};
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to add location';
-        return { error: message };
-      }
-    },
-    [loadLocations],
-  );
-
-  const handleRename = useCallback(
-    async (locationId: string, newName: string): Promise<{ error?: string }> => {
-      try {
-        await renameLocation(locationId, newName);
-        await loadLocations();
-        return {};
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to rename location';
-        return { error: message };
-      }
-    },
-    [loadLocations],
-  );
-
-  const handleRemoveLocation = useCallback(
-    async (locationId: string): Promise<{ error?: string }> => {
-      try {
-        await deleteLocation(locationId);
-        await loadLocations();
-        return {};
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to remove location';
-        return { error: message };
-      }
-    },
-    [loadLocations],
-  );
 
   const handleAddItem = useCallback(
     async (data: AddItemData): Promise<{ error?: string }> => {
@@ -416,13 +368,6 @@ const InventoryPage: React.FC<InventoryPageProps> = ({
         onUpdateThreshold={handleUpdateThreshold}
       />
 
-      <StorageLocationManager
-        locations={locations}
-        onAdd={handleAddLocation}
-        onRename={handleRename}
-        onRemove={handleRemoveLocation}
-      />
-
       {scannerOpen && (
         <BarcodeScannerErrorBoundary
           onClose={() => setScannerOpen(false)}
@@ -464,7 +409,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '1rem',
     fontWeight: 600,
     color: 'var(--color-text)',
-    backgroundColor: 'var(--inv-primary)',
+    backgroundColor: 'var(--color-danger)',
     border: 'none',
     borderRadius: 'var(--inv-radius-md)' as unknown as number,
     cursor: 'pointer',
@@ -491,7 +436,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '1.125rem',
     fontWeight: 700,
     color: 'var(--color-text)',
-    backgroundColor: 'var(--inv-sage)',
+    backgroundColor: 'var(--color-mint)',
     border: 'none',
     borderRadius: 'var(--inv-radius-lg)' as unknown as number,
     cursor: 'pointer',
@@ -516,7 +461,7 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: 'var(--inv-shadow-sm)',
   },
   removeButtonActive: {
-    backgroundColor: 'var(--inv-primary-dark)',
+    backgroundColor: 'var(--color-danger)',
     boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.15)',
   },
   buttonIcon: {

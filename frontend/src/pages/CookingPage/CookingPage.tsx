@@ -147,6 +147,7 @@ const CookingPage: React.FC<CookingPageProps> = ({
         backLabel={backLabel}
         recipeName={recipe.name}
         instructionSteps={instructionSteps}
+        instructionImageIds={recipe.instructionImageIds}
         ingredients={displayedIngredients}
         availability={scaledAvailability}
         missingCount={missingCount}

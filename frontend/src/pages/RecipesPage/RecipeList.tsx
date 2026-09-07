@@ -1,3 +1,5 @@
+import { prioritizeExpiringRecipes, recipeExpiration } from '../../domain/recipes/expiration';
+import type { InventoryItem } from '../../domain/inventory/types';
 import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useEffect, useMemo, useState } from 'react';
 import { fetchRecipes, computeTotalTime } from '../../api/recipes/recipes';
@@ -18,6 +20,9 @@ interface RecipeListProps {
   tagsLoading: boolean;
   inventoryIndex: InventoryIndex;
   inventoryLoading: boolean;
+  inventoryItems?: InventoryItem[];
+  inventoryError?: boolean;
+  onRetryInventory?: () => void;
   activeCookingSession?: CookingSession | null;
 }
 
@@ -28,6 +33,9 @@ const RecipeList: React.FC<RecipeListProps> = ({
   tagsLoading,
   inventoryIndex,
   inventoryLoading,
+  inventoryItems = [],
+  inventoryError = false,
+  onRetryInventory,
   activeCookingSession,
 }) => {
   useLanguage();
@@ -57,6 +65,12 @@ const RecipeList: React.FC<RecipeListProps> = ({
     };
   }, []);
 
+  const now = new Date();
+  const today = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0'),
+  ].join('-');
   const filtered = useMemo(() => {
     const resolvedFilters: RecipeFilters = {
       nameQuery: search,
@@ -66,8 +80,13 @@ const RecipeList: React.FC<RecipeListProps> = ({
       maxTotalTime: validateMaxTimeInput(panel.maxTotalTimeInput).value,
       onlyAllAvailable: panel.onlyAllAvailable,
     };
-    return filterRecipes(recipes, resolvedFilters, inventoryIndex);
-  }, [recipes, search, activeTagFilters, panel, inventoryIndex]);
+    return prioritizeExpiringRecipes(
+      filterRecipes(recipes, resolvedFilters, inventoryIndex),
+      inventoryItems,
+      today,
+      panel.expiringWithinDays ?? 0,
+    );
+  }, [recipes, search, activeTagFilters, panel, inventoryIndex, inventoryItems, today]);
 
   const isAnyFilterActive =
     search.trim() !== '' ||
@@ -75,7 +94,8 @@ const RecipeList: React.FC<RecipeListProps> = ({
     panel.maxPrepTimeInput !== '' ||
     panel.maxCookTimeInput !== '' ||
     panel.maxTotalTimeInput !== '' ||
-    panel.onlyAllAvailable;
+    panel.onlyAllAvailable ||
+    !!panel.expiringWithinDays;
 
   if (loading) {
     return (
@@ -148,8 +168,15 @@ const RecipeList: React.FC<RecipeListProps> = ({
         isAllInactive={isAllInactive(panel)}
         onClear={() => setPanel(EMPTY_PANEL_VALUE)}
         inventoryLoading={inventoryLoading}
+        inventoryUnavailable={inventoryError}
       />
 
+      {inventoryError && (
+        <p role="alert">
+          {t('Inventory filters unavailable. Retry inventory.')}{' '}
+          <button onClick={onRetryInventory}>{t('Retry inventory')}</button>
+        </p>
+      )}
       {filtered.length === 0 ? (
         <div style={styles.emptyState} role="status">
           {recipes.length === 0 ? (
@@ -184,6 +211,16 @@ const RecipeList: React.FC<RecipeListProps> = ({
                         </span>
                       )}
                     </span>
+                    {!!panel.expiringWithinDays && (
+                      <span>
+                        {t(
+                          'Use soon: {0}',
+                          recipeExpiration(recipe, inventoryItems, today, panel.expiringWithinDays)
+                            .map((item) => item.name + ' (' + item.expiration + ')')
+                            .join(', '),
+                        )}
+                      </span>
+                    )}
                     {recipeTags.length > 0 && (
                       <div style={styles.tagChipRow}>
                         {recipeTags.map((tag) => (

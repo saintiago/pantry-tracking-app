@@ -215,6 +215,8 @@ interface Recipe {
   tags: string[]; // Required, non-empty; always lowercase, trimmed, deduplicated
   ingredients: RecipeIngredient[];
   instructions: string | string[]; // Array of ordered steps (new clients); legacy recipes may be a single string
+  imageId?: string; // UUIDv4 of the optional header image
+  instructionImageIds?: (string | null)[]; // aligned with instruction steps
   chefNotes?: string; // Optional free-text notes shown below instructions
   sourceUrl?: string;
   prepTime?: number; // Optional prep time in minutes (non-negative integer)
@@ -471,6 +473,8 @@ inventory transaction.
 ```typescript
 // POST /recipes
 interface CreateRecipeRequest {
+  imageId?: string;
+  instructionImageIds?: (string | null)[];
   name: string;
   tags: string[]; // required, at least one; normalized to lowercase
   ingredients: RecipeIngredient[]; // at least one required; null quantity only for 'handful'
@@ -484,6 +488,8 @@ interface CreateRecipeRequest {
 
 // PUT /recipes/{recipeId}
 interface UpdateRecipeRequest {
+  imageId?: string | null;
+  instructionImageIds?: (string | null)[] | null;
   name?: string;
   tags?: string[]; // if provided, must be non-empty; normalized to lowercase
   ingredients?: RecipeIngredient[];
@@ -604,7 +610,34 @@ interface ErrorResponse {
 }
 ```
 
-## Planned S3 object layout
+## Recipe photos (implemented)
+
+Authenticated `POST /recipe-images` accepts `{ dataUrl }` for JPEG, PNG or WebP,
+validates base64, file signatures and a 1 MB decoded limit, and returns `201 { imageId }`.
+The browser accepts original files up to 20 MB, resizes their longest edge to at most
+1600px, and converts them to bounded JPEG before upload. Recipe rows store UUIDv4
+references only. No DynamoDB image binary or publicly accessible bucket is introduced.
+
+Authenticated `GET /recipe-images/{imageId}` checks the object in the requesting
+account's prefix and returns `{ url }`, an S3 download URL valid for one hour.
+Missing objects return 404; malformed IDs/uploads return 400. The existing private,
+retained storage bucket uses `recipe-images/{userId}/{imageId}`. The Recipe Lambda
+receives read/put permissions on that prefix. It cannot accept a caller-supplied user
+prefix or arbitrary S3 key. Signed URLs are temporary bearer URLs; they are not persisted.
+
+Optional `imageId` and `instructionImageIds` are supported on recipe create/update.
+The latter must align with the instructions supplied in the same request; null entries
+mean no image for that step. Explicit null removes either optional attribute on PUT.
+Updating instructions without supplying their image array clears previous step links,
+so older clients cannot leave images attached to the wrong steps. Other partial edits
+preserve references. Legacy string instructions count as one step.
+
+Removing/replacing photos or deleting/canceling a recipe removes references only;
+uploaded objects remain private in retained storage. Orphan cleanup is not implemented.
+Uploads and recipe writes are separate operations, so failed saves can reuse uploaded
+IDs. Retry of an uncertain upload may create an additional unreferenced object.
+
+## Planned S3 object layout (other features)
 
 ```
 pantry-app-storage-{env}/

@@ -4,6 +4,7 @@ import { LanguageProvider } from './i18n/LanguageProvider';
 import { AuthProvider, useAuth } from './auth/AuthContext/AuthContext';
 import AuthScreen from './auth/AuthScreen/AuthScreen';
 import Layout, { PageId } from './components/Layout/Layout';
+import SettingsPage from './pages/SettingsPage/SettingsPage';
 import InventoryPage from './pages/InventoryPage/InventoryPage';
 import AddItemPage from './pages/AddItemPage/AddItemPage';
 import ItemDetailPage from './pages/ItemDetailPage/ItemDetailPage';
@@ -170,6 +171,7 @@ const AuthenticatedApp: React.FC = () => {
   };
 
   const renderPage = () => {
+    if (activePage === 'settings') return <SettingsPage />;
     if (activePage === 'shopping-edit' && shoppingEdit)
       return (
         <ShoppingEditPage

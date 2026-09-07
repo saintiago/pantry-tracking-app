@@ -1,3 +1,6 @@
+import RecipeInstructionsEditor, { makeInstructionRow } from './RecipeInstructionsEditor';
+import type { InstructionRow } from './RecipeInstructionsEditor';
+import RecipePhotoField from '../../components/RecipePhoto/RecipePhotoField';
 import { styles } from './styles';
 import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -28,11 +31,6 @@ interface IngredientRow extends Omit<RecipeIngredient, 'quantity'> {
   quantityStr: string;
 }
 
-interface InstructionRow {
-  _id: number;
-  value: string;
-}
-
 interface FormErrors {
   name?: string;
   instructions?: string;
@@ -52,7 +50,6 @@ interface DropdownState {
 
 let nextId = 0;
 const makeRow = (): IngredientRow => ({ _id: ++nextId, name: '', quantityStr: '', unit: '' });
-const makeInstructionRow = (value = ''): InstructionRow => ({ _id: ++nextId, value });
 
 /**
  * Validates a time field string value.
@@ -91,6 +88,9 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
   const isEdit = recipeId !== undefined;
 
   const [name, setName] = useState('');
+  const [imageId, setImageId] = useState<string | null>(null);
+  const [uploads, setUploads] = useState(0);
+  const imageBusy = useCallback((busy: boolean) => setUploads((n) => n + (busy ? 1 : -1)), []);
   const [instructions, setInstructions] = useState<InstructionRow[]>([makeInstructionRow()]);
   const [chefNotes, setChefNotes] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
@@ -141,12 +141,16 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
       .then(({ recipe }) => {
         if (cancelled) return;
         setName(recipe.name);
+        setImageId(recipe.imageId ?? null);
         const instructionSteps = Array.isArray(recipe.instructions)
           ? recipe.instructions
           : [recipe.instructions];
         setInstructions(
           instructionSteps.length > 0
-            ? instructionSteps.map((step) => makeInstructionRow(step))
+            ? instructionSteps.map((step, index) => ({
+                ...makeInstructionRow(step),
+                imageId: recipe.instructionImageIds?.[index],
+              }))
             : [makeInstructionRow()],
         );
         setChefNotes(recipe.chefNotes ?? '');
@@ -335,6 +339,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
+      if (uploads > 0) return;
       const errs = validate();
       if (Object.keys(errs).length > 0) {
         setErrors(errs);
@@ -369,6 +374,10 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
       }
 
       const baseData = {
+        imageId: imageId ?? undefined,
+        instructionImageIds: instructions
+          .filter((step) => step.value.trim())
+          .map((step) => step.imageId ?? null),
         name: name.trim(),
         instructions: instructions.map((step) => step.value.trim()).filter(Boolean),
         chefNotes: chefNotes.trim() || undefined,
@@ -403,6 +412,7 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
             ...baseData,
             ...timeFields,
             chefNotes: chefNotes.trim() || null,
+            imageId,
             portions: selectedPortions,
             tags,
           });
@@ -431,6 +441,8 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
     [
       validate,
       name,
+      imageId,
+      uploads,
       instructions,
       chefNotes,
       sourceUrl,
@@ -513,6 +525,14 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
           )}
         </div>
 
+        <RecipePhotoField
+          label={t('Recipe image')}
+          imageId={imageId}
+          onChange={setImageId}
+          onBusy={imageBusy}
+          disabled={submitting || uploads > 0}
+        />
+
         {/* Tags */}
         <div style={styles.fieldGroup}>
           <label style={styles.label}>
@@ -530,57 +550,14 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
           />
         </div>
 
-        {/* Instructions */}
-        <div style={styles.fieldGroup}>
-          <span style={styles.label}>
-            {t('Instructions')} <span aria-hidden="true">*</span>
-          </span>
-          {instructions.map((step, index) => (
-            <div key={step._id} style={styles.instructionRow}>
-              <span style={styles.stepNumber}>{index + 1}.</span>
-              <textarea
-                value={step.value}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setInstructions((current) =>
-                    current.map((item) => (item._id === step._id ? { ...item, value } : item)),
-                  );
-                  setErrors((prev) => ({ ...prev, instructions: undefined }));
-                }}
-                style={styles.textarea}
-                rows={2}
-                aria-label={index === 0 ? t('Instructions') : t('Instruction step {0}', index + 1)}
-                aria-required="true"
-                aria-invalid={!!errors.instructions}
-              />
-              <button
-                type="button"
-                onClick={() =>
-                  setInstructions((current) =>
-                    current.length > 1 ? current.filter((item) => item._id !== step._id) : current,
-                  )
-                }
-                disabled={instructions.length === 1}
-                aria-label={t('Remove instruction step {0}', index + 1)}
-                style={styles.removeButton}
-              >
-                ×
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => setInstructions((current) => [...current, makeInstructionRow()])}
-            style={styles.addIngredientButton}
-          >
-            {t('+ Add Step')}{' '}
-          </button>
-          {errors.instructions && (
-            <span style={styles.fieldError} role="alert">
-              {translateMessage(errors.instructions)}
-            </span>
-          )}
-        </div>
+        <RecipeInstructionsEditor
+          instructions={instructions}
+          setInstructions={setInstructions}
+          error={errors.instructions}
+          onClearError={() => setErrors((prev) => ({ ...prev, instructions: undefined }))}
+          onBusy={imageBusy}
+          disabled={submitting || uploads > 0}
+        />
 
         <div style={styles.fieldGroup}>
           <label htmlFor="recipe-chef-notes" style={styles.label}>
@@ -895,14 +872,19 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
 
       {/* Fixed action bar */}
       <div style={styles.actionBar}>
-        <button type="button" onClick={onCancel} style={styles.cancelButton} disabled={submitting}>
+        <button
+          type="button"
+          onClick={onCancel}
+          style={styles.cancelButton}
+          disabled={submitting || uploads > 0}
+        >
           {t('Cancel')}{' '}
         </button>
         <button
           type="submit"
           form="recipe-editor-form"
           style={styles.submitButton}
-          disabled={submitting}
+          disabled={submitting || uploads > 0}
         >
           {submitting ? t('Saving…') : isEdit ? t('Save Changes') : t('Create Recipe')}
         </button>

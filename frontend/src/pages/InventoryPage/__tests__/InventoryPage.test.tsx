@@ -32,12 +32,7 @@ jest.mock('../../../components/BarcodeScanner/BarcodeScanner', () => ({
   default: jest.fn().mockImplementation(() => <div data-testid="barcode-scanner-mock" />),
 }));
 
-import {
-  fetchLocations,
-  createLocation,
-  renameLocation,
-  deleteLocation,
-} from '../../../api/locations/locations';
+import { fetchLocations } from '../../../api/locations/locations';
 
 import {
   fetchInventory,
@@ -46,9 +41,6 @@ import {
 } from '../../../api/inventory/inventory';
 
 const mockFetchLocations = fetchLocations as jest.MockedFunction<typeof fetchLocations>;
-const mockCreateLocation = createLocation as jest.MockedFunction<typeof createLocation>;
-const mockRenameLocation = renameLocation as jest.MockedFunction<typeof renameLocation>;
-const mockDeleteLocation = deleteLocation as jest.MockedFunction<typeof deleteLocation>;
 const mockFetchInventory = fetchInventory as jest.MockedFunction<typeof fetchInventory>;
 const mockAddInventoryItem = addInventoryItem as jest.MockedFunction<typeof addInventoryItem>;
 const mockDeleteInventoryItem = deleteInventoryItem as jest.MockedFunction<
@@ -119,7 +111,8 @@ describe('InventoryPage', () => {
       expect(screen.getByTestId('category-card-Dairy')).toBeInTheDocument();
     });
 
-    expect(screen.getByLabelText('Delete Pantry')).toBeInTheDocument();
+    expect(screen.getByLabelText('Filter by location')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Storage Locations' })).not.toBeInTheDocument();
   });
 
   it('shows error state with retry button on fetch failure', async () => {
@@ -138,147 +131,8 @@ describe('InventoryPage', () => {
     await userEvent.click(screen.getByText('Retry'));
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Delete Pantry')).toBeInTheDocument();
-    });
-  });
-
-  it('adds a location and refreshes the list', async () => {
-    setupDefaults();
-    mockFetchLocations
-      .mockResolvedValueOnce(defaultLocations)
-      .mockResolvedValueOnce([
-        ...defaultLocations,
-        { locationId: 'loc-2', name: 'Fridge', createdAt: '2024-01-02T00:00:00Z' },
-      ]);
-
-    mockCreateLocation.mockResolvedValue({
-      locationId: 'loc-2',
-      name: 'Fridge',
-      createdAt: '2024-01-02T00:00:00Z',
-    });
-
-    renderInventoryPage();
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('Add item')).toBeInTheDocument();
-    });
-
-    const input = screen.getByLabelText('New location name');
-    await userEvent.type(input, 'Fridge');
-    await userEvent.click(screen.getByLabelText('Add location'));
-
-    expect(mockCreateLocation).toHaveBeenCalledWith('Fridge');
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('Delete Fridge')).toBeInTheDocument();
-    });
-  });
-
-  it('shows error from API when add fails with duplicate name', async () => {
-    setupDefaults();
-
-    mockCreateLocation.mockRejectedValue(
-      new Error('A storage location with this name already exists'),
-    );
-
-    renderInventoryPage();
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('Add item')).toBeInTheDocument();
-    });
-
-    const input = screen.getByLabelText('New location name');
-    await userEvent.type(input, 'NewPlace');
-    await userEvent.click(screen.getByLabelText('Add location'));
-
-    await waitFor(() => {
-      expect(
-        screen.getByText('A storage location with this name already exists'),
-      ).toBeInTheDocument();
-    });
-  });
-
-  it('renames a location and refreshes the list', async () => {
-    setupDefaults();
-    mockFetchLocations
-      .mockResolvedValueOnce(defaultLocations)
-      .mockResolvedValueOnce([
-        { locationId: 'loc-1', name: 'Kitchen', createdAt: '2024-01-01T00:00:00Z' },
-      ]);
-
-    mockRenameLocation.mockResolvedValue({
-      locationId: 'loc-1',
-      name: 'Kitchen',
-      createdAt: '2024-01-01T00:00:00Z',
-    });
-
-    renderInventoryPage();
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('Rename Pantry')).toBeInTheDocument();
-    });
-
-    await userEvent.click(screen.getByLabelText('Rename Pantry'));
-
-    const renameInput = screen.getByLabelText('Rename Pantry');
-    await userEvent.clear(renameInput);
-    await userEvent.type(renameInput, 'Kitchen');
-    await userEvent.click(screen.getByLabelText('Save rename'));
-
-    expect(mockRenameLocation).toHaveBeenCalledWith('loc-1', 'Kitchen');
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('Rename Kitchen')).toBeInTheDocument();
-    });
-  });
-
-  it('removes a location after confirmation and refreshes the list', async () => {
-    mockFetchInventory.mockResolvedValue({ items: defaultItems });
-    mockFetchLocations
-      .mockResolvedValueOnce([
-        ...defaultLocations,
-        { locationId: 'loc-2', name: 'Fridge', createdAt: '2024-01-02T00:00:00Z' },
-      ])
-      .mockResolvedValueOnce(defaultLocations);
-
-    mockDeleteLocation.mockResolvedValue(undefined);
-
-    renderInventoryPage();
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('Delete Fridge')).toBeInTheDocument();
-    });
-
-    await userEvent.click(screen.getByLabelText('Delete Fridge'));
-    await userEvent.click(screen.getByLabelText('Confirm delete Fridge'));
-
-    expect(mockDeleteLocation).toHaveBeenCalledWith('loc-2');
-
-    await waitFor(() => {
-      expect(screen.queryByLabelText('Delete Fridge')).not.toBeInTheDocument();
-    });
-  });
-
-  it('shows error when removing last location', async () => {
-    setupDefaults();
-
-    mockDeleteLocation.mockRejectedValue(
-      new Error('Cannot remove the last remaining storage location'),
-    );
-
-    renderInventoryPage();
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('Delete Pantry')).toBeInTheDocument();
-    });
-
-    await userEvent.click(screen.getByLabelText('Delete Pantry'));
-    await userEvent.click(screen.getByLabelText('Confirm delete Pantry'));
-
-    await waitFor(() => {
-      expect(
-        screen.getByText('Cannot remove the last remaining storage location'),
-      ).toBeInTheDocument();
+      expect(screen.getByLabelText('Filter by location')).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'Storage Locations' })).not.toBeInTheDocument();
     });
   });
 });

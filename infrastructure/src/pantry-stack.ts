@@ -229,12 +229,19 @@ export class PantryStack extends cdk.Stack {
       entry: path.join(__dirname, '../../backend/src/handlers/recipe/recipe.ts'),
       environment: {
         TABLE_NAME: this.table.tableName,
+        STORAGE_BUCKET: this.storageBucket.bucketName,
       },
       timeout: cdk.Duration.seconds(10),
       memorySize: 256,
     });
 
     this.table.grantReadWriteData(recipeLambda);
+    this.storageBucket.grantRead(recipeLambda, 'recipe-images/*');
+    this.storageBucket.grantPut(recipeLambda, 'recipe-images/*');
+    const recipeImages = this.api.root.addResource('recipe-images');
+    const imageIntegration = new apigateway.LambdaIntegration(recipeLambda);
+    recipeImages.addMethod('POST', imageIntegration, authMethodOptions);
+    recipeImages.addResource('{imageId}').addMethod('GET', imageIntegration, authMethodOptions);
 
     // API Gateway: /recipes routes (authenticated)
     const recipesResource = this.api.root.addResource('recipes');

@@ -189,3 +189,13 @@ partial completion, preferences/package rounding, store shopping, budget/link/ex
 preview, deferral/unavailable, errors/reconnect and desktop/320/390px palette layouts.
 Use role/name locators for full AddItem fields: required-marker label text differs
 from the accessible name. Mock `/recipes/tags` when navigating across all app tabs.
+
+## Issue #10 images, expiration and Settings
+
+`issue10-recipes-settings.spec.ts` covers real browser image decoding/conversion,
+private-image API boundaries with mocked transport, busy-save controls, upload/save
+retry, instruction-photo alignment, detail/cooking/reload/removal, expiration windows
+and inventory retry, and Settings location CRUD plus Inventory refresh at 320px.
+Recipe-image handler tests cover bounded formats, reference alignment, authentication
+and account-scoped keys; pure expiration tests cover date boundaries, invalid/expired
+or empty stock, linked groups, compatible units, ordering and non-mutation.

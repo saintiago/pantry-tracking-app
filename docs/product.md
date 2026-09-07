@@ -62,3 +62,21 @@ department pastels improve mobile scanning; the subtitle is "From meal plan to s
 basket." See the shopping companion feature record. Scanning an existing barcode
 prefers saved household details and focuses expiration for review, requesting the
 native date picker where the browser permits it.
+
+## Recipe and settings improvements (September 2026)
+
+Recipes support an optional header photo and a separate photo for each instruction
+step. JPG, PNG and WebP files up to 20 MB are resized on the device and uploaded to
+private account storage (1 MB maximum after conversion). Photos appear in details
+and cooking; editing can replace or remove each reference. Saving waits for uploads.
+
+The one-/two-week expiration filter narrows recipes to ingredients with positive,
+unexpired stock through the inclusive selected date, and orders them by earliest
+expiry, then number of matching ingredients and name. It composes with existing
+search/tag/time/availability filters. Linked ingredients match their inventory group;
+unlinked/stale links match normalized names with compatible units. Expired, zero-stock
+and invalid dates are excluded. Inventory read failures offer a retry.
+
+Settings now owns storage-location add/rename/remove using the existing IDs and API.
+Inventory keeps location filtering and uses pastel green Add and pastel red Remove.
+Calendar recipe names and servings use smaller text for narrow screens.
