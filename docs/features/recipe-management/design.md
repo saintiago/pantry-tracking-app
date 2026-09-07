@@ -12,8 +12,8 @@ Entity schemas are the source of truth in `data-model.md`. Reproduced here for r
 
 ```typescript
 interface Recipe {
-  PK: string;           // USER#<userId>
-  SK: string;           // RECIPE#<recipeId>
+  PK: string; // USER#<userId>
+  SK: string; // RECIPE#<recipeId>
   entityType: 'Recipe';
   recipeId: string;
   userId: string;
@@ -128,11 +128,18 @@ export interface RecipeWithAvailability {
   missingCount: number;
 }
 
-export async function fetchRecipes(): Promise<Recipe[]>
-export async function createRecipe(data: Omit<Recipe, 'recipeId' | 'userId' | 'createdAt' | 'updatedAt' | 'syncVersion'>): Promise<Recipe>
-export async function fetchRecipeWithAvailability(recipeId: string): Promise<RecipeWithAvailability>
-export async function updateRecipe(recipeId: string, data: Partial<Pick<Recipe, 'name' | 'ingredients' | 'instructions' | 'sourceUrl'>>): Promise<Recipe>
-export async function deleteRecipe(recipeId: string): Promise<void>
+export async function fetchRecipes(): Promise<Recipe[]>;
+export async function createRecipe(
+  data: Omit<Recipe, 'recipeId' | 'userId' | 'createdAt' | 'updatedAt' | 'syncVersion'>,
+): Promise<Recipe>;
+export async function fetchRecipeWithAvailability(
+  recipeId: string,
+): Promise<RecipeWithAvailability>;
+export async function updateRecipe(
+  recipeId: string,
+  data: Partial<Pick<Recipe, 'name' | 'ingredients' | 'instructions' | 'sourceUrl'>>,
+): Promise<Recipe>;
+export async function deleteRecipe(recipeId: string): Promise<void>;
 ```
 
 ### RecipesPage
@@ -185,7 +192,7 @@ interface RecipeDetailProps {
 
 ```typescript
 interface RecipeEditorProps {
-  recipeId?: string;   // undefined = create mode
+  recipeId?: string; // undefined = create mode
   onSaved: (recipeId: string) => void;
   onCancel: () => void;
 }
@@ -241,13 +248,15 @@ export function computeAvailability(
       .reduce((sum, item) => sum + item.quantity, 0);
 
     const status: 'available' | 'partial' | 'missing' =
-      totalAvailable >= ing.quantity
-        ? 'available'
-        : totalAvailable > 0
-          ? 'partial'
-          : 'missing';
+      totalAvailable >= ing.quantity ? 'available' : totalAvailable > 0 ? 'partial' : 'missing';
 
-    return { name: ing.name, required: ing.quantity, unit: ing.unit, available: totalAvailable, status };
+    return {
+      name: ing.name,
+      required: ing.quantity,
+      unit: ing.unit,
+      available: totalAvailable,
+      status,
+    };
   });
 
   const missingCount = availability.filter((a) => a.status !== 'available').length;
@@ -261,26 +270,27 @@ export function computeAvailability(
 
 Follows the patterns defined in `data-model.md`:
 
-| Operation | PK | SK |
-|-----------|----|----|
-| List recipes | `USER#<userId>` | `RECIPE#` (begins_with) |
-| Get/Put/Delete recipe | `USER#<userId>` | `RECIPE#<recipeId>` |
-| Get all inventory for availability | `USER#<userId>` | `ITEM#` (begins_with) |
+| Operation                          | PK              | SK                      |
+| ---------------------------------- | --------------- | ----------------------- |
+| List recipes                       | `USER#<userId>` | `RECIPE#` (begins_with) |
+| Get/Put/Delete recipe              | `USER#<userId>` | `RECIPE#<recipeId>`     |
+| Get all inventory for availability | `USER#<userId>` | `ITEM#` (begins_with)   |
 
 #### Auto-create Placeholder Inventory Items
 
-After saving a recipe (both `POST /recipes` and `PUT /recipes/{recipeId}` when ingredients are provided), the Recipe Lambda queries all existing inventory items for the user and creates placeholder items for any ingredient whose name does not match an existing item (case-insensitive):
+After saving a recipe (both `POST /recipes` and `PUT /recipes/{recipeId}` when ingredients are provided), the Recipe Lambda delegates each ingredient to the shared `InventoryRepository`. Its revision-guarded snapshot detects existing names case-insensitively and prevents duplicate placeholders under concurrent saves:
 
 ```typescript
-async function autoCreateMissingIngredients(userId, ingredients): Promise<void>
+async function autoCreateMissingIngredients(userId, ingredients): Promise<void>;
 ```
 
 Placeholder item fields:
+
 - `quantity`: 0
 - `category`: `"Uncategorized"`
-- `isLowStock`: `true` (quantity 0 means out of stock)
-- `unit`: ingredient's unit if it is a valid `UnitType`, otherwise `"Unit"`
-- `location`: `"unknown"` (sentinel — bypasses the required location field)
+- `groupId`: a persisted group; new groups get threshold 0 and existing preferences win
+- `unit`: canonical unit via shared `resolveUnit`, otherwise `piece`
+- `location`: a real existing Limbo Pantry location or atomically created `LOCATION#unknown`
 - `expirationDate`: `"2099-12-31"` (far-future — bypasses the required expiration field)
 - `GSI1PK`: `USER#<userId>#CAT#Uncategorized` (category key so items appear in the "Uncategorized" category view in inventory)
 
@@ -341,12 +351,12 @@ Properties 10–13 from the main spec are tested here. Test file: `backend/src/h
 
 ## Error Handling
 
-| Condition | Response |
-|-----------|----------|
-| Missing/invalid auth token | 401 |
-| Recipe not found or belongs to another user | 404 |
+| Condition                                      | Response                 |
+| ---------------------------------------------- | ------------------------ |
+| Missing/invalid auth token                     | 401                      |
+| Recipe not found or belongs to another user    | 404                      |
 | Empty ingredients or invalid ingredient fields | 400 with `details` array |
-| Invalid JSON body | 400 |
-| DynamoDB error | 500 |
+| Invalid JSON body                              | 400                      |
+| DynamoDB error                                 | 500                      |
 
 Frontend errors follow the existing pattern: display an inline error message, do not navigate away.

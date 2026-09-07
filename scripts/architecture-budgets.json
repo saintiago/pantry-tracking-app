@@ -9,6 +9,6 @@
   "frontend/src/pages/ShoppingListPage/ShoppingListPage.tsx": 796,
   "frontend/src/components/BarcodeScanner/BarcodeScanner.tsx": 521,
   "frontend/src/components/InventoryList/InventoryList.tsx": 812,
-  "backend/src/handlers/inventory/inventory.ts": 884,
-  "backend/src/handlers/recipe/recipe.ts": 530
+  "backend/src/handlers/inventory/inventory.ts": 620,
+  "backend/src/handlers/recipe/recipe.ts": 490
 }

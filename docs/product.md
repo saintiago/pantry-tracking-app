@@ -6,6 +6,7 @@ A Progressive Web App (PWA) for household inventory management. Users track food
 
 - Inventory management with add/remove/update, barcode scanning and manual entry
 - Low-stock threshold notifications
+- Atomic lot/group inventory changes; conflicts preserve saved data and return a retryable error
 - Recipe management with ingredient availability checking
 - Day/week/two-week meal planner with pastel breakfast/lunch/dinner slots, a single
   alphabetical recipe library with tag filters, shared recipe/cooking navigation,
@@ -38,6 +39,11 @@ are saved per user on this device; inventory and plans retain their cloud APIs.
 Ordering is a draft and product links only; retailer checkout and receipt OCR remain
 future integrations. Selected filters are mint; all app pages use the shared neutral
 and pastel palette with dark text.
+
+Recipe placeholders remain zero-stock inventory entries under Uncategorized, with a
+real Limbo Pantry location and group-owned low-stock settings. Inventory writes are
+atomic within one account; uncertain HTTP purchase responses still require checking
+inventory before resubmitting, because separate submissions create distinct purchases.
 
 ## Not implemented
 

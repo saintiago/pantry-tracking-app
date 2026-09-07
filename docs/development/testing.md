@@ -29,7 +29,21 @@ The backend `inventory-audit.test.ts` suite covers reconciliation, account isola
 legacy and mixed units, malformed quantities, stale links, non-mutation, stable
 fingerprints and complete/failed pagination. It only mocks scan transport. The separate
 [recovery drill](recovery.md) exercises an actual AWS restore and compares scanned data;
-neither establishes transaction correctness for the existing inventory writer.
+the isolated table restore itself does not establish transaction correctness.
+
+`backend/src/inventory/__tests__/` now exercises transaction plans with a stateful
+test database, generated mutation sequences and real handler contracts. Older suites
+that asserted separate lot/group SDK calls were replaced with persisted-outcome checks;
+recipe validation tests mock the inventory service, while the cross-feature handler
+suite executes recipe placeholder creation through the real repository.
+
+Run `npm run test:inventory:aws` for real DynamoDB semantics: concurrent first group
+creation, additions, updates, reassignments, deletion, threshold transitions, actual
+queries beyond 1 MB, injected transaction rejection, an ambiguous response after a
+successful write, and replay of the same idempotency token. It also checks concurrent
+recipe placeholders and cleans up its generated table. This was run successfully in
+September 2026; it does not test production Lambda IAM, a high-throughput workload,
+or durable HTTP request deduplication. Release browser checks cover the live IAM path.
 
 ## Auth Strategy
 
@@ -140,6 +154,7 @@ e2e/
 - Windows path separators — the Vite plugin normalizes `\` to `/` for path matching.
 - `VITE_API_URL` must be set to a non-empty dummy URL (e.g. `https://mock-api.test`) so API fetches don't hit the Vite dev server.
 - Playwright starts its own server on port 4173 and refuses server reuse. Override `PLAYWRIGHT_PORT` if occupied; custom contexts must inherit the `baseURL` fixture. The ordinary development server can remain on 5173.
+- Its Vite server forces dependency optimization on startup so rebuilt workspace exports cannot use an older cached bundle.
 - Keep builds and browser runs sequential. Rebuilding the shared package during a Vite
   browser run can invalidate dependency state and makes failures difficult to diagnose.
 

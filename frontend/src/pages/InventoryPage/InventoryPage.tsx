@@ -12,6 +12,7 @@ const BarcodeScanner = lazy(() => import('../../components/BarcodeScanner/Barcod
 import type { AddItemData } from '../AddItemPage/AddItemPage';
 import type { StorageLocation } from '../../api/locations/locations';
 import type { InventoryGroup, InventoryItem } from '../../domain/inventory/types';
+import { replaceInventoryGroup } from '../../domain/inventory/grouping';
 import type { PageId } from '../../components/Layout/Layout';
 import {
   fetchLocations,
@@ -303,9 +304,7 @@ const InventoryPage: React.FC<InventoryPageProps> = ({
   const handleUpdateThreshold = useCallback(
     async (groupId: string, threshold: number | null, thresholdUnit?: string) => {
       const result = await updateInventoryGroupThreshold(groupId, threshold, thresholdUnit);
-      setInventoryGroups((previous) =>
-        previous.map((group) => (group.groupId === groupId ? result.group : group)),
-      );
+      setInventoryGroups((previous) => replaceInventoryGroup(previous, groupId, result.group));
       if (result.lowStockTransition && result.notification) {
         setNotification({ message: result.notification.message, visible: true });
       }

@@ -28,7 +28,7 @@ describe('AuthScreen', () => {
     await waitFor(() => expect(screen.getByText('Welcome back')).toBeInTheDocument());
     expect(screen.getByLabelText('Email')).toBeInTheDocument();
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Sign in' })).toBeInTheDocument();
   });
 
   it('switches to signup form when "Sign up" is clicked', async () => {

@@ -8,6 +8,12 @@ GSI key. Mutation envelopes and typed inventory fields reject malformed values. 
 [current contracts](../../architecture/data-model.md) for maintained units, group thresholds
 and the remaining concurrent-write limitations; older criteria below preserve history.
 
+Atomic inventory follow-through: all lot/group mutations, threshold edits and recipe
+placeholders now share the transactional inventory repository. Group totals convert
+compatible units and retain zero-quantity lots. See the current data contract for the
+per-account revision, eight-attempt conflict limit, HTTP retry limits and legacy-lot
+adoption. Location uniqueness/deletion races remain outside that guarantee.
+
 This feature covers manual inventory item management across multiple storage locations. It includes storage location CRUD, inventory item CRUD (add, update, remove), low-stock threshold notifications, item list filtering, and the main UI optimized for quick add/remove operations.
 
 ## Glossary

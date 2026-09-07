@@ -4,22 +4,23 @@ This is an npm workspace containing one browser application, five Lambda handler
 one CDK stack and a small shared domain package. Keep this deployment shape until
 independent scaling, ownership or release requirements justify additional services.
 
-| Location                            | Responsibility                                                               | Dependency direction                          |
-| ----------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------- |
-| `packages/domain/src/`              | Canonical units and platform-independent contracts                           | No platform dependencies                      |
-| `frontend/src/domain/`              | Pure browser-domain models and calculations                                  | Own domain and shared domain only             |
-| `frontend/src/api/`                 | HTTP contracts, endpoint wrappers, snapshot composition                      | Auth/config/domain; never components or pages |
-| `frontend/src/api/client.ts`        | Authenticated transport, error fallback, cancellation, bounded meal requests | No UI; never automatically retry writes       |
-| `frontend/src/auth/`                | Cognito and authentication UI/state                                          | Shared frontend primitives                    |
-| `frontend/src/i18n/`                | Language preferences, catalogs and display formatting                        | Keep canonical stored values unchanged        |
-| `frontend/src/components/`          | Reusable rendered controls                                                   | Feature pages should compose these            |
-| `frontend/src/pages/<Feature>Page/` | Feature composition and feature-local UI/hooks                               | API/domain/shared controls                    |
-| `frontend/src/App.tsx`              | Auth gating, page selection and contextual return navigation                 | Composition root                              |
-| `backend/src/http/`                 | API Gateway identity and response transport                                  | No feature imports                            |
-| `backend/src/db/`                   | Shared paginated database reads                                              | AWS SDK; no HTTP or feature imports           |
-| `backend/src/handlers/<feature>/`   | Route dispatch, validation and persistence orchestration                     | Shared HTTP/domain and feature-local rules    |
-| `infrastructure/src/`               | AWS resources and route bindings                                             | Backend entry points by path                  |
-| `e2e/`                              | Browser journeys against intercepted APIs                                    | Test-only mocks                               |
+| Location                            | Responsibility                                                               | Dependency direction                                    |
+| ----------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `packages/domain/src/`              | Canonical units and platform-independent contracts                           | No platform dependencies                                |
+| `frontend/src/domain/`              | Pure browser-domain models and calculations                                  | Own domain and shared domain only                       |
+| `frontend/src/api/`                 | HTTP contracts, endpoint wrappers, snapshot composition                      | Auth/config/domain; never components or pages           |
+| `frontend/src/api/client.ts`        | Authenticated transport, error fallback, cancellation, bounded meal requests | No UI; never automatically retry writes                 |
+| `frontend/src/auth/`                | Cognito and authentication UI/state                                          | Shared frontend primitives                              |
+| `frontend/src/i18n/`                | Language preferences, catalogs and display formatting                        | Keep canonical stored values unchanged                  |
+| `frontend/src/components/`          | Reusable rendered controls                                                   | Feature pages should compose these                      |
+| `frontend/src/pages/<Feature>Page/` | Feature composition and feature-local UI/hooks                               | API/domain/shared controls                              |
+| `frontend/src/App.tsx`              | Auth gating, page selection and contextual return navigation                 | Composition root                                        |
+| `backend/src/http/`                 | API Gateway identity and response transport                                  | No feature imports                                      |
+| `backend/src/db/`                   | Shared paginated database reads                                              | AWS SDK; no HTTP or feature imports                     |
+| `backend/src/inventory/`            | Shared inventory transactions, group rules and revision coordination         | Shared DB/domain; used by inventory and recipe handlers |
+| `backend/src/handlers/<feature>/`   | Route dispatch, validation and persistence orchestration                     | Shared HTTP/domain and feature-local rules              |
+| `infrastructure/src/`               | AWS resources and route bindings                                             | Backend entry points by path                            |
+| `e2e/`                              | Browser journeys against intercepted APIs                                    | Test-only mocks                                         |
 
 The API and domain rules and production module size budgets are enforced by
 `npm run check:architecture`. Existing oversized files have explicit ceilings;
@@ -41,7 +42,10 @@ them to avoid decomposing an unrelated new responsibility.
    for cancelable reads and an explicit empty response mode for deletes.
 5. Keep backend route dispatch separate from pure rules (`recipe-rules.ts` is the
    example). Preserve the authenticated user partition in every database operation.
-   Database changes spanning a stock lot and its group require an atomic design.
+   All stock-lot and group writes must go through `InventoryRepository`. Its permanent
+   per-account revision makes its paginated read/transaction plans safe against other
+   participating inventory writers. Never update these rows directly or reset/delete
+   `INVENTORY_STATE`; location-name/reference guards remain a separate open boundary.
 6. Use full pages for forms/detail views and confirmations for small dialogs. Register
    state-based `PageId` navigation in App/Layout. Preserve return context in planner,
    recipe, cooking and shopping journeys. A router migration needs its own design.

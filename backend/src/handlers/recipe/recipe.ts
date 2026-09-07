@@ -11,7 +11,7 @@ import {
   DeleteCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { randomUUID } from 'crypto';
-import { resolveUnit } from '../../types/units';
+import { InventoryRepository, InventoryWriteError } from '../../inventory/repository';
 
 const TABLE_NAME = process.env.TABLE_NAME ?? 'PantryApp';
 
@@ -38,60 +38,10 @@ async function autoCreateMissingIngredients(
   userId: string,
   ingredients: RecipeIngredient[],
 ): Promise<void> {
-  // Fetch all existing inventory items for this user
-  const inventoryResult = await queryAll(docClient, {
-    TableName: TABLE_NAME,
-    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
-    ExpressionAttributeValues: {
-      ':pk': `USER#${userId}`,
-      ':skPrefix': 'ITEM#',
-    },
-  });
-
-  const existingNames = new Set(
-    (inventoryResult.Items ?? []).map((item) => (item.name as string).toLowerCase()),
-  );
-
-  console.log(
-    `autoCreateMissingIngredients: found ${inventoryResult.Items?.length ?? 0} existing items, checking ${ingredients.length} ingredients`,
-  );
-
-  const toCreate = ingredients.filter((ing) => !existingNames.has(ing.name.toLowerCase()));
-  console.log(
-    `autoCreateMissingIngredients: creating ${toCreate.length} placeholder items:`,
-    toCreate.map((i) => i.name),
-  );
-
-  const now = new Date().toISOString();
-
-  await Promise.all(
-    toCreate.map((ing) => {
-      const itemId = randomUUID();
-      const unit = resolveUnit(ing.unit);
-      const item = {
-        PK: `USER#${userId}`,
-        SK: `ITEM#${itemId}`,
-        entityType: 'InventoryItem',
-        itemId,
-        userId,
-        name: ing.name,
-        category: 'Uncategorized',
-        expirationDate: '2099-12-31',
-        location: 'unknown',
-        quantity: 0,
-        unit,
-        isLowStock: true,
-        createdAt: now,
-        updatedAt: now,
-        syncVersion: 1,
-        // Use category GSI key so items appear in the "Unknown" category view,
-        // even though isLowStock is true (quantity 0 = out of stock)
-        GSI1PK: `USER#${userId}#CAT#Unknown`,
-        GSI1SK: `ITEM#${itemId}`,
-      };
-      return docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
-    }),
-  );
+  const inventory = new InventoryRepository(docClient, TABLE_NAME);
+  for (const ingredient of ingredients) {
+    await inventory.ensurePlaceholder(userId, ingredient.name, ingredient.unit);
+  }
 }
 
 // ─── Handlers ────────────────────────────────────────────────────────────────
@@ -520,6 +470,8 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     return response(405, { error: 'METHOD_NOT_ALLOWED', message: 'Method not allowed' });
   } catch (err) {
+    if (err instanceof InventoryWriteError)
+      return response(err.statusCode, { error: err.code, message: err.message });
     console.error('Recipe Lambda error:', err);
     return response(500, {
       error: 'INTERNAL_ERROR',

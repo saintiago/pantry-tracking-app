@@ -1,5 +1,8 @@
 import { useSyncExternalStore } from 'react';
-import { messages } from './messages';
+import { messages as baseMessages } from './messages';
+import { inventoryErrors } from './inventory-errors';
+
+const messages = { ...baseMessages, ...inventoryErrors };
 
 export type Language = 'en' | 'es' | 'it';
 export const languages: { code: Language; name: string }[] = [

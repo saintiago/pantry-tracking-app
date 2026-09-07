@@ -79,13 +79,58 @@ const VALID_UNITS: UnitType[] = (Object.keys(UNIT_METADATA) as UnitType[]).sort(
 
 ## Entity Schemas
 
+### InventoryState
+
+Each account lazily acquires one coordination row at `PK = USER#<userId>`,
+`SK = INVENTORY_STATE`, `entityType = InventoryState`, with `createdAt`, `updatedAt`
+and an integer `syncVersion` starting at 1. This permanent row is the optimistic lock
+for **all** lot/group writes, including recipe placeholders and threshold edits.
+It is not returned by inventory list queries. Never delete/reset it when inventory
+becomes empty. It prevents a deleted and recreated group's revision from accepting
+an older mutation plan.
+
+The repository reads this revision first, then every item/group page consistently.
+It writes the next revision conditionally in the same `TransactWriteItems` operation
+as the lot and up to two affected groups. A conflicting revision cancels the entire
+transaction. Totals are rebuilt from explicitly linked lots in the affected groups,
+converting compatible units; expired lots still count for restock thresholds. Keeping
+a lot in a group with incompatible units returns 400 and requires reassignment.
+The inventory UI converts visible lots into the group's unit using the same shared
+stock conversion rule; location-filtered totals remain totals of the visible subset.
+Existing incompatible-unit groups display “mixed units” instead of a misleading sum.
+
+PUT values are absolute: after a conflict, supplied fields are reapplied to the latest
+item, preserving fields omitted by that request. Concurrent edits to the same supplied
+field use the last committed value; client-supplied expected versions are not supported.
+
+Only confirmed transaction cancellations caused by conditions or transaction conflicts
+are replanned, with jitter and at most eight attempts. Exhaustion returns 409
+`INVENTORY_CONFLICT`; other dependency failures retain their error classification.
+Each exact transaction has a UUID `ClientRequestToken`, allowing SDK-level retries
+of that same request. An ambiguous timeout/server response is never replanned by the
+repository. Separate HTTP POST submissions remain distinct purchases; durable
+cross-request purchase deduplication is not implemented. Clients must refresh/check
+inventory after an uncertain purchase response before deciding to submit again.
+
+This favors correctness for household-sized partitions: each attempt reads the user's
+complete inventory and groups and concurrent writes to different groups still compete
+on one account revision. It is not a high-throughput load-tested design. All writers
+must participate; direct edits, old Lambda versions during rollout and unsupported
+repair tools bypass the guarantee. Run read-only reconciliation after rollout.
+
 See the [data-model audit](data-model-audit-2026-09.md) for redundancy ownership and
 observed legacy/dangling records. Lot quantities are authoritative stock facts; group
-totals and low-stock flags are materialized values that still need transactional
-maintenance. Explicit group membership must survive recovery even if lot identity
+totals and low-stock flags are materialized values maintained transactionally by the
+shared repository. Explicit group membership survives recovery even if lot identity
 differs. `npm run audit:inventory` checks these relationships without writing data.
 The old group migration's `--apply` mode is retired because it overwrote whole rows,
 explicit memberships and threshold units; its default mode now runs reconciliation.
+
+Updating an unlinked legacy lot adopts only that lot into its default group, preserves
+an existing group setting or carries its legacy threshold into a newly created group,
+and removes obsolete lot-level warning fields. A zero-stock legacy warning maps to a
+zero group threshold. Other unlinked lots are never guessed into that group. Existing
+missing-location and missing-recipe references still require reviewed repair.
 
 ### InventoryItem
 
@@ -368,6 +413,12 @@ must be finite and nonnegative. Kilograms/grams and liters/milliliters convert w
 their dimension; all other units must match the stock unit. Null removes both the
 threshold and its unit. Aggregation after lot mutations uses the same conversion.
 
+Groups with zero-quantity lots remain linked. Deleting the last lot removes an empty
+unconfigured group; configured empty groups remain for restock reminders. Clearing
+the threshold of an empty group deletes it and returns no `group` field. Clients
+remove that group from their local state. Reassignment returns both remaining affected
+groups and can notify a low-stock transition in the source group as stock leaves it.
+
 Autocomplete searches read all inventory pages and return the latest created lot per
 barcode (or canonical product identity without barcode), capped at ten suggestions.
 Adding another lot copies saved expiration, photo, and location details; group threshold
@@ -400,6 +451,22 @@ interface RenameLocationRequest {
 ```
 
 ### Recipes
+
+Recipe create/update still creates zero-quantity placeholders for names absent from
+inventory (case-insensitive), using the shared transactional writer. Repeated names
+and concurrent recipe saves do not create duplicate placeholders. New placeholders
+have a group, category/index `Uncategorized`, canonical unit, and a real storage
+location: existing `Limbo Pantry` is reused, otherwise `LOCATION#unknown` is created
+with that name. A newly created placeholder group has threshold 0; existing group
+preferences win. Low-stock fields are never stored on the new lot. The location,
+lot, group and inventory revision commit together. Location name uniqueness and
+concurrent deletion guards outside this writer are still not fully atomic.
+
+Recipe persistence and its placeholder transactions remain separate: a later failure
+can leave a saved recipe and some completed placeholders. Each placeholder is atomic;
+retrying recipe PUT completes missing names without duplicating them. Recipe POST
+itself has no cross-request idempotency contract. This is not an atomic recipe-plus-
+inventory transaction.
 
 ```typescript
 // POST /recipes

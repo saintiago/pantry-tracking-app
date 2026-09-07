@@ -18,7 +18,7 @@ export interface MutationResponse {
 }
 
 export interface GroupMutationResponse {
-  group: InventoryGroup;
+  group?: InventoryGroup; // Absent when clearing the threshold removes an empty group.
   lowStockTransition?: boolean;
   notification?: { type: string; message: string; groupId?: string; itemId?: string };
 }

@@ -6,7 +6,7 @@ const photo =
     '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="green"/></svg>',
   );
 
-async function setup(page: Page, options: { thresholdFail?: boolean } = {}) {
+async function setup(page: Page, options: { thresholdFail?: boolean; conflict?: boolean } = {}) {
   const items = [
     {
       itemId: 'old',
@@ -70,6 +70,14 @@ async function setup(page: Page, options: { thresholdFail?: boolean } = {}) {
       const body = req.postDataJSON();
       requests.push({ path: url.pathname, body });
       if (url.pathname === '/inventory/groups/rice') {
+        if (options.conflict)
+          return json(
+            {
+              error: 'INVENTORY_CONFLICT',
+              message: 'Inventory changed concurrently. Refresh and try again.',
+            },
+            409,
+          );
         if (options.thresholdFail) return json({ message: 'Threshold save failed' }, 500);
         group.threshold = body.threshold ?? undefined;
         group.thresholdUnit = body.thresholdUnit;
@@ -192,4 +200,34 @@ test('failed threshold save retains values for retry', async ({ page }) => {
   options.thresholdFail = false;
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.getByLabel('Low-stock threshold', { exact: true })).toHaveCount(0);
+});
+
+test('concurrent threshold rejection preserves the draft, supports retry, and persists on mobile', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const options = { conflict: true };
+  const { group, requests } = await setup(page, options);
+  await page.getByTestId('category-card-Grains').click();
+  await page.getByRole('button', { name: 'Edit low-stock threshold for Rice' }).click();
+  await page.getByLabel('Low-stock threshold', { exact: true }).fill('0.5');
+  await page.getByLabel('Threshold unit', { exact: true }).selectOption('kg');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText(
+    'Inventory changed concurrently. Refresh and try again.',
+  );
+  await expect(page.getByLabel('Low-stock threshold', { exact: true })).toHaveValue('0.5');
+  expect(requests).toHaveLength(1);
+  expect(group.threshold).toBe(750);
+  options.conflict = false;
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByLabel('Low-stock threshold', { exact: true })).toHaveCount(0);
+  await page.reload();
+  await page.locator('input[type=email]').fill('test@example.com');
+  await page.locator('input[type=password]').fill('TestPassword123!');
+  await page.locator('button[type=submit]').click();
+  await page.getByTestId('category-card-Grains').click();
+  await expect(
+    page.getByRole('button', { name: 'Edit low-stock threshold for Rice' }),
+  ).toContainText('0.5 kilograms');
 });

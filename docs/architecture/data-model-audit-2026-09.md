@@ -4,7 +4,7 @@ This follows the [architecture audit](audit-2026-09.md). The maintained schemas 
 in [the data model](data-model.md). Findings distinguish useful duplication from
 independently writable values that can disagree. No production records were repaired.
 
-## Redundancies and ownership
+## Baseline redundancies and ownership
 
 | Stored duplication                                             | Evidence and risk                                                                                                                                                                             | Decision / next action                                                                                                                                                                                                                                                                                       |
 | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -25,8 +25,8 @@ independently writable values that can disagree. No production records were repa
 `autoCreateMissingIngredients` in `backend/src/handlers/recipe/recipe.ts` still writes
 placeholder `InventoryItem` records on recipe creation/update. They have no `groupId`,
 use `location: 'unknown'`, retain lot-level `isLowStock`, and write an `Unknown`
-category index key while storing `category: 'Uncategorized'`. These are current writer
-defects, not only historical migration residue. The production findings are consistent
+category index key while storing `category: 'Uncategorized'`. These were active writer
+defects at the initial audit, not only historical migration residue. The production findings are consistent
 with that shape, although this audit does not establish each record's creation history.
 
 The atomic inventory repository must own this path too. Decide whether unrecognized
@@ -72,18 +72,37 @@ mismatches. Linked groups had no detected total/low-stock drift in this snapshot
 That is not proof of concurrency safety, nor does it include the unlinked lots in
 any inferred group. No names, account IDs or full data exports are committed here.
 
-## Next implementation sequence
+## Atomic-write follow-through
 
-1. Resolve legacy lots and missing references through a reviewed repair plan on the
-   restored data; preserve configured thresholds and explicit membership. A missing
-   location or recipe cannot safely be reconstructed from a numeric aggregate.
-2. Introduce one transactional inventory repository for create/update/reassign/delete,
-   threshold updates and recipe-created placeholders. Define revision conflict responses, bounded conditional
-   retries and request idempotency. Test real DynamoDB concurrency and ambiguous
-   transport failures; an SDK mock alone cannot close this finding.
-3. Share availability allocation across recipe detail, filters and shopping: compatible
+The shared inventory repository is now implemented and tested against real DynamoDB.
+One permanent `InventoryState` coordination row per account guards all paginated
+inventory snapshots and is written conditionally with the changed lot/groups. This
+additional record is a concurrency control, not another stock ledger. Lots remain
+authoritative; affected totals/flags are rebuilt transactionally using compatible units.
+
+The recipe placeholder writer now participates and creates real location/group links,
+with group-owned threshold 0 for new placeholder groups. It preserves existing group
+preferences. Editing legacy lots adopts only the edited lot and preserves a legacy
+threshold when creating its group; a zero-stock legacy warning becomes threshold 0.
+The historical 86-row audit above is unchanged evidence, not a claim that every dangling
+reference has been repaired. The unsafe general batch migration stays disabled.
+
+The isolated AWS test covered >1 MB reads, concurrent creation/add/update/reassign/delete,
+threshold changes, injected cancellation without partial state, lost responses after
+commit, exact-token deduplication and concurrent recipe placeholders. A current group
+can be deleted and recreated safely because the per-account revision is permanent.
+See [the data contract](data-model.md) for the cost, rollout and HTTP idempotency limits.
+
+## Remaining implementation sequence
+
+1. Review existing missing locations, unlinked legacy lots and dangling recipe references;
+   preserve user meaning rather than deleting or guessing records from numeric totals.
+2. Share availability allocation across recipe detail, filters and shopping: compatible
    units, stable group links, dates, repeated demand and unknown quantities. Restock
    totals intentionally include expired lots; usable meal stock does not.
+3. Extend inventory coordination to location reference/deletion guards and conditional
+   location-name uniqueness. Add durable HTTP purchase idempotency and measure the
+   account-wide coordination cost before increasing write throughput.
 4. Decide index retirement, meal-reference policy and local-state export independently.
    Continue recovery testing through isolated application cutover; the table restore
    drill does not prove Cognito, S3 or browser-local state recovery.

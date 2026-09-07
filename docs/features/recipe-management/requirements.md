@@ -92,7 +92,7 @@ Shared infrastructure terms (Pantry_App, Beautiful_User, Storage_Location, etc.)
 9. WHEN the user types 3 or more characters in an ingredient name field, THE RecipeEditor SHALL query the inventory search API across all relevant fields (name, barcode, brand, category, whereToBuy) in parallel and display matching inventory items as autocomplete suggestions.
 10. WHEN the user selects an autocomplete suggestion for an ingredient name, THE RecipeEditor SHALL fill the ingredient name and autofill the unit from the matched inventory item.
 11. THE inventory search API SHALL return matching inventory items for all searchable fields (name, barcode, brand, category, whereToBuy, onlineStoreLink), not just name and barcode.
-12. WHEN the user saves a recipe (create or update), THE Pantry_App SHALL automatically create a placeholder inventory item for each ingredient whose name does not match any existing inventory item (case-insensitive). The placeholder SHALL have quantity 0, isLowStock true, category "Uncategorized", and the ingredient's unit. The placeholder SHALL appear under the "Uncategorized" category in the inventory list.
+12. WHEN the user saves a recipe (create or update), THE Pantry_App SHALL automatically create a placeholder inventory item for each ingredient whose name does not match any existing inventory item (case-insensitive). The placeholder SHALL have quantity 0, category "Uncategorized", the resolved ingredient unit and a real Limbo Pantry location. Its group owns low-stock state with a default threshold of 0; existing group preferences take precedence. The location, lot and group SHALL commit atomically and concurrent saves SHALL not duplicate the placeholder. The placeholder SHALL appear under the "Uncategorized" category in the inventory list.
 13. THE RecipeEditor ingredient unit field SHALL be a dropdown constrained to the same `UnitType` enum used by the inventory system (`Gram`, `Kilo`, `Milliliter`, `Liter`, `Unit`).
 
 ### Requirement 6: Ingredient Availability Display
@@ -110,19 +110,20 @@ Shared infrastructure terms (Pantry_App, Beautiful_User, Storage_Location, etc.)
 
 ### Property 10: Recipe CRUD Persistence
 
-*For any* valid recipe data, creating a recipe via `POST /recipes` and then retrieving it via `GET /recipes/{recipeId}` SHALL return matching `name`, `ingredients`, `instructions`, and `sourceUrl`. Updating via `PUT` SHALL persist the changed fields. Deleting via `DELETE` SHALL cause subsequent `GET` to return 404.
+_For any_ valid recipe data, creating a recipe via `POST /recipes` and then retrieving it via `GET /recipes/{recipeId}` SHALL return matching `name`, `ingredients`, `instructions`, and `sourceUrl`. Updating via `PUT` SHALL persist the changed fields. Deleting via `DELETE` SHALL cause subsequent `GET` to return 404.
 
 **Validates: Requirements 1.3, 1.4, 1.5**
 
 ### Property 11: Recipe Requires Ingredients
 
-*For any* `POST /recipes` or `PUT /recipes/{recipeId}` request where the ingredients array is empty or any ingredient is missing `quantity` or `unit`, THE Recipe_Lambda SHALL return a 400 validation error and not persist the recipe.
+_For any_ `POST /recipes` or `PUT /recipes/{recipeId}` request where the ingredients array is empty or any ingredient is missing `quantity` or `unit`, THE Recipe_Lambda SHALL return a 400 validation error and not persist the recipe.
 
 **Validates: Requirement 1.2**
 
 ### Property 12: Ingredient Availability Calculation
 
-*For any* recipe ingredient and inventory state, the Availability_Calculator SHALL produce:
+_For any_ recipe ingredient and inventory state, the Availability_Calculator SHALL produce:
+
 - `available` iff total inventory quantity >= required quantity
 - `partial` iff 0 < total inventory quantity < required quantity
 - `missing` iff total inventory quantity = 0 or ingredient not found
@@ -131,6 +132,6 @@ Shared infrastructure terms (Pantry_App, Beautiful_User, Storage_Location, etc.)
 
 ### Property 13: Missing Ingredient Count Accuracy
 
-*For any* recipe, `missingCount` SHALL equal the number of ingredients whose status is `partial` or `missing`.
+_For any_ recipe, `missingCount` SHALL equal the number of ingredients whose status is `partial` or `missing`.
 
 **Validates: Requirement 2.4**

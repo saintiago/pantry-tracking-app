@@ -1,5 +1,13 @@
 import type { InventoryItem, InventoryGroup } from './types';
-import { resolveUnit, type UnitType } from '@pantry/domain';
+import { convertStockQuantity, resolveUnit, type UnitType } from '@pantry/domain';
+
+export function replaceInventoryGroup(
+  groups: InventoryGroup[],
+  id: string,
+  updated?: InventoryGroup,
+): InventoryGroup[] {
+  return groups.flatMap((group) => (group.groupId !== id ? [group] : updated ? [updated] : []));
+}
 
 export interface CategorySummary {
   category: string;
@@ -52,6 +60,7 @@ export function groupItemsByCategory(items: InventoryItem[]): CategorySummary[] 
  * to any API; derived purely from the provided InventoryItem list.
  */
 export interface GroupedRow {
+  hasIncompatibleUnits?: boolean;
   groupId: string;
   groupingKey: string; // canonical composite key
   name: string; // display name (first child's original name)
@@ -103,11 +112,16 @@ export function groupItemsByGroupingKey(
     )}|${canonicalUnit}`;
     const groupingKey = item.groupId ?? legacyGroupingKey;
     const persistedGroup = item.groupId ? groupsById.get(item.groupId) : undefined;
+    const displayUnit = resolveUnit(
+      persistedGroup?.unit ?? map.get(groupingKey)?.unit ?? canonicalUnit,
+    );
+    const quantity = convertStockQuantity(item.quantity, item.unit, displayUnit);
 
     const existing = map.get(groupingKey);
     if (existing) {
       existing.childItems.push(item);
-      existing.totalQuantity += item.quantity;
+      existing.totalQuantity += quantity ?? 0;
+      if (quantity === null) existing.hasIncompatibleUnits = true;
       existing.childCount += 1;
       if (!item.groupId && item.isLowStock) existing.hasLowStock = true;
     } else {
@@ -115,10 +129,11 @@ export function groupItemsByGroupingKey(
         groupId: item.groupId ?? legacyGroupingKey,
         groupingKey,
         name: item.name,
-        unit: canonicalUnit,
+        unit: displayUnit,
         category: item.category,
         childItems: [item],
-        totalQuantity: item.quantity,
+        totalQuantity: quantity ?? 0,
+        ...(quantity === null ? { hasIncompatibleUnits: true } : {}),
         childCount: 1,
         hasLowStock: persistedGroup?.isLowStock ?? item.isLowStock ?? false,
         threshold: persistedGroup?.threshold,

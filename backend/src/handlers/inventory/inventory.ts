@@ -3,24 +3,12 @@ import { validateAddRequest, validateInventoryFields } from './inventory-validat
 import { parseObject, inventoryCursor } from '../../http/request';
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import {
-  DynamoDBDocumentClient,
-  QueryCommand,
-  PutCommand,
-  UpdateCommand,
-  DeleteCommand,
-  GetCommand,
-} from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { randomUUID } from 'crypto';
 import { VALID_UNITS, LEGACY_UNIT_MAP } from '../../types/units';
-import {
-  calculateLowStock,
-  convertThreshold,
-  canonicalGroupKey,
-  canonicalUnit,
-  defaultGroupId,
-  stripDatabaseKeys,
-} from './inventory-groups';
+import { canonicalGroupKey, defaultGroupId, stripDatabaseKeys } from './inventory-groups';
+
+import { InventoryRepository, InventoryWriteError } from '../../inventory/repository';
 
 const ACCEPTED_UNITS = new Set([...VALID_UNITS, ...Object.keys(LEGACY_UNIT_MAP)]);
 
@@ -40,6 +28,7 @@ const STORAGE_BUCKET = process.env.STORAGE_BUCKET ?? '';
 
 const ddbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(ddbClient);
+const inventory = new InventoryRepository(docClient, TABLE_NAME);
 
 import { getUserId, response } from '../../http/response';
 
@@ -56,96 +45,6 @@ async function getLowStockItems(userId: string): Promise<APIGatewayProxyResult> 
   });
 
   return response(200, { groups: (result.Items ?? []).map(stripDatabaseKeys) });
-}
-
-async function getGroup(
-  userId: string,
-  groupId: string,
-): Promise<Record<string, unknown> | undefined> {
-  const result = await docClient.send(
-    new GetCommand({
-      TableName: TABLE_NAME,
-      Key: { PK: `USER#${userId}`, SK: `GROUP#${groupId}` },
-    }),
-  );
-  return result?.Item;
-}
-
-async function createGroup(
-  userId: string,
-  name: string,
-  category: string,
-  unit: string,
-  initialQuantity: number,
-): Promise<Record<string, unknown>> {
-  const groupId = defaultGroupId(name, category, unit);
-  const existing = await getGroup(userId, groupId);
-  if (existing) return existing;
-
-  const now = new Date().toISOString();
-  const group: Record<string, unknown> = {
-    PK: `USER#${userId}`,
-    SK: `GROUP#${groupId}`,
-    entityType: 'InventoryGroup',
-    groupId,
-    canonicalKey: canonicalGroupKey(name, category, unit),
-    name,
-    category,
-    unit: canonicalUnit(unit),
-    totalQuantity: initialQuantity,
-    isLowStock: false,
-    createdAt: now,
-    updatedAt: now,
-    syncVersion: 1,
-  };
-  await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: group }));
-  return group;
-}
-
-async function adjustGroupQuantity(
-  userId: string,
-  groupId: string,
-  delta: number,
-): Promise<{ group?: Record<string, unknown>; lowStockTransition: boolean }> {
-  const current = await getGroup(userId, groupId);
-  if (!current) return { lowStockTransition: false };
-
-  const oldLowStock = current.isLowStock === true;
-  const totalQuantity = Math.max(0, Number(current.totalQuantity ?? 0) + delta);
-  const threshold = typeof current.threshold === 'number' ? current.threshold : undefined;
-  const isLowStock = calculateLowStock(
-    totalQuantity,
-    threshold,
-    current.thresholdUnit as string | undefined,
-    current.unit as string,
-  );
-
-  if (totalQuantity === 0 && threshold === undefined) {
-    await docClient.send(
-      new DeleteCommand({
-        TableName: TABLE_NAME,
-        Key: { PK: `USER#${userId}`, SK: `GROUP#${groupId}` },
-      }),
-    );
-    return { lowStockTransition: false };
-  }
-
-  const result = await docClient.send(
-    new UpdateCommand({
-      TableName: TABLE_NAME,
-      Key: { PK: `USER#${userId}`, SK: `GROUP#${groupId}` },
-      UpdateExpression:
-        'SET totalQuantity = :total, isLowStock = :low, updatedAt = :now, syncVersion = syncVersion + :inc',
-      ExpressionAttributeValues: {
-        ':total': totalQuantity,
-        ':low': isLowStock,
-        ':now': new Date().toISOString(),
-        ':inc': 1,
-      },
-      ReturnValues: 'ALL_NEW',
-    }),
-  );
-  return { group: result.Attributes, lowStockTransition: !oldLowStock && isLowStock };
 }
 
 async function listInventory(
@@ -230,9 +129,8 @@ async function addInventoryItem(
 }
 
 /**
- * Creates a new inventory item and returns a 201 mutation response flagged as a
- * creation (`merged: false`). Builds the GSI1 key from the low-stock state
- * (LOWSTOCK vs CAT key) consistent with `updateInventoryItem`.
+ * Creates a distinct stock lot and commits it with its group through the shared
+ * inventory writer. Category index keys describe the lot; stock warnings belong to groups.
  */
 async function createInventoryItem(
   userId: string,
@@ -246,8 +144,6 @@ async function createInventoryItem(
   const name = parsed.name as string;
   const unit = parsed.unit as string;
   const groupId = defaultGroupId(name, category, unit);
-  const existingGroup = await getGroup(userId, groupId);
-  const group = existingGroup ?? (await createGroup(userId, name, category, unit, quantity));
 
   // Build the pictureUrl — if a pictureUrl is provided, store the S3 reference
   let pictureUrl = parsed.pictureUrl as string | undefined;
@@ -285,24 +181,9 @@ async function createInventoryItem(
   if (parsed.onlineStoreLink !== undefined) item.onlineStoreLink = parsed.onlineStoreLink;
   if (pictureUrl !== undefined) item.pictureUrl = pictureUrl;
   if (parsed.locationDetails !== undefined) item.locationDetails = parsed.locationDetails;
-  await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
+  const change = await inventory.add(userId, item);
+  const responseBody = mutationBody(change);
 
-  const groupChange = existingGroup
-    ? await adjustGroupQuantity(userId, groupId, quantity)
-    : { group, lowStockTransition: false };
-
-  const responseBody: MutationResponse = {
-    item: stripDatabaseKeys(item),
-    groups: [stripDatabaseKeys(groupChange.group ?? group)],
-  };
-  if (groupChange.lowStockTransition) {
-    responseBody.lowStockTransition = true;
-    responseBody.notification = {
-      type: 'LOW_STOCK',
-      message: `${name} is running low on stock`,
-      groupId,
-    };
-  }
   return response(201, responseBody);
 }
 
@@ -346,138 +227,47 @@ async function updateInventoryItem(
 
   if (
     parsed.quantity !== undefined &&
-    (typeof parsed.quantity !== 'number' || parsed.quantity < 0)
+    (typeof parsed.quantity !== 'number' ||
+      !Number.isFinite(parsed.quantity) ||
+      parsed.quantity < 0)
   ) {
     return response(400, { error: 'VALIDATION_ERROR', message: 'quantity must be non-negative' });
   }
 
-  const currentResult = await docClient.send(
-    new GetCommand({
-      TableName: TABLE_NAME,
-      Key: { PK: `USER#${userId}`, SK: `ITEM#${itemId}` },
-    }),
-  );
-  const current = currentResult.Item;
-  if (!current) {
-    return response(404, { error: 'NOT_FOUND', message: 'Inventory item not found' });
-  }
+  const fields: Record<string, unknown> = {};
+  const allowed = [
+    'name',
+    'category',
+    'expirationDate',
+    'locationDetails',
+    'quantity',
+    'unit',
+    'barcode',
+    'brand',
+    'whereToBuy',
+    'onlineStoreLink',
+    'pictureUrl',
+  ];
+  for (const field of allowed) if (parsed[field] !== undefined) fields[field] = parsed[field];
+  if (parsed.locationId !== undefined) fields.location = parsed.locationId;
+  const change = await inventory.update(userId, itemId, fields, parsed.reassignGroup === true);
+  return response(200, mutationBody(change));
+}
 
-  const oldGroupId =
-    typeof current.groupId === 'string'
-      ? current.groupId
-      : defaultGroupId(current.name as string, current.category as string, current.unit as string);
-  const oldQuantity = Number(current.quantity);
-  const newQuantity = parsed.quantity !== undefined ? Number(parsed.quantity) : oldQuantity;
-  const newName = (parsed.name ?? current.name) as string;
-  const newCategory = (parsed.category ?? current.category) as string;
-  const newUnit = (parsed.unit ?? current.unit) as string;
-  const shouldReassign = parsed.reassignGroup === true;
-  const targetGroupId = shouldReassign ? defaultGroupId(newName, newCategory, newUnit) : oldGroupId;
-  let targetGroup = await getGroup(userId, targetGroupId);
-  if (!targetGroup) {
-    targetGroup = await createGroup(userId, newName, newCategory, newUnit, 0);
-  }
-
-  const now = new Date().toISOString();
-  const expressionAttrNames: Record<string, string> = { '#updatedAt': 'updatedAt' };
-  const expressionAttrValues: Record<string, unknown> = { ':now': now, ':inc': 1 };
-  const updateParts: string[] = ['#updatedAt = :now', 'syncVersion = syncVersion + :inc'];
-
-  const UPDATABLE_FIELDS: Record<string, string> = {
-    name: 'name',
-    category: 'category',
-    expirationDate: 'expirationDate',
-    locationId: 'location',
-    locationDetails: 'locationDetails',
-    quantity: 'quantity',
-    unit: 'unit',
-    barcode: 'barcode',
-    brand: 'brand',
-    whereToBuy: 'whereToBuy',
-    onlineStoreLink: 'onlineStoreLink',
-    pictureUrl: 'pictureUrl',
+function mutationBody(change: Awaited<ReturnType<InventoryRepository['add']>>): MutationResponse {
+  const body: MutationResponse = {
+    item: change.item ? stripDatabaseKeys(change.item) : undefined,
+    groups: change.groups.map(stripDatabaseKeys),
   };
-
-  for (const [requestField, dbField] of Object.entries(UPDATABLE_FIELDS)) {
-    if (parsed[requestField] !== undefined) {
-      const alias = `#f_${requestField}`;
-      const valAlias = `:v_${requestField}`;
-      expressionAttrNames[alias] = dbField;
-      expressionAttrValues[valAlias] = parsed[requestField];
-      updateParts.push(`${alias} = ${valAlias}`);
-    }
-  }
-  if (targetGroupId !== oldGroupId) {
-    expressionAttrNames['#groupId'] = 'groupId';
-    expressionAttrValues[':groupId'] = targetGroupId;
-    updateParts.push('#groupId = :groupId');
-  }
-
-  if (parsed.category !== undefined) {
-    expressionAttrNames['#gsi1pk'] = 'GSI1PK';
-    expressionAttrValues[':v_gsi1pk'] = `USER#${userId}#CAT#${parsed.category}`;
-    updateParts.push('#gsi1pk = :v_gsi1pk');
-
-    expressionAttrNames['#gsi1sk'] = 'GSI1SK';
-    expressionAttrValues[':v_gsi1sk'] = `ITEM#${itemId}`;
-    updateParts.push('#gsi1sk = :v_gsi1sk');
-  }
-
-  const updateExpression = `SET ${updateParts.join(', ')}`;
-
-  try {
-    const result = await docClient.send(
-      new UpdateCommand({
-        TableName: TABLE_NAME,
-        Key: { PK: `USER#${userId}`, SK: `ITEM#${itemId}` },
-        UpdateExpression: updateExpression,
-        ConditionExpression: 'attribute_exists(PK)',
-        ExpressionAttributeNames: expressionAttrNames,
-        ExpressionAttributeValues: expressionAttrValues,
-        ReturnValues: 'ALL_NEW',
-      }),
-    );
-
-    let groupChange: { group?: Record<string, unknown>; lowStockTransition: boolean };
-    if (targetGroupId === oldGroupId) {
-      groupChange = await adjustGroupQuantity(userId, oldGroupId, newQuantity - oldQuantity);
-    } else {
-      await adjustGroupQuantity(userId, oldGroupId, -oldQuantity);
-      groupChange = await adjustGroupQuantity(userId, targetGroupId, newQuantity);
-    }
-
-    const updatedItem = result?.Attributes ?? {
-      ...current,
-      ...Object.fromEntries(
-        Object.entries(parsed)
-          .filter(([key]) => key !== 'reassignGroup' && key !== 'locationId')
-          .map(([key, value]) => [key, value]),
-      ),
-      ...(parsed.locationId !== undefined ? { location: parsed.locationId } : {}),
-      groupId: targetGroupId,
-      updatedAt: now,
-      syncVersion: Number(current.syncVersion ?? 0) + 1,
+  if (change.lowStockTransition && change.notificationGroup) {
+    body.lowStockTransition = true;
+    body.notification = {
+      type: 'LOW_STOCK',
+      message: `${change.notificationGroup.name} is running low on stock`,
+      groupId: String(change.notificationGroup.groupId),
     };
-    const responseBody: Record<string, unknown> = {
-      item: stripDatabaseKeys(updatedItem),
-      groups: groupChange.group ? [stripDatabaseKeys(groupChange.group)] : [],
-    };
-    if (groupChange.lowStockTransition) {
-      responseBody.lowStockTransition = true;
-      responseBody.notification = {
-        type: 'LOW_STOCK',
-        message: `${targetGroup.name ?? newName} is running low on stock`,
-        groupId: targetGroupId,
-      };
-    }
-
-    return response(200, responseBody);
-  } catch (err: unknown) {
-    if ((err as { name?: string }).name === 'ConditionalCheckFailedException') {
-      return response(404, { error: 'NOT_FOUND', message: 'Inventory item not found' });
-    }
-    throw err;
   }
+  return body;
 }
 
 // --- Barcode Lookup ---
@@ -711,29 +501,7 @@ async function searchInventory(
 }
 
 async function deleteInventoryItem(userId: string, itemId: string): Promise<APIGatewayProxyResult> {
-  // Verify item exists before deleting
-  const existing = await docClient.send(
-    new GetCommand({
-      TableName: TABLE_NAME,
-      Key: { PK: `USER#${userId}`, SK: `ITEM#${itemId}` },
-    }),
-  );
-
-  if (!existing.Item) {
-    return response(404, { error: 'NOT_FOUND', message: 'Inventory item not found' });
-  }
-
-  await docClient.send(
-    new DeleteCommand({
-      TableName: TABLE_NAME,
-      Key: { PK: `USER#${userId}`, SK: `ITEM#${itemId}` },
-    }),
-  );
-
-  if (typeof existing.Item.groupId === 'string') {
-    await adjustGroupQuantity(userId, existing.Item.groupId, -Number(existing.Item.quantity ?? 0));
-  }
-
+  await inventory.delete(userId, itemId);
   return response(200, { message: 'Inventory item deleted' });
 }
 
@@ -764,66 +532,26 @@ async function updateInventoryGroup(
     });
   }
 
-  const current = await getGroup(userId, groupId);
-  if (!current) {
-    return response(404, { error: 'NOT_FOUND', message: 'Inventory group not found' });
-  }
-  const oldLowStock = current.isLowStock === true;
-  const threshold = parsed.threshold === null ? undefined : parsed.threshold;
-  const thresholdUnit = parsed.thresholdUnit ?? (current.unit as string);
   if (
-    !ACCEPTED_UNITS.has(thresholdUnit) ||
-    convertThreshold(1, thresholdUnit, current.unit as string) === null
+    parsed.thresholdUnit !== undefined &&
+    (typeof parsed.thresholdUnit !== 'string' || !ACCEPTED_UNITS.has(parsed.thresholdUnit))
   ) {
     return response(400, {
       error: 'VALIDATION_ERROR',
       message: 'Threshold unit must be compatible with the stock unit',
     });
   }
-  const isLowStock = calculateLowStock(
-    Number(current.totalQuantity ?? 0),
-    threshold,
-    thresholdUnit,
-    current.unit as string,
+  const change = await inventory.threshold(
+    userId,
+    groupId,
+    parsed.threshold!,
+    parsed.thresholdUnit,
   );
-  const names: Record<string, string> = { '#threshold': 'threshold' };
-  const values: Record<string, unknown> = {
-    ':low': isLowStock,
-    ':now': new Date().toISOString(),
-    ':inc': 1,
-  };
-  if (threshold !== undefined) {
-    values[':threshold'] = threshold;
-    values[':thresholdUnit'] = thresholdUnit;
-  }
-  const updateExpression =
-    threshold === undefined
-      ? 'SET isLowStock = :low, updatedAt = :now, syncVersion = syncVersion + :inc REMOVE #threshold, thresholdUnit'
-      : 'SET #threshold = :threshold, thresholdUnit = :thresholdUnit, isLowStock = :low, updatedAt = :now, syncVersion = syncVersion + :inc';
-
-  const result = await docClient.send(
-    new UpdateCommand({
-      TableName: TABLE_NAME,
-      Key: { PK: `USER#${userId}`, SK: `GROUP#${groupId}` },
-      UpdateExpression: updateExpression,
-      ExpressionAttributeNames: names,
-      ExpressionAttributeValues: values,
-      ConditionExpression: 'attribute_exists(PK)',
-      ReturnValues: 'ALL_NEW',
-    }),
-  );
-  const responseBody: Record<string, unknown> = {
-    group: result.Attributes ? stripDatabaseKeys(result.Attributes) : undefined,
-  };
-  if (!oldLowStock && isLowStock) {
-    responseBody.lowStockTransition = true;
-    responseBody.notification = {
-      type: 'LOW_STOCK',
-      message: `${current.name ?? 'Item'} is running low on stock`,
-      groupId,
-    };
-  }
-  return response(200, responseBody);
+  const responseBody = mutationBody(change);
+  return response(200, {
+    ...responseBody,
+    group: change.groups[0] ? stripDatabaseKeys(change.groups[0]) : undefined,
+  });
 }
 
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
@@ -874,6 +602,8 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
     return response(405, { error: 'METHOD_NOT_ALLOWED', message: 'Method not allowed' });
   } catch (err) {
+    if (err instanceof InventoryWriteError)
+      return response(err.statusCode, { error: err.code, message: err.message });
     console.error('Inventory Lambda error:', err);
     return response(500, {
       error: 'INTERNAL_ERROR',

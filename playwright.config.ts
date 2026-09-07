@@ -25,7 +25,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `npm run dev -- --port ${port} --strictPort`,
+    command: `npm run dev -- --port ${port} --strictPort --force`,
     url: baseURL,
     reuseExistingServer: false,
     timeout: 120000,

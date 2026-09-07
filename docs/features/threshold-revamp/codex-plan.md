@@ -3,8 +3,12 @@
 September 2026 follow-through: [the data-model audit](../../architecture/data-model-audit-2026-09.md)
 records production reconciliation and redundancy ownership. The original batch
 migration's apply mode is retired; read-only reconciliation preserves explicit
-membership and converts threshold units. Transactional mutations below remain
-unimplemented. A real isolated table restore was verified; see the
+membership and converts threshold units. Transactional lot/group mutations and
+threshold changes are now implemented through a shared per-account revision and
+tested against real DynamoDB. Empty groups with zero-quantity lots are retained;
+clearing an empty group's threshold removes it. See the maintained
+[data contract](../../architecture/data-model.md) for retry and scaling limits.
+A real isolated table restore was verified; see the
 [recovery runbook](../../development/recovery.md).
 
 ## Summary

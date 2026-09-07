@@ -30,6 +30,13 @@ four workspaces and builds `@pantry/domain`. There are no additional package man
 
 The legacy `migrate:inventory-groups` entry point now delegates to the read-only
 audit; `--apply` fails before any database request. See the [recovery runbook](recovery.md).
+
+`npm run test:inventory:aws` builds the backend and runs isolated DynamoDB integration
+checks. It requires AWS CLI credentials for the documented development account and
+permission to create/read/write/delete its own temporary on-demand table. It generates
+the table name itself (`PantryApp-inventory-test-*`), never accepts a production target,
+and deletes the table in `finally`. Check cleanup output even on failure. This explicit
+AWS lane is separate from the credential-free verification gate.
 | `npm run format` | Format files; review the diff before committing |
 
 Use workspace test commands to pass Jest options, for example

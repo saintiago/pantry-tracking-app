@@ -401,8 +401,6 @@ export interface GroupedRowProps {
  * while expanded, inside the aria-controls region, with indentation, connector
  * lines, and a distinct background to set them apart from top-level rows.
  *
- * Note: the component is named GroupedRowView to avoid colliding with the
- * exported GroupedRow view-model interface defined above.
  */
 export const GroupedRowView: React.FC<GroupedRowProps> = ({
   group,
@@ -443,8 +441,9 @@ export const GroupedRowView: React.FC<GroupedRowProps> = ({
     }
   };
 
-  const unitLabel = getUnitLabel(group.unit, group.totalQuantity);
-  const quantityText = `${formatQuantity(group.totalQuantity)} ${unitLabel}`;
+  const quantityText = group.hasIncompatibleUnits
+    ? t('mixed units')
+    : `${formatQuantity(group.totalQuantity)} ${getUnitLabel(group.unit, group.totalQuantity)}`;
   const countText = `${group.childCount} ${group.childCount === 1 ? 'item' : 'items'}`;
 
   return (
