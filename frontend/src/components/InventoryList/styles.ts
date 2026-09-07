@@ -105,6 +105,7 @@ export const styles: Record<string, CSSProperties> = {
     minWidth: 0,
   },
   cardHeader: {
+    flexWrap: 'wrap',
     display: 'flex',
     alignItems: 'center',
     gap: '0.5rem',
@@ -139,6 +140,7 @@ export const styles: Record<string, CSSProperties> = {
     color: 'var(--color-action)',
   },
   cardDetails: {
+    flexWrap: 'wrap',
     display: 'flex',
     gap: '1rem',
     fontSize: '0.8125rem',
@@ -152,8 +154,8 @@ export const styles: Record<string, CSSProperties> = {
     fontWeight: 700,
     padding: '2px 6px',
     borderRadius: 'var(--inv-radius-full)' as unknown as number,
-    backgroundColor: 'var(--inv-primary-bg)',
-    color: 'var(--inv-primary-dark)',
+    backgroundColor: 'var(--color-danger)',
+    color: 'var(--color-danger-text)',
     whiteSpace: 'nowrap' as const,
   },
   removeItemButton: {
@@ -163,8 +165,8 @@ export const styles: Record<string, CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     fontSize: '1.125rem',
-    color: 'var(--inv-primary-dark)',
-    border: '1px solid var(--inv-primary)',
+    color: 'var(--color-danger-text)',
+    border: '1px solid var(--color-danger-text)',
     borderRadius: 'var(--inv-radius-xs)' as unknown as number,
     cursor: 'pointer',
   },
@@ -215,10 +217,11 @@ export const styles: Record<string, CSSProperties> = {
     fontWeight: 600,
     padding: '2px 8px',
     borderRadius: 'var(--inv-radius-full)' as unknown as number,
-    backgroundColor: 'var(--inv-amber-light)',
-    color: 'var(--color-warning-text)',
+    backgroundColor: 'var(--color-danger)',
+    color: 'var(--color-danger-text)',
   },
   categoryCardStats: {
+    flexWrap: 'wrap',
     display: 'flex',
     gap: '0.375rem',
     fontSize: '0.875rem',
@@ -273,6 +276,7 @@ export const styles: Record<string, CSSProperties> = {
     minWidth: 0,
   },
   groupedRowHeader: {
+    flexWrap: 'wrap',
     display: 'flex',
     alignItems: 'center',
     gap: '0.5rem',
@@ -328,6 +332,7 @@ export const styles: Record<string, CSSProperties> = {
     cursor: 'pointer',
   },
   groupedRowStats: {
+    flexWrap: 'wrap',
     display: 'flex',
     gap: '0.375rem',
     fontSize: '0.875rem',

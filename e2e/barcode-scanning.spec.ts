@@ -251,7 +251,7 @@ test('scanning a saved barcode copies household details and focuses expiration e
   for (const [label, value] of [
     ['Category', 'Grains'],
     ['Brand', 'Saved brand'],
-    ['Quantity', '1'],
+    ['Quantity', '500'],
     ['Unit', 'g'],
     ['Storage Location', 'pantry'],
     ['Location Details', 'Shelf 2'],

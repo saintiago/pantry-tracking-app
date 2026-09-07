@@ -86,3 +86,8 @@ controls are in `components/RecipePhoto/`. The existing Recipe Lambda also serve
 query pagination and placeholder orchestration have separate feature helpers.
 Expiration prioritization is a pure rule under `domain/recipes/`. Settings composes
 the existing shared StorageLocationManager and location API; it creates no new data store.
+
+Inventory item cards and location/stock tags are reusable components under
+`components/InventoryList/`. Its department palette is also re-exported by Shopping.
+`ExpirationField` owns the date/Not applicable control; `ItemIconField` owns emoji
+selection. Add form contracts/defaults live alongside the page in `form.ts`.

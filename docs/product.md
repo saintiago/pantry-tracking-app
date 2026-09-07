@@ -57,7 +57,7 @@ current device; there is no shared household synchronization of that local state
 The service worker caches app assets; it does not make inventory CRUD offline-capable.
 
 Shopping ingredient details collapse by default, retaining visible quantities, review
-notices and purchase actions. Equal-width week shortcuts and distinct shopping-only
+notices and purchase actions. Equal-width week shortcuts and distinct
 department pastels improve mobile scanning; the subtitle is "From meal plan to shopping
 basket." See the shopping companion feature record. Scanning an existing barcode
 prefers saved household details and focuses expiration for review, requesting the
@@ -80,3 +80,13 @@ and invalid dates are excluded. Inventory read failures offer a retry.
 Settings now owns storage-location add/rename/remove using the existing IDs and API.
 Inventory keeps location filtering and uses pastel green Add and pastel red Remove.
 Calendar recipe names and servings use smaller text for narrow screens.
+
+## Inventory improvements (issues #11–#12)
+
+Add/edit forms offer an explicit Not applicable expiration option and a product
+emoji selector. Reusing a saved product copies quantity, unit, expiration choice,
+icon and existing metadata while preserving entered values. Inventory categories
+share Shopping's department colors. Category and product groups show their location,
+or Mixed locations; individual lots and details show the actual location. Tags
+reflect the currently filtered inventory. Low-stock badges and each lot's quick
+remove X use pastel red. Removal asks for confirmation and exposes failures for retry.

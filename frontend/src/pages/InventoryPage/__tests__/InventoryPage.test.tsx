@@ -347,6 +347,7 @@ describe('Inventory integration', () => {
   });
 
   it('removes an item via deleteInventoryItem API and reloads', async () => {
+    jest.spyOn(window, 'confirm').mockReturnValueOnce(true);
     const user = userEvent.setup();
     mockDeleteInventoryItem.mockResolvedValue(undefined);
     mockFetchInventory

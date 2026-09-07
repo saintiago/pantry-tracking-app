@@ -124,7 +124,10 @@ export function calculateShopping(data: ShoppingData, plans: MealPlan[], today: 
       if (
         lots.some(
           (lot) =>
-            lot.quantity > 0 && lot.expirationDate >= today && lot.expirationDate < plan.date,
+            lot.quantity > 0 &&
+            lot.expirationDate !== null &&
+            lot.expirationDate >= today &&
+            lot.expirationDate < plan.date,
         )
       )
         warn('Stock expires before a planned meal');
@@ -148,9 +151,12 @@ export function calculateShopping(data: ShoppingData, plans: MealPlan[], today: 
       row.needed += quantity;
       let missing = quantity;
       for (const lot of [...lots].sort((a, b) =>
-        a.expirationDate.localeCompare(b.expirationDate),
+        (a.expirationDate ?? '9999-12-31').localeCompare(b.expirationDate ?? '9999-12-31'),
       )) {
-        if (!lot.expirationDate || lot.expirationDate < today || lot.expirationDate < plan.date)
+        if (
+          lot.expirationDate !== null &&
+          (!lot.expirationDate || lot.expirationDate < today || lot.expirationDate < plan.date)
+        )
           continue;
         const used = Math.min(missing, remaining.get(lot.itemId) ?? 0);
         remaining.set(lot.itemId, (remaining.get(lot.itemId) ?? 0) - used);

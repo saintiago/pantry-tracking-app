@@ -13,7 +13,7 @@ export function validateAddRequest(
 
   for (const field of REQUIRED_FIELDS) {
     const value = parsed[field];
-    if (value === undefined || value === null || value === '') {
+    if (value === undefined || (value === null && field !== 'expirationDate') || value === '') {
       errors.push({ field, message: `${field} is required` });
     }
   }
@@ -25,13 +25,6 @@ export function validateAddRequest(
       parsed.quantity < 0)
   ) {
     errors.push({ field: 'quantity', message: 'quantity must be non-negative' });
-  }
-
-  if (parsed.expirationDate && typeof parsed.expirationDate === 'string') {
-    const date = new Date(parsed.expirationDate);
-    if (isNaN(date.getTime())) {
-      errors.push({ field: 'expirationDate', message: 'expirationDate must be a valid ISO date' });
-    }
   }
 
   if (
@@ -54,7 +47,6 @@ export function validateInventoryFields(
   for (const field of [
     'name',
     'category',
-    'expirationDate',
     'locationId',
     'unit',
     'barcode',
@@ -62,6 +54,7 @@ export function validateInventoryFields(
     'whereToBuy',
     'onlineStoreLink',
     'pictureUrl',
+    'icon',
   ]) {
     const value = parsed[field];
     if (
@@ -73,6 +66,28 @@ export function validateInventoryFields(
       errors.push({ field, message: `${field} must be text` });
     }
   }
+  const expiration = parsed.expirationDate;
+  if (
+    expiration !== undefined &&
+    expiration !== null &&
+    (typeof expiration !== 'string' ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(expiration) ||
+      !Number.isFinite(Date.parse(expiration + 'T12:00:00Z')) ||
+      new Date(expiration + 'T12:00:00Z').toISOString().slice(0, 10) !== expiration)
+  ) {
+    errors.push({
+      field: 'expirationDate',
+      message: 'expirationDate must be a valid ISO date or null',
+    });
+  }
+  if (
+    typeof parsed.icon === 'string' &&
+    (parsed.icon.length > 32 || Array.from(parsed.icon).some((char) => char.charCodeAt(0) < 32))
+  )
+    errors.push({
+      field: 'icon',
+      message: 'icon must be at most 32 characters without control characters',
+    });
   if (parsed.reassignGroup !== undefined && typeof parsed.reassignGroup !== 'boolean') {
     errors.push({ field: 'reassignGroup', message: 'reassignGroup must be a boolean' });
   }

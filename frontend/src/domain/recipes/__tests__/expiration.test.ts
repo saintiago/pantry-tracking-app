@@ -45,6 +45,7 @@ test.each([
   { quantity: NaN },
   { expirationDate: '2026-09-06' },
   { expirationDate: '' },
+  { expirationDate: null },
   { expirationDate: '2026-09-31' },
   { expirationDate: '2026-13-01' },
   { unit: 'g' },

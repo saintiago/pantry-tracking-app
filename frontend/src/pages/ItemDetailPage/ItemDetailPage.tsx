@@ -1,3 +1,7 @@
+import { styles } from './styles';
+import ExpirationField from '../../components/ExpirationField/ExpirationField';
+import ItemIconField from '../../components/ItemIconField/ItemIconField';
+import LocationTag from '../../components/InventoryList/LocationTag';
 import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useCallback, useState } from 'react';
 import type { InventoryItem } from '../../domain/inventory/types';
@@ -24,7 +28,8 @@ interface EditFormState {
   locationId: string;
   quantity: string;
   unit: string;
-  expirationDate: string;
+  expirationDate: string | null;
+  icon: string;
   brand: string;
   barcode: string;
   whereToBuy: string;
@@ -44,7 +49,7 @@ function validateForm(form: EditFormState): EditFormErrors {
   const errors: EditFormErrors = {};
   if (!form.name.trim()) errors.name = 'Product name is required.';
   if (!form.category.trim()) errors.category = 'Category is required.';
-  if (!form.expirationDate) errors.expirationDate = 'Expiration date is required.';
+  if (form.expirationDate === '') errors.expirationDate = 'Expiration date is required.';
   if (!form.locationId) errors.locationId = 'Storage location is required.';
   const qty = parseFractionalQuantity(form.quantity);
   if (form.quantity.trim() === '' || qty === null) {
@@ -65,6 +70,7 @@ function initForm(item: InventoryItem): EditFormState {
     quantity: formatQuantity(item.quantity),
     unit: resolveUnit(item.unit),
     expirationDate: item.expirationDate,
+    icon: item.icon ?? '',
     brand: item.brand ?? '',
     barcode: item.barcode ?? '',
     whereToBuy: item.whereToBuy ?? '',
@@ -112,6 +118,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
         quantity: parseFractionalQuantity(editForm.quantity) ?? 0,
         unit: editForm.unit.trim(),
         expirationDate: editForm.expirationDate,
+        icon: editForm.icon,
       };
       if (editForm.brand.trim()) data.brand = editForm.brand.trim();
       if (editForm.barcode.trim()) data.barcode = editForm.barcode.trim();
@@ -160,9 +167,28 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
         >
           {t('← Back')}{' '}
         </button>
-        <h2 style={styles.pageTitle}>{item.name}</h2>
+        <h2 style={styles.pageTitle}>
+          {item.icon} {item.name}
+        </h2>
       </div>
 
+      <div
+        style={{
+          display: 'flex',
+          gap: 8,
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          marginBottom: 12,
+        }}
+      >
+        <span>
+          {formatQuantity(item.quantity)} {getUnitLabel(item.unit, item.quantity)}
+        </span>
+        <LocationTag
+          ids={[item.location]}
+          names={Object.fromEntries(locations.map((loc) => [loc.locationId, loc.name]))}
+        />
+      </div>
       {/* Picture */}
       {item.pictureUrl && (
         <div style={styles.pictureContainer}>
@@ -310,19 +336,21 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
           )}
         </div>
 
+        <ItemIconField
+          value={editForm.icon}
+          onChange={(icon) => setEditForm((prev) => ({ ...prev, icon }))}
+        />
         {/* Expiration Date */}
         <div style={styles.fieldGroup}>
-          <label htmlFor="edit-expiration" style={styles.label}>
-            {t('Expiration Date')} <span aria-hidden="true">*</span>
-          </label>
-          <input
+          <ExpirationField
             id="edit-expiration"
-            type="date"
             value={editForm.expirationDate}
-            onChange={handleChange('expirationDate')}
+            onChange={(expirationDate) => {
+              setEditForm((prev) => ({ ...prev, expirationDate }));
+              setErrors((prev) => ({ ...prev, expirationDate: undefined }));
+            }}
             style={styles.input}
-            aria-required="true"
-            aria-invalid={!!errors.expirationDate}
+            invalid={!!errors.expirationDate}
           />
           {errors.expirationDate && (
             <span style={styles.fieldError} role="alert">
@@ -417,148 +445,3 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
 };
 
 export default ItemDetailPage;
-
-const styles: Record<string, React.CSSProperties> = {
-  page: {
-    display: 'flex',
-    flexDirection: 'column',
-    minHeight: '100%',
-    position: 'relative',
-  },
-  pageHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.75rem',
-    marginBottom: '1rem',
-    flexWrap: 'wrap',
-  },
-  backButton: {
-    minWidth: 44,
-    minHeight: 44,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '0.5rem 0.75rem',
-    background: 'none',
-    border: '1px solid var(--color-border)',
-    borderRadius: 8,
-    cursor: 'pointer',
-    fontSize: '0.9375rem',
-    color: 'var(--color-text)',
-  },
-  pageTitle: {
-    fontSize: '1.25rem',
-    fontWeight: 700,
-    margin: 0,
-    flex: 1,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-  pictureContainer: {
-    marginBottom: '1rem',
-    display: 'flex',
-    justifyContent: 'center',
-  },
-  picture: {
-    maxWidth: '100%',
-    maxHeight: 280,
-    borderRadius: 8,
-    objectFit: 'contain',
-  },
-  errorBanner: {
-    padding: '0.75rem 1rem',
-    backgroundColor: 'var(--color-danger)',
-    color: 'var(--color-danger-text)',
-    borderRadius: 8,
-    fontSize: '0.9375rem',
-    fontWeight: 600,
-    marginBottom: '0.75rem',
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.75rem',
-  },
-  fieldGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.25rem',
-  },
-  label: {
-    fontSize: '0.875rem',
-    fontWeight: 600,
-    color: 'var(--color-text)',
-  },
-  input: {
-    minHeight: 44,
-    padding: '0.5rem 0.75rem',
-    fontSize: '1rem',
-    border: '1px solid var(--color-border)',
-    borderRadius: 6,
-    outline: 'none',
-    width: '100%',
-    boxSizing: 'border-box',
-  },
-  select: {
-    minHeight: 44,
-    padding: '0.5rem 0.75rem',
-    fontSize: '1rem',
-    border: '1px solid var(--color-border)',
-    borderRadius: 6,
-    outline: 'none',
-    width: '100%',
-    boxSizing: 'border-box',
-    backgroundColor: 'var(--color-surface)',
-  },
-  fieldError: {
-    fontSize: '0.8125rem',
-    color: 'var(--color-danger-text)',
-  },
-  actionBar: {
-    position: 'fixed',
-    bottom: 56, // above bottom nav (56px)
-    left: 0,
-    right: 0,
-    display: 'flex',
-    gap: '0.75rem',
-    padding: '0.75rem 1rem',
-    backgroundColor: 'var(--color-surface)',
-    borderTop: '1px solid var(--color-border)',
-    zIndex: 20,
-    maxWidth: 1920,
-    margin: '0 auto',
-    height: 72,
-    boxSizing: 'border-box',
-  },
-  cancelButton: {
-    flex: 1,
-    minHeight: 44,
-    minWidth: 44,
-    padding: '0.625rem 1rem',
-    fontSize: '1rem',
-    fontWeight: 600,
-    color: 'var(--color-text)',
-    backgroundColor: 'var(--color-canvas)',
-    border: '1px solid var(--color-border)',
-    borderRadius: 8,
-    cursor: 'pointer',
-  },
-  saveButton: {
-    flex: 2,
-    minHeight: 44,
-    minWidth: 44,
-    padding: '0.625rem 1rem',
-    fontSize: '1rem',
-    fontWeight: 700,
-    color: 'var(--color-text)',
-    backgroundColor: 'var(--color-mint)',
-    border: 'none',
-    borderRadius: 8,
-    cursor: 'pointer',
-  },
-  disabledButton: {
-    opacity: 0.5,
-    cursor: 'not-allowed',
-  },
-};

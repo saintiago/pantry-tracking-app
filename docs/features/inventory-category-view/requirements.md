@@ -88,3 +88,13 @@ The Inventory page currently displays a flat list of all inventory items with te
 1. FOR ALL lists of InventoryItems, THE sum of item counts across all Category_Cards SHALL equal the total number of items in the filtered list (partition property).
 2. FOR ALL lists of InventoryItems, each item SHALL appear in exactly one category group matching the item's `category` field.
 3. FOR ALL lists of InventoryItems, THE number of Category_Cards SHALL equal the number of distinct category values in the filtered item set.
+
+## Issues #11–#12 update
+
+Category cards use the same department color mapping as Shopping and show a single
+location or Mixed locations for the filtered lots. Product group rows also summarize
+locations. Expanded lot cards show their location beside quantity/unit and offer a
+pastel-red X with confirmation, independent of Remove mode. Low-stock badges are
+pastel red. A selected product emoji replaces the default box placeholder; photos
+retain precedence. See [inventory core](../inventory-core/requirements.md) and the
+[current data contract](../../architecture/data-model.md) for Not applicable expiration.

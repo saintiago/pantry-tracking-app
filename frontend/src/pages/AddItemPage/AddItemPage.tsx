@@ -1,3 +1,8 @@
+import { INITIAL_FORM, AUTOFILL_STYLES } from './form';
+import type { AddItemData, FormErrors, DropdownState } from './form';
+export type { AddItemData } from './form';
+import ExpirationField from '../../components/ExpirationField/ExpirationField';
+import ItemIconField from '../../components/ItemIconField/ItemIconField';
 import { styles } from './styles';
 import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -15,22 +20,6 @@ import type { InventoryItem } from '../../api/inventory/inventory';
 import AutocompleteDropdown from '../../components/AutocompleteDropdown/AutocompleteDropdown';
 import { parseFractionalQuantity } from '../../utils/quantity';
 
-export interface AddItemData {
-  name: string;
-  category: string;
-  expirationDate: string;
-  locationId: string;
-  locationDetails?: string;
-  pictureUrl?: string;
-  quantity: number;
-  unit: string;
-  barcode?: string;
-  brand?: string;
-  whereToBuy?: string;
-  onlineStoreLink?: string;
-  pictureFile?: File;
-}
-
 export interface AddItemPageProps {
   onBack: () => void;
   onSubmit: (item: AddItemData) => Promise<{ error?: string }>;
@@ -41,45 +30,6 @@ export interface AddItemPageProps {
   backLabel?: string;
   returnAfterSave?: boolean;
 }
-
-interface FormErrors {
-  name?: string;
-  category?: string;
-  expirationDate?: string;
-  locationId?: string;
-  quantity?: string;
-  unit?: string;
-}
-
-interface DropdownState {
-  visible: boolean;
-  items?: InventoryItem[];
-  values?: string[];
-  focusedIndex: number;
-}
-
-const INITIAL_FORM = {
-  name: '',
-  category: '',
-  expirationDate: '',
-  locationId: '',
-  locationDetails: '',
-  pictureUrl: '',
-  quantity: '',
-  unit: 'piece',
-  barcode: '',
-  brand: '',
-  whereToBuy: '',
-  onlineStoreLink: '',
-};
-
-const AUTOFILL_STYLES = {
-  // Prefilled highlight (blue): used when a field was populated by Autofill.
-  prefilled: {
-    backgroundColor: 'var(--color-sky)',
-    borderColor: 'var(--color-action)',
-  },
-};
 
 const AddItemPage: React.FC<AddItemPageProps> = ({
   onBack,
@@ -101,7 +51,8 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
     quantity: prefillData?.quantity !== undefined ? String(prefillData.quantity) : '',
     unit: prefillData?.unit ?? 'piece',
     locationId: prefillData?.locationId ?? '',
-    expirationDate: prefillData?.expirationDate ?? '',
+    expirationDate: prefillData?.expirationDate === undefined ? '' : prefillData.expirationDate,
+    icon: prefillData?.icon ?? '',
     locationDetails: prefillData?.locationDetails ?? '',
     pictureUrl: prefillData?.pictureUrl ?? '',
     whereToBuy: prefillData?.whereToBuy ?? '',
@@ -206,12 +157,13 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
         updates.locationDetails = item.locationDetails;
         newPrefilledFields.add('locationDetails');
       }
+      if (!prev.icon && item.icon) updates.icon = item.icon;
       if (!prev.pictureUrl && item.pictureUrl) {
         updates.pictureUrl = item.pictureUrl;
         newPrefilledFields.add('pictureUrl');
       }
       if (!prev.quantity) {
-        updates.quantity = '1';
+        updates.quantity = String(Number.isFinite(item.quantity) ? item.quantity : 1);
         newPrefilledFields.add('quantity');
       }
       if (!prev.whereToBuy && item.whereToBuy) {
@@ -227,11 +179,9 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
         newPrefilledFields.add('barcode');
       }
 
-      // Copy the suggestion's expiration date only when it is non-empty AND the field
-      // is empty, marking it prefilled (Req 4.1, 4.2). An existing user-entered value is
-      // left untouched, and a suggestion with no expiration leaves the field unchanged
-      // (Req 4.4, 4.5).
-      const didFillExpiration = !prev.expirationDate && !!item.expirationDate;
+      // Preserve a selected date or N/A; only fill an untouched, empty date.
+      const didFillExpiration =
+        prev.expirationDate === '' && (item.expirationDate === null || !!item.expirationDate);
       if (didFillExpiration) {
         updates.expirationDate = item.expirationDate;
         newPrefilledFields.add('expirationDate');
@@ -241,7 +191,10 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
         setPrefilledFields((p) => new Set([...p, ...newPrefilledFields]));
       }
 
-      if (didFillExpiration || (triggerField === 'barcode' && !prev.expirationDate)) {
+      if (
+        item.expirationDate !== null &&
+        (didFillExpiration || (triggerField === 'barcode' && prev.expirationDate === ''))
+      ) {
         setEditExpiration(true);
       }
 
@@ -468,7 +421,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
     const errs: FormErrors = {};
     if (!form.name.trim()) errs.name = 'Product name is required.';
     if (!form.category.trim()) errs.category = 'Category is required.';
-    if (!form.expirationDate) errs.expirationDate = 'Expiration date is required.';
+    if (form.expirationDate === '') errs.expirationDate = 'Expiration date is required.';
     if (!form.locationId) errs.locationId = 'Storage location is required.';
     const qty = parseFractionalQuantity(form.quantity);
     if (form.quantity.trim() === '' || qty === null) {
@@ -496,6 +449,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
         name: form.name.trim(),
         category: form.category.trim(),
         expirationDate: form.expirationDate,
+        ...(form.icon ? { icon: form.icon } : {}),
         locationId: form.locationId,
         ...(form.locationDetails.trim() ? { locationDetails: form.locationDetails.trim() } : {}),
         ...(form.pictureUrl ? { pictureUrl: form.pictureUrl } : {}),
@@ -634,19 +588,21 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
           </div>
         </div>
 
+        <ItemIconField
+          value={form.icon}
+          onChange={(icon) => setForm((prev) => ({ ...prev, icon }))}
+        />
         {/* Expiration Date */}
         <div style={styles.fieldGroup}>
-          <label htmlFor="add-item-expiration" style={styles.label}>
-            {t('Expiration Date')} <span aria-hidden="true">*</span>
-          </label>
-          <input
+          <ExpirationField
             id="add-item-expiration"
-            type="date"
             value={form.expirationDate}
-            onChange={handleChange('expirationDate')}
+            onChange={(expirationDate) => {
+              setForm((prev) => ({ ...prev, expirationDate }));
+              setErrors((prev) => ({ ...prev, expirationDate: undefined }));
+            }}
             style={styles.input}
-            aria-required="true"
-            aria-invalid={!!errors.expirationDate}
+            invalid={!!errors.expirationDate}
           />
           {errors.expirationDate && (
             <span style={styles.fieldError} role="alert">

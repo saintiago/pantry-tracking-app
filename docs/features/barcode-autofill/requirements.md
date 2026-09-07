@@ -161,7 +161,7 @@ The autocomplete and autofill feature enhances the AddItemPage component by prov
 4. WHEN product data is received from lookup, THE Autofill_System SHALL populate the unit field if available and the value is a valid UnitType
 5. WHEN product data is received from lookup, THE Autofill_System SHALL populate the whereToBuy field if available
 6. WHEN product data is received from lookup, THE Autofill_System SHALL populate the onlineStoreLink field if available
-7. THE Autofill_System SHALL copy expirationDate, locationId, locationDetails and pictureUrl from the latest matching saved lot, set the added quantity to one, and preserve the matched group threshold. External product lookups cannot provide household storage or expiration information.
+7. THE Autofill_System SHALL copy expirationDate, locationId, locationDetails and pictureUrl from the latest matching saved lot, copy the saved quantity, unit and icon, and preserve the matched group threshold. External product lookups cannot provide household storage or expiration information.
 8. WHEN a field already contains user-entered data, THE Autofill_System SHALL not overwrite that field
 
 ### Requirement 6: Error Handling and Loading States
@@ -207,10 +207,11 @@ The autocomplete and autofill feature enhances the AddItemPage component by prov
 A scanned barcode already present in inventory uses the latest saved lot's household
 metadata in preference to generic catalog name/category/brand. The existing full
 autofill copies expiration, storage and shelf, photo, unit and shopping details,
-preserves user-entered edits, and defaults the new lot quantity to one.
+preserves user-entered edits, and copies the saved quantity, unit and icon.
 After autofill renders, focus the expiration input and request its native date picker.
 Browsers that reject automatic picker opening retain the focused editable date field.
-A saved lot without expiration also focuses that field for entry.
+A saved lot with an unknown expiration focuses that field for entry. An explicit
+Not applicable choice is copied and leaves the date input disabled.
 
 Typed/pasted barcodes wait for the current local search result before deciding whether
 to query the external catalog. A local match must not launch a generic lookup based

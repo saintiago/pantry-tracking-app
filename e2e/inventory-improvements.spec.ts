@@ -136,7 +136,7 @@ test('adding another product copies latest expiration, photo and location detail
     expirationDate: '2028-02-03',
     pictureUrl: photo,
     locationDetails: 'Shelf 2A',
-    quantity: 1,
+    quantity: 500,
   });
   expect(items).toHaveLength(3);
   expect(group.threshold).toBe(750);

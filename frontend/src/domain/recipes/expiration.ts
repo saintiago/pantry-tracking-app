@@ -37,6 +37,7 @@ export function recipeExpiration(
           Number.isFinite(item.quantity) &&
           item.quantity > 0 &&
           dimension(item.unit) === dimension(ingredient.unit) &&
+          typeof item.expirationDate === 'string' &&
           /^\d{4}-\d{2}-\d{2}$/.test(item.expirationDate) &&
           Number.isFinite(Date.parse(item.expirationDate + 'T12:00:00Z')) &&
           new Date(item.expirationDate + 'T12:00:00Z').toISOString().slice(0, 10) ===
@@ -45,9 +46,9 @@ export function recipeExpiration(
           item.expirationDate <= until
         );
       })
-      .sort((a, b) => a.expirationDate.localeCompare(b.expirationDate));
+      .sort((a, b) => (a.expirationDate ?? '').localeCompare(b.expirationDate ?? ''));
     if (eligible[0])
-      matches.push({ name: ingredient.name, expiration: eligible[0].expirationDate });
+      matches.push({ name: ingredient.name, expiration: eligible[0].expirationDate! });
   }
   matches.sort((a, b) => a.expiration.localeCompare(b.expiration));
   return matches;

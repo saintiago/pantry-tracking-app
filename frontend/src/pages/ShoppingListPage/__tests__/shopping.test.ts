@@ -135,3 +135,17 @@ test('storage is isolated by user and period; corrupt saved state is rejected', 
   expect(baseUnit('Kilo')).toEqual({ unit: 'g', factor: 1000 });
   expect(baseUnit('can')).toEqual({ unit: 'can', factor: 1 });
 });
+
+test('N/A stock remains usable after dated stock and missing dates remain unknown', () => {
+  const d = data();
+  d.items = [
+    { ...lot, itemId: 'never', quantity: 0.3, expirationDate: null },
+    { ...lot, itemId: 'dated', quantity: 0.1, expirationDate: '2026-09-08' },
+    { ...lot, itemId: 'unknown', quantity: 5, expirationDate: '' },
+  ];
+  const result = calculate(d);
+  expect(result.ingredients[0]).toMatchObject({ available: 200, buy: 0 });
+  expect(result.remaining.get('dated')).toBe(0);
+  expect(result.remaining.get('never')).toBe(200);
+  expect(result.remaining.get('unknown')).toBe(5000);
+});

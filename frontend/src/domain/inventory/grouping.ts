@@ -148,7 +148,7 @@ export function groupItemsByGroupingKey(
   for (const group of groups) {
     group.childItems.sort((a, b) => {
       if (a.expirationDate !== b.expirationDate) {
-        return a.expirationDate < b.expirationDate ? -1 : 1;
+        return (a.expirationDate ?? '9999-12-31') < (b.expirationDate ?? '9999-12-31') ? -1 : 1;
       }
       if (a.createdAt !== b.createdAt) {
         return a.createdAt < b.createdAt ? -1 : 1;

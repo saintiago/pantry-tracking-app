@@ -24,3 +24,15 @@ test.each(['name', 'category', 'expirationDate', 'locationId', 'pictureUrl', 'ba
 test('preserves supported legacy units and zero stock', () => {
   expect(validateAddRequest({ ...valid, quantity: 0, unit: 'Liter' })).toEqual([]);
 });
+
+test('requires an explicit date or N/A and validates date updates too', () => {
+  expect(validateAddRequest({ ...valid, expirationDate: null, icon: '🧼' })).toEqual([]);
+  for (const expirationDate of ['', '2026-02-30', '2026-13-01', 42, false]) {
+    expect(validateAddRequest({ ...valid, expirationDate })).not.toEqual([]);
+    expect(validateInventoryFields({ expirationDate })).not.toEqual([]);
+  }
+  expect(validateAddRequest({ ...valid, expirationDate: undefined })).not.toEqual([]);
+  expect(validateInventoryFields({ expirationDate: null })).toEqual([]);
+  expect(validateInventoryFields({ icon: {} })).not.toEqual([]);
+  expect(validateInventoryFields({ icon: 'a'.repeat(33) })).not.toEqual([]);
+});

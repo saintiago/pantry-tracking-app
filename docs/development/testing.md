@@ -199,3 +199,9 @@ and inventory retry, and Settings location CRUD plus Inventory refresh at 320px.
 Recipe-image handler tests cover bounded formats, reference alignment, authentication
 and account-scoped keys; pure expiration tests cover date boundaries, invalid/expired
 or empty stock, linked groups, compatible units, ordering and non-mutation.
+
+`inventory-issues-11-12.spec.ts` covers copying quantity/unit/N/A/icon, saving and
+reopening dates, category colors, location summaries, low-stock and removal colors,
+confirmation cancel/accept, keyboard removal, failure retry and 320px layout.
+Handler tests exercise null/date transitions and icon persistence through transactions;
+shopping tests verify non-expiring stock allocation and reserve calculations.

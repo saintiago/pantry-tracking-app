@@ -711,5 +711,13 @@
     "{0} ingredient(s) missing or partial": "{0} ingrediente mancante o insufficiente",
     "{0} ingredient(s) missing": "{0} ingrediente mancante",
     "{0} items": "{0} prodotto"
-  }
+  },
+  "Not applicable": "Non applicabile",
+  "Product icon": "Icona del prodotto",
+  "Default": "Predefinita",
+  "Mixed locations": "Posizioni miste",
+  "Unknown location": "Posizione sconosciuta",
+  "Remove {0} from inventory?": "Rimuovere {0} dall’inventario?",
+  "Could not remove item. Please try again.": "Impossibile rimuovere il prodotto. Riprova.",
+  "Item removed. Could not refresh inventory. Please refresh.": "Prodotto rimosso. Impossibile aggiornare l’inventario. Aggiorna la pagina."
 }

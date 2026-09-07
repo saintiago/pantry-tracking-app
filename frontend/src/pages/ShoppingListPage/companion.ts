@@ -200,7 +200,10 @@ export function buildLines(
     const horizon =
       meal?.contributions.reduce((date, c) => (c.date > date ? c.date : date), today) ?? today;
     const usable = data.items
-      .filter((i) => i.groupId === group.groupId && i.expirationDate >= horizon)
+      .filter(
+        (i) =>
+          i.groupId === group.groupId && (i.expirationDate === null || i.expirationDate >= horizon),
+      )
       .reduce((sum, i) => sum + (result.remaining.get(i.itemId) ?? 0), 0);
     const remaining = Math.max(0, usable);
     const extra = Math.max(0, target - remaining);

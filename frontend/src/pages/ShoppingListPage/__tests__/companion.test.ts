@@ -192,3 +192,11 @@ it('repeated partial purchases reduce carried quantities instead of restoring th
   const second = completePurchase(first, first.carry[line.id], 1, actual, today);
   expect(second.carry[line.id].quantity).toBe(1);
 });
+
+it('counts non-expiring stock toward the restock reserve', () => {
+  const d = { ...data, items: [{ ...data.items[0], expirationDate: null }] };
+  expect(buildLines(d, calculateShopping(d, [], today), emptyCompanion(), today)[0]).toMatchObject({
+    quantity: 1,
+    reserve: 2,
+  });
+});

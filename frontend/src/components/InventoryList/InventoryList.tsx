@@ -1,12 +1,17 @@
+import Tooltip from '../Tooltip/Tooltip';
+import { InventoryItemCard } from './InventoryItemCard';
+export { InventoryItemCard } from './InventoryItemCard';
+import { LowStockBadge } from './LowStockBadge';
+export { LowStockBadge } from './LowStockBadge';
+import LocationTag from './LocationTag';
 import { styles } from './styles';
-import { date, t, useLanguage, message as translateMessage } from '../../i18n/i18n';
+import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import { departmentFor, departmentColor } from './departments';
 import React, { useMemo, useState } from 'react';
 import type { StorageLocation } from '../../api/locations/locations';
 import { getUnitLabel, resolveUnit } from '../../types/units';
 import { formatQuantity } from '../../utils/quantity';
 import { useHoverState, useInteractionFeedback } from '../../hooks/useInventoryAnimations';
-import Tooltip from '../Tooltip/Tooltip';
 import { thresholdUnits } from '../../types/thresholdUnits';
 
 import type { InventoryItem, InventoryGroup } from '../../domain/inventory/types';
@@ -34,15 +39,6 @@ export function formatQuantityByUnit(quantityByUnit: Record<string, number>): st
 }
 
 /* ── Sub-components ─────────────────────────────────────────────── */
-
-export const LowStockBadge: React.FC = () => {
-  useLanguage();
-  return (
-    <span style={styles.lowStockBadge} aria-label={t('Low stock')}>
-      {t('Low Stock')}{' '}
-    </span>
-  );
-};
 
 export interface InAppNotificationProps {
   message: string;
@@ -158,9 +154,16 @@ export const LocationFilter: React.FC<LocationFilterProps> = ({ locations, value
 interface CategoryCardProps {
   summary: CategorySummary;
   onClick: () => void;
+  locationIds?: string[];
+  locationMap?: Record<string, string>;
 }
 
-export const CategoryCard: React.FC<CategoryCardProps> = ({ summary, onClick }) => {
+export const CategoryCard: React.FC<CategoryCardProps> = ({
+  summary,
+  onClick,
+  locationIds = [],
+  locationMap = {},
+}) => {
   useLanguage();
   const itemCount = t(summary.itemCount === 1 ? '{0} item' : '{0} items', summary.itemCount);
   const { isHovered, hoverProps } = useHoverState();
@@ -210,6 +213,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ summary, onClick }) 
         )}
       </div>
       <div style={styles.categoryCardStats}>
+        <LocationTag ids={locationIds} names={locationMap} />
         <span>{itemCount}</span>
         <span style={styles.categoryCardDot}>·</span>
         <span>{formatQuantityByUnit(summary.quantityByUnit)}</span>
@@ -263,117 +267,6 @@ export const BackButton: React.FC<BackButtonProps> = ({ onClick }) => {
 };
 
 /* ── InventoryItemCard ──────────────────────────────────────────── */
-
-interface InventoryItemCardProps {
-  item: InventoryItem;
-  locationName: string;
-  removeMode: boolean;
-  onRemove?: (itemId: string) => void;
-  onClick?: () => void;
-}
-
-export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
-  item,
-  locationName,
-  removeMode,
-  onRemove,
-  onClick,
-}) => {
-  useLanguage();
-  const isClickable = !removeMode && !!onClick;
-  const { isHovered: isCardHovered, hoverProps: cardHoverProps } = useHoverState();
-  const { isHovered: isRemoveHovered, hoverProps: removeHoverProps } = useHoverState();
-  const { feedbackClass, triggerSuccess } = useInteractionFeedback();
-
-  const handleClick = () => {
-    if (isClickable) {
-      triggerSuccess();
-      onClick?.();
-    }
-  };
-
-  return (
-    <div
-      style={{
-        ...styles.card,
-        ...(removeMode ? styles.cardRemoveMode : {}),
-        ...(isClickable ? { cursor: 'pointer' } : {}),
-        boxShadow: isCardHovered && isClickable ? 'var(--inv-shadow-md)' : 'var(--inv-shadow-sm)',
-        transform: isCardHovered && isClickable ? 'scale(1.015)' : 'scale(1)',
-        transition:
-          'transform 0.2s var(--inv-spring, cubic-bezier(0.34,1.56,0.64,1)), box-shadow 0.2s ease',
-      }}
-      className={feedbackClass}
-      data-testid={`item-card-${item.itemId}`}
-      onClick={handleClick}
-      onKeyDown={
-        isClickable
-          ? (e: React.KeyboardEvent) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                handleClick();
-              }
-            }
-          : undefined
-      }
-      role={isClickable ? 'button' : undefined}
-      tabIndex={isClickable ? 0 : undefined}
-      {...(isClickable ? cardHoverProps : {})}
-    >
-      {/* Thumbnail area */}
-      <div style={styles.thumbnail} aria-label={t('Item picture')}>
-        {item.pictureUrl ? (
-          <img src={item.pictureUrl} alt={item.name} style={styles.thumbnailImg} />
-        ) : (
-          <span style={styles.thumbnailPlaceholder} aria-hidden="true">
-            📦
-          </span>
-        )}
-      </div>
-
-      <div style={styles.cardBody}>
-        <div style={styles.cardHeader}>
-          <span style={styles.itemName}>{item.name}</span>
-          {item.isLowStock && <LowStockBadge />}
-        </div>
-
-        <div style={styles.cardMeta}>
-          <span style={styles.categoryBadge}>{item.category}</span>
-          <span style={styles.locationBadge}>{locationName}</span>
-        </div>
-
-        <div style={styles.cardDetails}>
-          <span>
-            {formatQuantity(item.quantity)} {getUnitLabel(item.unit, item.quantity)}
-          </span>
-          <span style={styles.expiration}>
-            {t('Exp:')} {date(item.expirationDate)}
-          </span>
-        </div>
-      </div>
-
-      {removeMode && onRemove && (
-        <Tooltip content={`Remove ${item.name}`}>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemove(item.itemId);
-            }}
-            style={{
-              ...styles.removeItemButton,
-              backgroundColor: isRemoveHovered ? 'var(--inv-primary-bg)' : 'transparent',
-              transition: 'background-color 0.15s ease',
-            }}
-            aria-label={t('Remove {0}', item.name)}
-            {...removeHoverProps}
-          >
-            ✕
-          </button>
-        </Tooltip>
-      )}
-    </div>
-  );
-};
 
 /* ── GroupedRowView ─────────────────────────────────────────────── */
 
@@ -474,7 +367,9 @@ export const GroupedRowView: React.FC<GroupedRowProps> = ({
         </span>
         <div style={styles.groupedRowBody}>
           <div style={styles.groupedRowHeader}>
-            <span style={styles.groupedRowName}>{group.name}</span>
+            <span style={styles.groupedRowName}>
+              {group.childItems.find((item) => item.icon)?.icon} {group.name}
+            </span>
             {group.hasLowStock && <LowStockBadge />}
             {onUpdateThreshold && (
               <button
@@ -498,6 +393,7 @@ export const GroupedRowView: React.FC<GroupedRowProps> = ({
           </div>
           <div style={styles.groupedRowStats}>
             <span>{quantityText}</span>
+            <LocationTag ids={group.childItems.map((item) => item.location)} names={locationMap} />
             <span style={styles.categoryCardDot}>·</span>
             <span>{translateMessage(countText)}</span>
           </div>
@@ -769,6 +665,10 @@ const InventoryList: React.FC<InventoryListProps> = ({
                 <CategoryCard
                   key={summary.category}
                   summary={summary}
+                  locationIds={filteredItems
+                    .filter((item) => item.category === summary.category)
+                    .map((item) => item.location)}
+                  locationMap={locationMap}
                   onClick={() => handleCategoryCardClick(summary.category)}
                 />
               ))}

@@ -179,6 +179,7 @@ async function createInventoryItem(
   if (parsed.brand !== undefined) item.brand = parsed.brand;
   if (parsed.whereToBuy !== undefined) item.whereToBuy = parsed.whereToBuy;
   if (parsed.onlineStoreLink !== undefined) item.onlineStoreLink = parsed.onlineStoreLink;
+  if (parsed.icon !== undefined) item.icon = parsed.icon;
   if (pictureUrl !== undefined) item.pictureUrl = pictureUrl;
   if (parsed.locationDetails !== undefined) item.locationDetails = parsed.locationDetails;
   const change = await inventory.add(userId, item);
@@ -247,6 +248,7 @@ async function updateInventoryItem(
     'whereToBuy',
     'onlineStoreLink',
     'pictureUrl',
+    'icon',
   ];
   for (const field of allowed) if (parsed[field] !== undefined) fields[field] = parsed[field];
   if (parsed.locationId !== undefined) fields.location = parsed.locationId;

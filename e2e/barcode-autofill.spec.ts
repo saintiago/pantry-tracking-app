@@ -27,6 +27,7 @@ async function openAddItemPage(page: Page) {
 const mockInventoryItems = [
   {
     itemId: 'item-1',
+    quantity: 4,
     barcode: '012345678901',
     name: 'Organic Milk',
     category: 'Dairy',
@@ -39,6 +40,7 @@ const mockInventoryItems = [
   },
   {
     itemId: 'item-2',
+    quantity: 2,
     barcode: '012345678902',
     name: 'Almond Milk',
     category: 'Dairy',
@@ -50,6 +52,7 @@ const mockInventoryItems = [
   },
   {
     itemId: 'item-3',
+    quantity: 6,
     name: 'Organic Eggs',
     category: 'Dairy',
     brand: 'Organic Valley',
@@ -99,32 +102,92 @@ async function setupMockAPI(page: Page) {
     switch (field) {
       case 'barcode': {
         const matches = mockInventoryItems.filter((i) => i.barcode?.includes(query));
-        response = { field, query, resultType: 'items', items: matches.slice(0, 10), count: matches.length };
+        response = {
+          field,
+          query,
+          resultType: 'items',
+          items: matches.slice(0, 10),
+          count: matches.length,
+        };
         break;
       }
       case 'name': {
         const matches = mockInventoryItems.filter((i) => i.name.toLowerCase().includes(query));
-        response = { field, query, resultType: 'items', items: matches.slice(0, 10), count: matches.length };
+        response = {
+          field,
+          query,
+          resultType: 'items',
+          items: matches.slice(0, 10),
+          count: matches.length,
+        };
         break;
       }
       case 'category': {
-        const vals = [...new Set(mockInventoryItems.map((i) => i.category).filter((c) => c.toLowerCase().includes(query)))];
-        response = { field, query, resultType: 'values', values: vals.slice(0, 10), count: vals.length };
+        const vals = [
+          ...new Set(
+            mockInventoryItems
+              .map((i) => i.category)
+              .filter((c) => c.toLowerCase().includes(query)),
+          ),
+        ];
+        response = {
+          field,
+          query,
+          resultType: 'values',
+          values: vals.slice(0, 10),
+          count: vals.length,
+        };
         break;
       }
       case 'brand': {
-        const vals = [...new Set(mockInventoryItems.map((i) => i.brand).filter((b): b is string => !!b && b.toLowerCase().includes(query)))];
-        response = { field, query, resultType: 'values', values: vals.slice(0, 10), count: vals.length };
+        const vals = [
+          ...new Set(
+            mockInventoryItems
+              .map((i) => i.brand)
+              .filter((b): b is string => !!b && b.toLowerCase().includes(query)),
+          ),
+        ];
+        response = {
+          field,
+          query,
+          resultType: 'values',
+          values: vals.slice(0, 10),
+          count: vals.length,
+        };
         break;
       }
       case 'whereToBuy': {
-        const vals = [...new Set(mockInventoryItems.map((i) => i.whereToBuy).filter((s): s is string => !!s && s.toLowerCase().includes(query)))];
-        response = { field, query, resultType: 'values', values: vals.slice(0, 10), count: vals.length };
+        const vals = [
+          ...new Set(
+            mockInventoryItems
+              .map((i) => i.whereToBuy)
+              .filter((s): s is string => !!s && s.toLowerCase().includes(query)),
+          ),
+        ];
+        response = {
+          field,
+          query,
+          resultType: 'values',
+          values: vals.slice(0, 10),
+          count: vals.length,
+        };
         break;
       }
       case 'onlineStoreLink': {
-        const vals = [...new Set(mockInventoryItems.map((i) => i.onlineStoreLink).filter((l): l is string => !!l && l.toLowerCase().includes(query)))];
-        response = { field, query, resultType: 'values', values: vals.slice(0, 10), count: vals.length };
+        const vals = [
+          ...new Set(
+            mockInventoryItems
+              .map((i) => i.onlineStoreLink)
+              .filter((l): l is string => !!l && l.toLowerCase().includes(query)),
+          ),
+        ];
+        response = {
+          field,
+          query,
+          resultType: 'values',
+          values: vals.slice(0, 10),
+          count: vals.length,
+        };
         break;
       }
       default:
@@ -251,13 +314,17 @@ test.describe('Barcode Autofill Feature', () => {
     await expect(page.getByLabel('Brand')).toHaveValue('');
   });
 
-  test('should trigger external barcode lookup for 8+ digit barcode with no local match', async ({ page }) => {
+  test('should trigger external barcode lookup for 8+ digit barcode with no local match', async ({
+    page,
+  }) => {
     await openAddItemPage(page);
 
     await page.getByLabel('Barcode').fill('987654321098');
     await page.waitForTimeout(400);
 
-    await expect(page.getByLabel('Product Name')).toHaveValue('External Product', { timeout: 5000 });
+    await expect(page.getByLabel('Product Name')).toHaveValue('External Product', {
+      timeout: 5000,
+    });
     await expect(page.getByLabel('Category')).toHaveValue('Snacks');
     await expect(page.getByLabel('Brand')).toHaveValue('External Brand');
   });
@@ -303,7 +370,9 @@ test.describe('Barcode Autofill Feature', () => {
     await expect(page.getByLabel('Category')).toHaveValue('Dairy');
   });
 
-  test('selecting from barcode dropdown fills barcode itself even though user typed a partial value', async ({ page }) => {
+  test('selecting from barcode dropdown fills barcode itself even though user typed a partial value', async ({
+    page,
+  }) => {
     await openAddItemPage(page);
 
     await page.getByLabel('Barcode').fill('012');
@@ -316,7 +385,7 @@ test.describe('Barcode Autofill Feature', () => {
     await expect(page.getByLabel('Brand')).toHaveValue('Organic Valley');
     await expect(page.getByLabel('Unit')).toHaveValue('l');
     await expect(page.getByLabel('Storage Location')).toHaveValue('loc-1');
-    await expect(page.getByLabel('Quantity')).toHaveValue('1');
+    await expect(page.getByLabel('Quantity')).toHaveValue('4');
     await expect(page.getByLabel('Where to Buy')).toHaveValue('Whole Foods');
     await expect(page.getByLabel('Online Store Link')).toHaveValue('https://example.com/milk');
   });
@@ -334,12 +403,14 @@ test.describe('Barcode Autofill Feature', () => {
     await expect(page.getByLabel('Brand')).toHaveValue('Organic Valley');
     await expect(page.getByLabel('Unit')).toHaveValue('l');
     await expect(page.getByLabel('Storage Location')).toHaveValue('loc-1');
-    await expect(page.getByLabel('Quantity')).toHaveValue('1');
+    await expect(page.getByLabel('Quantity')).toHaveValue('4');
     await expect(page.getByLabel('Where to Buy')).toHaveValue('Whole Foods');
     await expect(page.getByLabel('Online Store Link')).toHaveValue('https://example.com/milk');
   });
 
-  test('expiration date field is focused and set to the suggestion date after autofill', async ({ page }) => {
+  test('expiration date field is focused and set to the suggestion date after autofill', async ({
+    page,
+  }) => {
     await openAddItemPage(page);
 
     await page.getByLabel('Barcode').fill('012');
@@ -351,9 +422,9 @@ test.describe('Barcode Autofill Feature', () => {
 
     await expect(page.getByLabel('Expiration Date')).toHaveValue('2027-03-15');
 
-    const focused = await page.getByLabel('Expiration Date').evaluate(
-      (el) => document.activeElement === el,
-    );
+    const focused = await page
+      .getByLabel('Expiration Date')
+      .evaluate((el) => document.activeElement === el);
     expect(focused).toBe(true);
   });
 });

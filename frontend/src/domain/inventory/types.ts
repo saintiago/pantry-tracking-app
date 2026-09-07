@@ -3,7 +3,8 @@ export interface InventoryItem {
   groupId?: string;
   name: string;
   category: string;
-  expirationDate: string;
+  expirationDate: string | null;
+  icon?: string;
   location: string; // locationId
   locationDetails?: string;
   quantity: number;

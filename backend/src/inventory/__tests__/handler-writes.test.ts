@@ -203,3 +203,26 @@ it('routes recipe placeholders through the atomic writer and suppresses repeated
   expect(memory.all('GROUP#').every((g) => g.threshold === 0 && g.isLowStock === true)).toBe(true);
   expect(memory.all('LOCATION#')).toHaveLength(1);
 });
+
+it('persists explicit N/A and icons, preserves them on quantity edits, and allows date changes', async () => {
+  const created = await handler(event('POST', { ...input, expirationDate: null, icon: '🧼' }));
+  expect(created.statusCode).toBe(201);
+  const { item } = JSON.parse(created.body);
+  expect(memory.get('u', `ITEM#${item.itemId}`)).toMatchObject({
+    expirationDate: null,
+    icon: '🧼',
+  });
+  const changed = await handler(event('PUT', { quantity: 2 }, item.itemId));
+  expect(JSON.parse(changed.body).item).toMatchObject({
+    expirationDate: null,
+    icon: '🧼',
+    quantity: 2,
+  });
+  await handler(event('PUT', { expirationDate: '2028-01-01', icon: '' }, item.itemId));
+  expect(memory.get('u', `ITEM#${item.itemId}`)).toMatchObject({
+    expirationDate: '2028-01-01',
+    icon: '',
+  });
+  await handler(event('PUT', { expirationDate: null }, item.itemId));
+  expect(memory.get('u', `ITEM#${item.itemId}`)?.expirationDate).toBeNull();
+});

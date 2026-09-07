@@ -145,7 +145,8 @@ interface InventoryItem {
   barcode?: string;
   name: string;
   category: string;
-  expirationDate: string; // ISO date, REQUIRED
+  expirationDate: string | null; // ISO date or explicit Not applicable
+  icon?: string; // Optional product emoji, at most 32 UTF-16 code units
   location: string; // StorageLocation locationId
   locationDetails?: string; // Optional shelf/section, editable and clearable
   quantity: number;
@@ -334,7 +335,8 @@ interface SyncQueueItem {
 interface AddInventoryRequest {
   name: string;
   category: string;
-  expirationDate: string; // ISO date, required
+  expirationDate: string | null; // ISO date or explicit Not applicable
+  icon?: string;
   locationId: string;
   locationDetails?: string;
   quantity: number;
@@ -350,7 +352,8 @@ interface AddInventoryRequest {
 interface UpdateInventoryRequest {
   name?: string;
   category?: string;
-  expirationDate?: string;
+  expirationDate?: string | null; // null explicitly marks Not applicable
+  icon?: string; // empty string restores the default icon
   locationId?: string;
   locationDetails?: string; // empty string clears the shelf/section
   quantity?: number;
@@ -423,7 +426,7 @@ groups and can notify a low-stock transition in the source group as stock leaves
 
 Autocomplete searches read all inventory pages and return the latest created lot per
 barcode (or canonical product identity without barcode), capped at ten suggestions.
-Adding another lot copies saved expiration, photo, and location details; group threshold
+Adding another lot copies saved quantity, unit, expiration (including null), icon, photo, and location details; group threshold
 settings remain on the automatically matched group. User-entered form values are preserved.
 
 ### Storage Locations
@@ -691,3 +694,16 @@ These designs do not describe callable endpoints.
 | POST   | /receipts/{receiptId}/process | Receipt      | Yes  | Trigger OCR processing                |
 | GET    | /receipts/{receiptId}/status  | Receipt      | Yes  | Check processing status               |
 | POST   | /sync                         | Sync         | Yes  | Batch sync operations                 |
+
+## Inventory expiration and icons (issues #11–#12)
+
+An explicit `expirationDate: null` means Not applicable. Creation still requires
+this field: omitted or empty dates are invalid. Date strings must be real calendar
+dates in YYYY-MM-DD format. PUT omission preserves the value; null clears a date
+to Not applicable. Existing dated records need no migration. Icons are optional
+lot metadata; omitted PUT values preserve them and an empty string restores the
+box fallback. Photos retain display precedence over the placeholder icon.
+
+Non-expiring lots count toward shopping availability and reserve stock, after dated
+lots are allocated. They never enter expiring-soon filters or warnings. Missing or
+empty legacy dates are still unknown, not implicitly non-expiring.

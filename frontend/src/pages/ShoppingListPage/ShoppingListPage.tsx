@@ -740,6 +740,7 @@ export default function ShoppingListPage({
               .filter(
                 (i) =>
                   i.quantity > 0 &&
+                  i.expirationDate !== null &&
                   i.expirationDate >= today &&
                   i.expirationDate <= addDays(today, 3),
               )
@@ -748,13 +749,14 @@ export default function ShoppingListPage({
                   key={i.itemId}
                   style={{ ...muted, padding: 8, background: 'var(--color-warning)' }}
                 >
-                  {t('Use')} {i.name} {t('soon · expires')} {date(i.expirationDate)}
+                  {t('Use')} {i.name} {t('soon · expires')} {date(i.expirationDate ?? '')}
                   {i.locationDetails ? ` · ${i.locationDetails}` : ''}
                 </p>
               ))}
             {!data.items.some(
               (i) =>
                 i.quantity > 0 &&
+                i.expirationDate !== null &&
                 i.expirationDate >= today &&
                 i.expirationDate <= addDays(today, 3),
             ) && <p style={muted}>{t('No recorded stock expires in the next three days.')}</p>}

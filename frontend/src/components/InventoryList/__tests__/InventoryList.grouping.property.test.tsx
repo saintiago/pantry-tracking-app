@@ -211,7 +211,7 @@ describe('Feature: inventory-merge-and-grouping, Property 12: Child items are or
   it('children sort by expirationDate, then createdAt, then itemId', () => {
     const cmp = (a: InventoryItem, b: InventoryItem): number => {
       if (a.expirationDate !== b.expirationDate)
-        return a.expirationDate < b.expirationDate ? -1 : 1;
+        return (a.expirationDate ?? '9999-12-31') < (b.expirationDate ?? '9999-12-31') ? -1 : 1;
       if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? -1 : 1;
       if (a.itemId !== b.itemId) return a.itemId < b.itemId ? -1 : 1;
       return 0;

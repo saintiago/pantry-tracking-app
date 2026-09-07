@@ -132,3 +132,15 @@ locations, IDs, inventory references, validation and deletion confirmation are r
 Returning to Inventory refreshes location labels. Inventory Add is pastel green and
 Remove pastel red. A failed refresh after a confirmed location write offers a read-only
 retry rather than repeating that write.
+
+## Issues #11–#12 follow-up (September 2026)
+
+These criteria supersede the required-date-only entry behavior above. Add/edit
+accept a date or an explicit Not applicable choice, persist it and copy it on reuse.
+Users choose a product emoji in add/edit forms; it replaces the box placeholder.
+Category cards share Shopping's department colors and show one location or Mixed
+locations. Product groups show the same location summary; each expanded lot and
+its detail view show the actual location alongside quantity/unit. Low-stock tags
+and quick removal X controls are pastel red. The X is available without switching
+Remove mode and confirms deletion of only that lot. Cancel leaves stock unchanged;
+failures remain visible and retryable. Existing group IDs/thresholds are preserved.

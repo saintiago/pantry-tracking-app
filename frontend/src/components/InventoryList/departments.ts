@@ -46,9 +46,21 @@ export function departmentFor(name: string, category = ''): Department {
     'Other'
   );
 }
+const colors: Record<Department, string> = {
+  'Fruit & vegetables': '#E3F0D5',
+  'Meat & fish': '#F8DEDC',
+  'Dairy & eggs': '#FFF2CE',
+  Bakery: '#F3E3CA',
+  Pantry: '#EDDFCF',
+  Frozen: '#E1F1FA',
+  Drinks: '#E3E9FA',
+  Household: '#DFF0EA',
+  'Personal care': '#EDE3F3',
+  Baby: '#F8E5ED',
+  Pets: '#EAE2D8',
+  Other: '#EDEEF0',
+};
+
 export function departmentColor(department: string): string {
-  if (department === 'Fruit & vegetables') return 'var(--color-mint)';
-  if (department === 'Dairy & eggs') return 'var(--color-lavender)';
-  if (department === 'Frozen' || department === 'Drinks') return 'var(--color-sky)';
-  return 'var(--color-peach)';
+  return colors[department as Department] ?? colors.Other;
 }
