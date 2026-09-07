@@ -17,7 +17,6 @@ Key precedence notes:
 
 Feature folders:
 
-- [add-item-page](add-item-page/)
 - [barcode-autofill](barcode-autofill/)
 - [barcode-camera-switch-fix](barcode-camera-switch-fix/)
 - [barcode-scanner-lazy-load](barcode-scanner-lazy-load/)

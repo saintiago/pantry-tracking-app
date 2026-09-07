@@ -28,7 +28,11 @@ for (const file of files) {
   for (const match of source.matchAll(/\]\(([^)]+)\)/g)) {
     const target = match[1].replace(/^<|>$/g, '').split('#')[0];
     if (!target || /^[a-z][a-z\d+.-]*:/i.test(target) || target.startsWith('/')) continue;
-    if (!fs.existsSync(path.resolve(path.dirname(file), target))) {
+    const resolved = path.resolve(path.dirname(file), target);
+    if (
+      !fs.existsSync(resolved) ||
+      (fs.statSync(resolved).isDirectory() && !fs.readdirSync(resolved).length)
+    ) {
       failures.push(`${file}: broken local link ${target}`);
     }
   }
