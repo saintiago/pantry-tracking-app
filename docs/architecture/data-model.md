@@ -79,6 +79,14 @@ const VALID_UNITS: UnitType[] = (Object.keys(UNIT_METADATA) as UnitType[]).sort(
 
 ## Entity Schemas
 
+See the [data-model audit](data-model-audit-2026-09.md) for redundancy ownership and
+observed legacy/dangling records. Lot quantities are authoritative stock facts; group
+totals and low-stock flags are materialized values that still need transactional
+maintenance. Explicit group membership must survive recovery even if lot identity
+differs. `npm run audit:inventory` checks these relationships without writing data.
+The old group migration's `--apply` mode is retired because it overwrote whole rows,
+explicit memberships and threshold units; its default mode now runs reconciliation.
+
 ### InventoryItem
 
 ```typescript

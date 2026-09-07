@@ -9,24 +9,28 @@ four workspaces and builds `@pantry/domain`. There are no additional package man
 - Tests: Jest 29 / ts-jest, Testing Library, fast-check and Playwright Chromium.
 - Quality: ESLint with zero tolerated warnings, Prettier, EditorConfig and architecture budgets.
 
-| Command (root)                               | Purpose                                             |
-| -------------------------------------------- | --------------------------------------------------- |
-| `npm ci`                                     | Reproducible install and shared-domain build        |
-| `npm run build:domain`                       | Rebuild shared contracts after edits                |
-| `npm run dev --workspace frontend`           | Vite development server                             |
-| `npm run type-check`                         | Rebuild shared domain and check every workspace     |
-| `npm run lint`                               | Lint, rejecting warnings                            |
-| `npm run check:architecture`                 | Check module boundaries and size budgets            |
-| `npm run check:docs`                         | Check local guide links and UTF-8 encoding          |
-| `npm test`                                   | All Jest unit, property and infrastructure tests    |
-| `npm run test:unit`                          | Jest tests excluding `.property.test.*`             |
-| `npm run test:property`                      | Property suites only                                |
-| `npm run test:e2e`                           | All browser tests (starts its own mock-auth server) |
-| `npm run build --workspace frontend`         | Type-check and production Vite build                |
-| `npm run verify:bundle --workspace frontend` | Assert the scanner remains lazily split             |
-| `npm run verify:static`                      | Type-check, lint and architecture checks            |
-| `npm run verify`                             | Complete local/CI/commit validation gate            |
-| `npm run format`                             | Format files; review the diff before committing     |
+| Command (root)                                                        | Purpose                                                     |
+| --------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `npm ci`                                                              | Reproducible install and shared-domain build                |
+| `npm run build:domain`                                                | Rebuild shared contracts after edits                        |
+| `npm run dev --workspace frontend`                                    | Vite development server                                     |
+| `npm run type-check`                                                  | Rebuild shared domain and check every workspace             |
+| `npm run lint`                                                        | Lint, rejecting warnings                                    |
+| `npm run check:architecture`                                          | Check module boundaries and size budgets                    |
+| `npm run check:docs`                                                  | Check local guide links and UTF-8 encoding                  |
+| `npm test`                                                            | All Jest unit, property and infrastructure tests            |
+| `npm run test:unit`                                                   | Jest tests excluding `.property.test.*`                     |
+| `npm run test:property`                                               | Property suites only                                        |
+| `npm run test:e2e`                                                    | All browser tests (starts its own mock-auth server)         |
+| `npm run build --workspace frontend`                                  | Type-check and production Vite build                        |
+| `npm run verify:bundle --workspace frontend`                          | Assert the scanner remains lazily split                     |
+| `npm run verify:static`                                               | Type-check, lint and architecture checks                    |
+| `npm run verify`                                                      | Complete local/CI/commit validation gate                    |
+| `npm run audit:inventory -- --table <table> --output <new-file.json>` | Read-only complete table audit; builds domain/backend first |
+
+The legacy `migrate:inventory-groups` entry point now delegates to the read-only
+audit; `--apply` fails before any database request. See the [recovery runbook](recovery.md).
+| `npm run format` | Format files; review the diff before committing |
 
 Use workspace test commands to pass Jest options, for example
 `npm test --workspace frontend -- --runInBand`. Build the shared domain first when

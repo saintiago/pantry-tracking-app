@@ -25,6 +25,12 @@ timing; avoid arbitrary sleeps and asserting only that a request occurred.
 
 ## Browser tests
 
+The backend `inventory-audit.test.ts` suite covers reconciliation, account isolation,
+legacy and mixed units, malformed quantities, stale links, non-mutation, stable
+fingerprints and complete/failed pagination. It only mocks scan transport. The separate
+[recovery drill](recovery.md) exercises an actual AWS restore and compares scanned data;
+neither establishes transaction correctness for the existing inventory writer.
+
 ## Auth Strategy
 
 Cognito uses SRP protocol — impossible to mock at the HTTP level. Instead, a Vite plugin (`mockAuthPlugin` in `frontend/vite.config.ts`) replaces the `cognitoClient.ts` module content at load time when `VITE_MOCK_AUTH=true`:
