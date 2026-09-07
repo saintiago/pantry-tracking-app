@@ -1,9 +1,9 @@
 import { getShoppingUnitLabel as getUnitLabel } from '../../types/units';
 import { date, number, getLanguage } from '../../i18n/i18n';
 import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../auth/AuthContext/AuthContext';
-import { fetchShoppingData } from '../../api/shopping-list/shopping-list';
+import { useShoppingSnapshot } from './useShoppingSnapshot';
 import { addDays, getWeekStart } from '../MealPlanPage/weekUtils';
 import {
   amount,
@@ -15,7 +15,7 @@ import {
   readState,
   storageKey,
 } from './shopping';
-import type { ShoppingData, ShoppingState } from './shopping';
+import type { ShoppingState } from './shopping';
 import {
   buildLines,
   companionKey,
@@ -106,20 +106,12 @@ export default function ShoppingListPage({
   });
   const [companion, setCompanion] = useState(initial.state);
   const [storageError, setStorageError] = useState(initial.error);
-  const [snapshot, setSnapshot] = useState<{
-    start: string;
-    end: string;
-    data: ShoppingData;
-  } | null>(null);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [refresh, setRefresh] = useState(0);
+  const { snapshot, error, loading, reload } = useShoppingSnapshot(user!.userId, start, end);
   const [saved, setSaved] = useState<{ key: string; state: ShoppingState }>({
     key: '',
     state: emptyState(),
   });
   const state = saved.key === key ? saved.state : emptyState();
-  const request = useRef(0);
   useEffect(() => {
     try {
       setSaved({ key, state: readState(key) });
@@ -152,45 +144,6 @@ export default function ShoppingListPage({
       );
     }
   }
-  useEffect(() => {
-    const reload = () => {
-      if (document.visibilityState !== 'hidden') setRefresh((n) => n + 1);
-    };
-    window.addEventListener('focus', reload);
-    window.addEventListener('online', reload);
-    return () => {
-      window.removeEventListener('focus', reload);
-      window.removeEventListener('online', reload);
-    };
-  }, []);
-  useEffect(() => {
-    const id = ++request.current;
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 15000);
-    setLoading(true);
-    setError('');
-    fetchShoppingData(start, end, controller.signal)
-      .then((data) => {
-        if (id === request.current) setSnapshot({ start, end, data });
-      })
-      .catch((err: unknown) => {
-        if (id === request.current)
-          setError(
-            err instanceof Error && err.name !== 'AbortError'
-              ? err.message
-              : 'Shopping list request timed out. Please retry.',
-          );
-      })
-      .finally(() => {
-        clearTimeout(timer);
-        if (id === request.current) setLoading(false);
-      });
-    return () => {
-      request.current++;
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [start, end, refresh]);
   const data = useMemo(
     () =>
       snapshot?.start === start && snapshot.end === end
@@ -352,7 +305,7 @@ export default function ShoppingListPage({
           <h2>{t('Shopping List')}</h2>
           <p style={muted}>{t('Plan it once. Shop with a clear list.')}</p>
         </div>
-        <button style={button} disabled={loading} onClick={() => setRefresh((n) => n + 1)}>
+        <button style={button} disabled={loading} onClick={reload}>
           {t('Refresh')}{' '}
         </button>
       </div>
@@ -553,7 +506,7 @@ export default function ShoppingListPage({
             {translateMessage(error)}{' '}
             {data ? t('Showing the last loaded list. Refresh before shopping.') : ''}
           </p>
-          <button style={button} onClick={() => setRefresh((n) => n + 1)}>
+          <button style={button} onClick={reload}>
             {t('Retry shopping list')}{' '}
           </button>
         </div>

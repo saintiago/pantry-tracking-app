@@ -1,5 +1,6 @@
-import type { InventoryItem, InventoryGroup } from '../../api/inventory/inventory';
-import type { Recipe } from '../../api/recipes/recipes';
+import type { InventoryGroup } from '../../api/inventory/inventory';
+import type { ShoppingData } from '../../api/shopping-list/types';
+export type { ShoppingData } from '../../api/shopping-list/types';
 import type { MealPlan } from '../../api/meal-plans/meal-plans';
 import { LEGACY_UNIT_MAP } from '../../types/units';
 import { number } from '../../i18n/i18n';
@@ -45,12 +46,6 @@ export interface LowStockRow {
   unit: string;
   stock: number;
   meal?: ShoppingRow;
-}
-export interface ShoppingData {
-  items: InventoryItem[];
-  groups: InventoryGroup[];
-  recipes: Recipe[];
-  plans: MealPlan[];
 }
 
 export function calculateShopping(data: ShoppingData, plans: MealPlan[], today: string) {

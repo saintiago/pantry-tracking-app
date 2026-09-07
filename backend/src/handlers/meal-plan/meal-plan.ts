@@ -1,3 +1,5 @@
+import { queryAll } from '../../db/query';
+import { parseObject } from '../../http/request';
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
@@ -15,22 +17,8 @@ const TABLE_NAME = process.env.TABLE_NAME ?? 'PantryApp';
 const ddbClient = new DynamoDBClient({});
 export const docClient = DynamoDBDocumentClient.from(ddbClient);
 
-const headers = {
-  'Content-Type': 'application/json',
-  'Access-Control-Allow-Origin': '*',
-};
-
-// ─── Shared helpers ──────────────────────────────────────────────────────────
-
-export function getUserId(event: APIGatewayProxyEvent): string | null {
-  return (
-    event.requestContext.authorizer?.claims?.sub ?? event.requestContext.authorizer?.sub ?? null
-  );
-}
-
-export function response(statusCode: number, body: unknown): APIGatewayProxyResult {
-  return { statusCode, headers, body: JSON.stringify(body) };
-}
+import { getUserId, response } from '../../http/response';
+export { getUserId, response } from '../../http/response';
 
 // ─── Constants & Types ────────────────────────────────────────────────────────
 
@@ -197,7 +185,7 @@ async function createMealPlan(userId: string, body: string | null): Promise<APIG
 
   let parsed: Record<string, unknown>;
   try {
-    parsed = JSON.parse(body);
+    parsed = parseObject(body);
   } catch {
     return response(400, { error: 'VALIDATION_ERROR', message: 'Invalid JSON body' });
   }
@@ -244,7 +232,7 @@ async function updateMealPlan(
 
   let parsed: Record<string, unknown>;
   try {
-    parsed = JSON.parse(body);
+    parsed = parseObject(body);
   } catch {
     return response(400, { error: 'VALIDATION_ERROR', message: 'Invalid JSON body' });
   }
@@ -255,18 +243,16 @@ async function updateMealPlan(
   }
 
   // Find the existing item — query by PK, filter by planId since planId is embedded in SK
-  const queryResult = await docClient.send(
-    new QueryCommand({
-      TableName: TABLE_NAME,
-      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
-      FilterExpression: 'planId = :planId',
-      ExpressionAttributeValues: {
-        ':pk': `USER#${userId}`,
-        ':skPrefix': 'MEAL#',
-        ':planId': planId,
-      },
-    }),
-  );
+  const queryResult = await queryAll(docClient, {
+    TableName: TABLE_NAME,
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+    FilterExpression: 'planId = :planId',
+    ExpressionAttributeValues: {
+      ':pk': `USER#${userId}`,
+      ':skPrefix': 'MEAL#',
+      ':planId': planId,
+    },
+  });
 
   const existing = queryResult.Items?.[0] as Record<string, unknown> | undefined;
   if (!existing) {
@@ -351,18 +337,16 @@ async function updateMealPlan(
 
 async function deleteMealPlan(userId: string, planId: string): Promise<APIGatewayProxyResult> {
   // Find the existing item under the caller's partition
-  const queryResult = await docClient.send(
-    new QueryCommand({
-      TableName: TABLE_NAME,
-      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
-      FilterExpression: 'planId = :planId',
-      ExpressionAttributeValues: {
-        ':pk': `USER#${userId}`,
-        ':skPrefix': 'MEAL#',
-        ':planId': planId,
-      },
-    }),
-  );
+  const queryResult = await queryAll(docClient, {
+    TableName: TABLE_NAME,
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+    FilterExpression: 'planId = :planId',
+    ExpressionAttributeValues: {
+      ':pk': `USER#${userId}`,
+      ':skPrefix': 'MEAL#',
+      ':planId': planId,
+    },
+  });
 
   const existing = queryResult.Items?.[0] as Record<string, unknown> | undefined;
   if (!existing) {
@@ -388,7 +372,7 @@ export function isValidServings(value: unknown): value is number {
 async function updateFutureServings(userId: string, body: string | null) {
   let parsed: Record<string, unknown>;
   try {
-    parsed = JSON.parse(body ?? '{}');
+    parsed = parseObject(body ?? '{}');
   } catch {
     return response(400, { message: 'Invalid JSON body' });
   }

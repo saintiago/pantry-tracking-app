@@ -16,6 +16,7 @@ scripts/.env.deploy/
 .env.test
 
 # IDE
+.claude/settings.local.json
 .idea/
 .vscode/
 *.swp

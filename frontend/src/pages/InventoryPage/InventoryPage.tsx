@@ -11,7 +11,7 @@ import type { BarcodeLookupResult } from '../../components/BarcodeScanner/Barcod
 const BarcodeScanner = lazy(() => import('../../components/BarcodeScanner/BarcodeScanner'));
 import type { AddItemData } from '../AddItemPage/AddItemPage';
 import type { StorageLocation } from '../../api/locations/locations';
-import type { InventoryGroup, InventoryItem } from '../../components/InventoryList/InventoryList';
+import type { InventoryGroup, InventoryItem } from '../../domain/inventory/types';
 import type { PageId } from '../../components/Layout/Layout';
 import {
   fetchLocations,

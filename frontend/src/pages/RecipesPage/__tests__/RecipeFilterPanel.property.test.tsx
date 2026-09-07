@@ -126,9 +126,7 @@ describe('Property 10: Clear filters disabled iff all controls inactive', () => 
   it('the "Clear filters" button disabled attribute equals isAllInactive(v)', () => {
     fc.assert(
       fc.property(panelValueArb, (v) => {
-        const { unmount } = render(
-          <Wrapper initialValue={v} />,
-        );
+        const { unmount } = render(<Wrapper initialValue={v} />);
 
         const clearButton = screen.getByRole('button', { name: /clear filters/i });
         const expectedDisabled = isAllInactive(v);

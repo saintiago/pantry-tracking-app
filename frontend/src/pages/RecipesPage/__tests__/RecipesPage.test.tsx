@@ -13,7 +13,9 @@ jest.mock('../../../api/recipes/recipes', () => ({
   fetchRecipeWithAvailability: jest.fn(),
 }));
 jest.mock('../../../api/inventory/inventory', () => ({
-  searchInventory: jest.fn().mockResolvedValue({ field: 'name', query: '', resultType: 'items', items: [], count: 0 }),
+  searchInventory: jest
+    .fn()
+    .mockResolvedValue({ field: 'name', query: '', resultType: 'items', items: [], count: 0 }),
   fetchInventory: jest.fn(),
 }));
 

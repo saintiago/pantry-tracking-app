@@ -7,4 +7,5 @@ export const USER_POOL_CLIENT_ID: string = env.VITE_USER_POOL_CLIENT_ID ?? '';
 export const API_URL: string = env.VITE_API_URL ?? '';
 
 declare const __APP_VERSION__: string;
-export const APP_VERSION: string = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0';
+export const APP_VERSION: string =
+  typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0';

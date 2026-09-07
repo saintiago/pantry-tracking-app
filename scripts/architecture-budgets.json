@@ -1,0 +1,14 @@
+{
+  "frontend/src/i18n/messages.ts": 2652,
+  "frontend/src/pages/AddItemPage/AddItemPage.tsx": 930,
+  "frontend/src/pages/InventoryPage/InventoryPage.tsx": 658,
+  "frontend/src/pages/ItemDetailPage/ItemDetailPage.tsx": 564,
+  "frontend/src/pages/MealPlanPage/MealPlanPage.tsx": 710,
+  "frontend/src/pages/RecipesPage/RecipeDetail.tsx": 623,
+  "frontend/src/pages/RecipesPage/RecipeEditor.tsx": 914,
+  "frontend/src/pages/ShoppingListPage/ShoppingListPage.tsx": 796,
+  "frontend/src/components/BarcodeScanner/BarcodeScanner.tsx": 521,
+  "frontend/src/components/InventoryList/InventoryList.tsx": 812,
+  "backend/src/handlers/inventory/inventory.ts": 884,
+  "backend/src/handlers/recipe/recipe.ts": 530
+}

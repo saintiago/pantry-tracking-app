@@ -3,12 +3,7 @@
  * Feature: recipe-units-format
  */
 import * as fc from 'fast-check';
-import {
-  VALID_UNITS,
-  UNIT_METADATA,
-  resolveUnit,
-  getUnitLabel,
-} from '../units';
+import { VALID_UNITS, UNIT_METADATA, resolveUnit, getUnitLabel } from '../units';
 
 /**
  * Property 1: Unit metadata completeness

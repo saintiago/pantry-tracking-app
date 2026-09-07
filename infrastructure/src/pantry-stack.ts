@@ -30,8 +30,8 @@ export class PantryStack extends cdk.Stack {
       partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      pointInTimeRecovery: true,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
     });
 
     this.table.addGlobalSecondaryIndex({
@@ -43,8 +43,7 @@ export class PantryStack extends cdk.Stack {
 
     // ─── S3 Storage Bucket (receipts, item pictures, exports) ────────
     this.storageBucket = new s3.Bucket(this, 'StorageBucket', {
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
       cors: [
         {
           allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.PUT, s3.HttpMethods.POST],
@@ -59,8 +58,7 @@ export class PantryStack extends cdk.Stack {
 
     // ─── S3 Website Bucket (frontend hosting) ────────────────────────
     this.websiteBucket = new s3.Bucket(this, 'WebsiteBucket', {
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-      autoDeleteObjects: true,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
     });
 
@@ -81,7 +79,7 @@ export class PantryStack extends cdk.Stack {
         requireSymbols: false,
       },
       accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     this.userPoolClient = this.userPool.addClient('PantryWebClient', {
@@ -113,8 +111,7 @@ export class PantryStack extends cdk.Stack {
       resultsCacheTtl: cdk.Duration.minutes(5),
     });
 
-    // Placeholder health endpoint (unauthenticated) ensures the API deploys.
-    // A protected endpoint uses the authorizer so CDK validates it.
+    // Authenticated health endpoint also exercises the authorizer integration.
     const healthResource = this.api.root.addResource('health');
     healthResource.addMethod(
       'GET',
@@ -132,7 +129,7 @@ export class PantryStack extends cdk.Stack {
     // ─── Auth Lambda ────────────────────────────────────────────────
     const authLambda = new NodejsFunction(this, 'AuthLambda', {
       functionName: 'PantryAuthFunction',
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       handler: 'handler',
       entry: path.join(__dirname, '../../backend/src/handlers/auth/auth.ts'),
       environment: {
@@ -153,7 +150,7 @@ export class PantryStack extends cdk.Stack {
     // ─── Storage Location Lambda ────────────────────────────────────
     const storageLocationLambda = new NodejsFunction(this, 'StorageLocationLambda', {
       functionName: 'PantryStorageLocationFunction',
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       handler: 'handler',
       entry: path.join(
         __dirname,
@@ -186,7 +183,7 @@ export class PantryStack extends cdk.Stack {
     // ─── Inventory Lambda ───────────────────────────────────────────
     const inventoryLambda = new NodejsFunction(this, 'InventoryLambda', {
       functionName: 'PantryInventoryFunction',
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       handler: 'handler',
       entry: path.join(__dirname, '../../backend/src/handlers/inventory/inventory.ts'),
       environment: {
@@ -227,7 +224,7 @@ export class PantryStack extends cdk.Stack {
     // ─── Recipe Lambda ──────────────────────────────────────────────
     const recipeLambda = new NodejsFunction(this, 'RecipeLambda', {
       functionName: 'PantryRecipeFunction',
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       handler: 'handler',
       entry: path.join(__dirname, '../../backend/src/handlers/recipe/recipe.ts'),
       environment: {
@@ -254,7 +251,7 @@ export class PantryStack extends cdk.Stack {
     // ─── Meal Plan Lambda ───────────────────────────────────────────
     const mealPlanLambda = new NodejsFunction(this, 'MealPlanLambda', {
       functionName: 'PantryMealPlanFunction',
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       handler: 'handler',
       entry: path.join(__dirname, '../../backend/src/handlers/meal-plan/meal-plan.ts'),
       environment: {
@@ -293,7 +290,7 @@ export class PantryStack extends cdk.Stack {
 
     this.distribution = new cloudfront.Distribution(this, 'WebDistribution', {
       defaultBehavior: {
-        origin: new origins.S3Origin(this.websiteBucket, {
+        origin: origins.S3BucketOrigin.withOriginAccessIdentity(this.websiteBucket, {
           originAccessIdentity,
         }),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,

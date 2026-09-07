@@ -1,4 +1,9 @@
 #!/bin/sh
+set -eu
+
+# Validate before changing tracked version files. A failed check aborts the commit.
+npm run verify
+
 # Bump frontend patch version on every commit
 node -e "
 const fs = require('fs');
@@ -9,8 +14,5 @@ pkg.version = parts.join('.');
 fs.writeFileSync('frontend/package.json', JSON.stringify(pkg, null, 2) + '\n');
 console.log('Version bumped to ' + pkg.version);
 "
-git add frontend/package.json
-
-npm run lint
-npm run test:unit
-npm run test:e2e
+node scripts/sync-workspace-version.mjs
+git add frontend/package.json package-lock.json

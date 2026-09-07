@@ -11,7 +11,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
+      Promise.all(keys.filter((key) => key.startsWith('pantry-app-') && key !== CACHE_NAME).map((key) => caches.delete(key)))
     )
   );
   self.clients.claim();
@@ -46,7 +46,7 @@ self.addEventListener('fetch', (event) => {
 
   // Cache-first for hashed static assets (JS, CSS with content hashes)
   // These are immutable — the filename changes when content changes
-  if (/\.[a-f0-9]{8,}\.(js|css|woff2?|png|jpg|svg)$/.test(url.pathname)) {
+  if (/^\/assets\/.+-[A-Za-z0-9_-]{8,}\.(js|css|woff2?|png|jpg|svg)$/.test(url.pathname)) {
     event.respondWith(
       caches.match(event.request).then((cached) => {
         if (cached) return cached;

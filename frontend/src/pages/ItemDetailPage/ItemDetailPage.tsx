@@ -1,6 +1,6 @@
 import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useCallback, useState } from 'react';
-import type { InventoryItem } from '../../components/InventoryList/InventoryList';
+import type { InventoryItem } from '../../domain/inventory/types';
 import type { StorageLocation } from '../../api/locations/locations';
 import { updateInventoryItem } from '../../api/inventory/inventory';
 import { localizedUnits, getUnitLabel, resolveUnit } from '../../types/units';

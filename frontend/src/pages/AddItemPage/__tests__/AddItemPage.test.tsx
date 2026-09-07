@@ -38,14 +38,7 @@ beforeEach(() => {
 function renderPage(overrides: Partial<AddItemPageProps> = {}) {
   const onBack = jest.fn();
   const onSubmit = jest.fn().mockResolvedValue({});
-  render(
-    <AddItemPage
-      onBack={onBack}
-      onSubmit={onSubmit}
-      locations={LOCATIONS}
-      {...overrides}
-    />,
-  );
+  render(<AddItemPage onBack={onBack} onSubmit={onSubmit} locations={LOCATIONS} {...overrides} />);
   return { onBack, onSubmit };
 }
 

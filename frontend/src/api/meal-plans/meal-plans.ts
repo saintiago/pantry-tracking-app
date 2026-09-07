@@ -1,5 +1,4 @@
-import { API_URL } from '../../config';
-import { getCurrentSession } from '../../auth/cognitoClient/cognitoClient';
+import { apiRequest } from '../client';
 
 export interface MealPlan {
   servings?: number;
@@ -20,28 +19,6 @@ export interface CreateMealPlanInput {
   recipeName: string;
 }
 
-export async function updateMealPlan(
-  planId: string,
-  input: Partial<CreateMealPlanInput>,
-): Promise<{ mealPlan: MealPlan }> {
-  const headers = await getAuthHeaders();
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
-  try {
-    const res = await fetch(`${API_URL}/meal-plans/${encodeURIComponent(planId)}`, {
-      method: 'PUT',
-      headers,
-      body: JSON.stringify(input),
-      signal: controller.signal,
-    });
-    const body = await res.json();
-    if (!res.ok) throw new Error(body.message ?? 'Failed to update meal');
-    return body;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
 export interface PlannableRecipe {
   recipeId: string;
   name: string;
@@ -49,124 +26,69 @@ export interface PlannableRecipe {
   portions?: number;
 }
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const session = await getCurrentSession();
-  if (!session) {
-    throw new Error('Not authenticated');
-  }
-  return {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${session.tokens.idToken}`,
-  };
+const timeoutMs = 10000;
+
+export function updateMealPlan(
+  planId: string,
+  input: Partial<CreateMealPlanInput>,
+): Promise<{ mealPlan: MealPlan }> {
+  return apiRequest(`/meal-plans/${encodeURIComponent(planId)}`, 'Failed to update meal', {
+    method: 'PUT',
+    body: JSON.stringify(input),
+    timeoutMs,
+  });
 }
 
-export async function fetchMealPlans(
+export function fetchMealPlans(
   startDate: string,
   endDate: string,
 ): Promise<{ mealPlans: MealPlan[] }> {
-  const headers = await getAuthHeaders();
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
-  try {
-    const res = await fetch(
-      `${API_URL}/meal-plans?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`,
-      { headers, signal: controller.signal },
-    );
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.message ?? 'Failed to fetch meal plans');
-    }
-    return res.json();
-  } finally {
-    clearTimeout(timeoutId);
-  }
+  return apiRequest(
+    `/meal-plans?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`,
+    'Failed to fetch meal plans',
+    { timeoutMs },
+  );
 }
 
-export async function createMealPlan(input: CreateMealPlanInput): Promise<{ mealPlan: MealPlan }> {
-  const headers = await getAuthHeaders();
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
-  try {
-    const res = await fetch(`${API_URL}/meal-plans`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(input),
-      signal: controller.signal,
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.message ?? 'Failed to create meal plan');
-    }
-    return res.json();
-  } finally {
-    clearTimeout(timeoutId);
-  }
+export function createMealPlan(input: CreateMealPlanInput): Promise<{ mealPlan: MealPlan }> {
+  return apiRequest('/meal-plans', 'Failed to create meal plan', {
+    method: 'POST',
+    body: JSON.stringify(input),
+    timeoutMs,
+  });
 }
 
-export async function deleteMealPlan(planId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
-  try {
-    const res = await fetch(`${API_URL}/meal-plans/${planId}`, {
-      method: 'DELETE',
-      headers,
-      signal: controller.signal,
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.message ?? 'Failed to delete meal plan');
-    }
-  } finally {
-    clearTimeout(timeoutId);
-  }
+export function deleteMealPlan(planId: string): Promise<void> {
+  return apiRequest(`/meal-plans/${encodeURIComponent(planId)}`, 'Failed to delete meal plan', {
+    method: 'DELETE',
+    responseType: 'empty',
+    timeoutMs,
+  });
 }
 
 export async function fetchRecipesForPlanning(): Promise<{ recipes: PlannableRecipe[] }> {
-  const headers = await getAuthHeaders();
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
-  try {
-    const res = await fetch(`${API_URL}/recipes`, {
-      headers,
-      signal: controller.signal,
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.message ?? 'Failed to fetch recipes');
-    }
-    const data = await res.json();
-    // Map full Recipe objects to PlannableRecipe (pick recipeId and name only)
-    const recipes: PlannableRecipe[] = (data.recipes ?? []).map((r: PlannableRecipe) => ({
-      recipeId: r.recipeId,
-      name: r.name,
-      ...(r.tags ? { tags: r.tags } : {}),
-      ...(r.portions ? { portions: r.portions } : {}),
-    }));
-    return { recipes };
-  } finally {
-    clearTimeout(timeoutId);
-  }
+  const data = await apiRequest<{ recipes?: PlannableRecipe[] }>(
+    '/recipes',
+    'Failed to fetch recipes',
+    { timeoutMs },
+  );
+  return {
+    recipes: (data.recipes ?? []).map((recipe) => ({
+      recipeId: recipe.recipeId,
+      name: recipe.name,
+      ...(recipe.tags ? { tags: recipe.tags } : {}),
+      ...(recipe.portions ? { portions: recipe.portions } : {}),
+    })),
+  };
 }
 
-export async function updateFutureServings(
+export function updateFutureServings(
   startDate: string,
   servings: number,
 ): Promise<{ updatedCount: number }> {
-  const headers = await getAuthHeaders();
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
-  try {
-    const res = await fetch(`${API_URL}/meal-plans`, {
-      method: 'PUT',
-      headers,
-      body: JSON.stringify({ startDate, servings }),
-      signal: controller.signal,
-    });
-    const body = await res.json();
-    if (!res.ok) throw new Error(body.message ?? 'Failed to update servings');
-    return body;
-  } finally {
-    clearTimeout(timeoutId);
-  }
+  return apiRequest('/meal-plans', 'Failed to update servings', {
+    method: 'PUT',
+    body: JSON.stringify({ startDate, servings }),
+    timeoutMs,
+  });
 }

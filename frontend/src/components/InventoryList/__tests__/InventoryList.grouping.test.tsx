@@ -95,9 +95,9 @@ const ControlledGroupedRow: React.FC<
   );
 };
 
-function renderGroupedRow(
-  overrides: Partial<Omit<GroupedRowProps, 'group'>> = {},
-): { group: ReturnType<typeof firstGroup> } {
+function renderGroupedRow(overrides: Partial<Omit<GroupedRowProps, 'group'>> = {}): {
+  group: ReturnType<typeof firstGroup>;
+} {
   const items = makeMilkGroup();
   const group = firstGroup(items);
   render(
@@ -197,9 +197,7 @@ describe('GroupedRowView — keyboard activation (Req 8.6)', () => {
     const user = userEvent.setup();
     const items = makeMilkGroup();
     const group = firstGroup(items);
-    render(
-      <ControlledGroupedRow group={group} locationMap={locationMap} removeMode={false} />,
-    );
+    render(<ControlledGroupedRow group={group} locationMap={locationMap} removeMode={false} />);
 
     const row = screen.getByTestId('grouped-row-' + group.groupingKey);
     row.focus();
@@ -215,9 +213,7 @@ describe('GroupedRowView — keyboard activation (Req 8.6)', () => {
     const user = userEvent.setup();
     const items = makeMilkGroup();
     const group = firstGroup(items);
-    render(
-      <ControlledGroupedRow group={group} locationMap={locationMap} removeMode={false} />,
-    );
+    render(<ControlledGroupedRow group={group} locationMap={locationMap} removeMode={false} />);
 
     const row = screen.getByTestId('grouped-row-' + group.groupingKey);
     row.focus();

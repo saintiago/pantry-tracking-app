@@ -10,15 +10,10 @@ import { formatQuantity, parseFractionalQuantity } from '../quantity';
  */
 describe('Property 5: Quantity formatter round-trip', () => {
   // Generators for valid fractional strings
-  const wholeNumberArb = fc
-    .integer({ min: 1, max: 9999 })
-    .map((n) => String(n));
+  const wholeNumberArb = fc.integer({ min: 1, max: 9999 }).map((n) => String(n));
 
   const simpleFractionArb = fc
-    .tuple(
-      fc.integer({ min: 1, max: 99 }),
-      fc.integer({ min: 1, max: 99 }),
-    )
+    .tuple(fc.integer({ min: 1, max: 99 }), fc.integer({ min: 1, max: 99 }))
     .filter(([num, den]) => num / den > 0)
     .map(([num, den]) => `${num}/${den}`);
 
@@ -31,11 +26,7 @@ describe('Property 5: Quantity formatter round-trip', () => {
     .filter(([, _num, den]) => den > 0)
     .map(([whole, num, den]) => `${whole} ${num}/${den}`);
 
-  const validFractionalStringArb = fc.oneof(
-    wholeNumberArb,
-    simpleFractionArb,
-    mixedNumberArb,
-  );
+  const validFractionalStringArb = fc.oneof(wholeNumberArb, simpleFractionArb, mixedNumberArb);
 
   it('round-trips within 0.01 tolerance', () => {
     fc.assert(
@@ -65,9 +56,12 @@ describe('Property 5: Quantity formatter round-trip', () => {
 describe('Property 6: formatQuantity handles negative inputs defensively', () => {
   it('returns same string for n and -n', () => {
     fc.assert(
-      fc.property(fc.float({ min: Math.fround(0.001), max: Math.fround(1000), noNaN: true }), (n) => {
-        return formatQuantity(-n) === formatQuantity(n);
-      }),
+      fc.property(
+        fc.float({ min: Math.fround(0.001), max: Math.fround(1000), noNaN: true }),
+        (n) => {
+          return formatQuantity(-n) === formatQuantity(n);
+        },
+      ),
       { numRuns: 200 },
     );
   });
@@ -102,7 +96,11 @@ describe('Property 7: formatQuantity is pure', () => {
 describe('Property 8: parseFractionalQuantity rejects invalid inputs', () => {
   // Strings containing at least one alphabetic character are never valid
   const stringWithLettersArb = fc
-    .tuple(fc.string(), fc.char().filter((c) => /[a-zA-Z]/.test(c)), fc.string())
+    .tuple(
+      fc.string(),
+      fc.char().filter((c) => /[a-zA-Z]/.test(c)),
+      fc.string(),
+    )
     .map(([a, letter, b]) => a + letter + b);
 
   it('returns null for strings containing letters', () => {
@@ -135,9 +133,12 @@ describe('Property 8: parseFractionalQuantity rejects invalid inputs', () => {
 
   it('returns null for negative decimal strings', () => {
     fc.assert(
-      fc.property(fc.float({ min: Math.fround(0.001), max: Math.fround(10000), noNaN: true }), (n) => {
-        return parseFractionalQuantity(`-${n}`) === null;
-      }),
+      fc.property(
+        fc.float({ min: Math.fround(0.001), max: Math.fround(10000), noNaN: true }),
+        (n) => {
+          return parseFractionalQuantity(`-${n}`) === null;
+        },
+      ),
       { numRuns: 100 },
     );
   });

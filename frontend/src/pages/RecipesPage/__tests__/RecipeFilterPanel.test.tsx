@@ -2,10 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
-import RecipeFilterPanel, {
-  EMPTY_PANEL_VALUE,
-  RecipeFilterPanelValue,
-} from '../RecipeFilterPanel';
+import RecipeFilterPanel, { EMPTY_PANEL_VALUE, RecipeFilterPanelValue } from '../RecipeFilterPanel';
 import { validateMaxTimeInput } from '../../../api/recipes/filter';
 
 function renderPanel(
@@ -88,7 +85,9 @@ describe('RecipeFilterPanel — numeric inputs', () => {
     await user.type(input, '5');
 
     // The last onChange call should carry '15' as the raw input
-    const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0] as RecipeFilterPanelValue;
+    const lastCall = onChange.mock.calls[
+      onChange.mock.calls.length - 1
+    ][0] as RecipeFilterPanelValue;
     expect(lastCall.maxPrepTimeInput).toBe('15');
   });
 
@@ -134,9 +133,7 @@ describe('RecipeFilterPanel — checkbox toggle', () => {
 
     await user.click(screen.getByLabelText(/only recipes i can make now/i));
 
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ onlyAllAvailable: true }),
-    );
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ onlyAllAvailable: true }));
   });
 
   it('toggling an active checkbox calls onChange with onlyAllAvailable: false', async () => {
@@ -146,9 +143,7 @@ describe('RecipeFilterPanel — checkbox toggle', () => {
 
     await user.click(screen.getByLabelText(/only recipes i can make now/i));
 
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ onlyAllAvailable: false }),
-    );
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ onlyAllAvailable: false }));
   });
 });
 

@@ -1,3 +1,6 @@
+import { queryAll } from '../../db/query';
+import { validateAddRequest, validateInventoryFields } from './inventory-validation';
+import { parseObject, inventoryCursor } from '../../http/request';
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
@@ -23,7 +26,7 @@ const ACCEPTED_UNITS = new Set([...VALID_UNITS, ...Object.keys(LEGACY_UNIT_MAP)]
 
 /**
  * Mutation response for POST/PUT inventory routes.
- * See `.kiro/steering/data-model.md`.
+ * See `docs/architecture/data-model.md`.
  */
 interface MutationResponse {
   item: unknown;
@@ -38,72 +41,19 @@ const STORAGE_BUCKET = process.env.STORAGE_BUCKET ?? '';
 const ddbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(ddbClient);
 
-const headers = {
-  'Content-Type': 'application/json',
-  'Access-Control-Allow-Origin': '*',
-};
-
-function getUserId(event: APIGatewayProxyEvent): string | null {
-  return (
-    event.requestContext.authorizer?.claims?.sub ?? event.requestContext.authorizer?.sub ?? null
-  );
-}
-
-function response(statusCode: number, body: unknown): APIGatewayProxyResult {
-  return { statusCode, headers, body: JSON.stringify(body) };
-}
-
-const REQUIRED_FIELDS = ['name', 'category', 'expirationDate', 'locationId', 'quantity', 'unit'];
-
-function validateAddRequest(parsed: Record<string, unknown>): { field: string; message: string }[] {
-  const errors: { field: string; message: string }[] = [];
-  if (parsed.locationDetails !== undefined && typeof parsed.locationDetails !== 'string') {
-    errors.push({ field: 'locationDetails', message: 'locationDetails must be text' });
-  }
-
-  for (const field of REQUIRED_FIELDS) {
-    const value = parsed[field];
-    if (value === undefined || value === null || value === '') {
-      errors.push({ field, message: `${field} is required` });
-    }
-  }
-
-  if (typeof parsed.quantity === 'number' && parsed.quantity < 0) {
-    errors.push({ field: 'quantity', message: 'quantity must be non-negative' });
-  }
-
-  if (parsed.expirationDate && typeof parsed.expirationDate === 'string') {
-    const date = new Date(parsed.expirationDate);
-    if (isNaN(date.getTime())) {
-      errors.push({ field: 'expirationDate', message: 'expirationDate must be a valid ISO date' });
-    }
-  }
-
-  if (
-    parsed.unit !== undefined &&
-    parsed.unit !== null &&
-    parsed.unit !== '' &&
-    !ACCEPTED_UNITS.has(parsed.unit as string)
-  ) {
-    errors.push({ field: 'unit', message: `unit must be one of: ${VALID_UNITS.join(', ')}` });
-  }
-
-  return errors;
-}
+import { getUserId, response } from '../../http/response';
 
 async function getLowStockItems(userId: string): Promise<APIGatewayProxyResult> {
-  const result = await docClient.send(
-    new QueryCommand({
-      TableName: TABLE_NAME,
-      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
-      FilterExpression: 'isLowStock = :true',
-      ExpressionAttributeValues: {
-        ':pk': `USER#${userId}`,
-        ':skPrefix': 'GROUP#',
-        ':true': true,
-      },
-    }),
-  );
+  const result = await queryAll(docClient, {
+    TableName: TABLE_NAME,
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+    FilterExpression: 'isLowStock = :true',
+    ExpressionAttributeValues: {
+      ':pk': `USER#${userId}`,
+      ':skPrefix': 'GROUP#',
+      ':true': true,
+    },
+  });
 
   return response(200, { groups: (result.Items ?? []).map(stripDatabaseKeys) });
 }
@@ -202,12 +152,14 @@ async function listInventory(
   userId: string,
   event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> {
-  const limit = event.queryStringParameters?.limit
-    ? parseInt(event.queryStringParameters.limit, 10)
-    : 50;
-  const exclusiveStartKey = event.queryStringParameters?.lastEvaluatedKey
-    ? JSON.parse(decodeURIComponent(event.queryStringParameters.lastEvaluatedKey))
-    : undefined;
+  const limit = Number(event.queryStringParameters?.limit ?? 50);
+  let exclusiveStartKey;
+  try {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 1000) throw new Error('Invalid limit');
+    exclusiveStartKey = inventoryCursor(event.queryStringParameters?.lastEvaluatedKey, userId);
+  } catch {
+    return response(400, { error: 'VALIDATION_ERROR', message: 'Invalid inventory pagination' });
+  }
 
   const result = await docClient.send(
     new QueryCommand({
@@ -259,7 +211,7 @@ async function addInventoryItem(
 
   let parsed: Record<string, unknown>;
   try {
-    parsed = JSON.parse(body);
+    parsed = parseObject(body);
   } catch {
     return response(400, { error: 'VALIDATION_ERROR', message: 'Invalid JSON body' });
   }
@@ -365,7 +317,7 @@ async function updateInventoryItem(
 
   let parsed: Record<string, unknown>;
   try {
-    parsed = JSON.parse(body);
+    parsed = parseObject(body);
   } catch {
     return response(400, { error: 'VALIDATION_ERROR', message: 'Invalid JSON body' });
   }
@@ -373,6 +325,13 @@ async function updateInventoryItem(
   if (parsed.locationDetails !== undefined && typeof parsed.locationDetails !== 'string') {
     return response(400, { error: 'VALIDATION_ERROR', message: 'locationDetails must be text' });
   }
+  const fieldErrors = validateInventoryFields(parsed);
+  if (fieldErrors.length)
+    return response(400, {
+      error: 'VALIDATION_ERROR',
+      message: 'Invalid inventory fields',
+      details: fieldErrors,
+    });
   if (Object.keys(parsed).length === 0) {
     return response(400, { error: 'VALIDATION_ERROR', message: 'No fields to update' });
   }
@@ -542,7 +501,7 @@ export async function barcodeLookup(
 
   let parsed: Record<string, unknown>;
   try {
-    parsed = JSON.parse(body);
+    parsed = parseObject(body);
   } catch {
     return response(400, { error: 'VALIDATION_ERROR', message: 'Invalid JSON body' });
   }
@@ -707,16 +666,14 @@ async function searchInventory(
 
     // Distinct value searches (category, brand, whereToBuy, onlineStoreLink)
     // Also return matching items so callers can use them for autofill
-    const result = await docClient.send(
-      new QueryCommand({
-        TableName: TABLE_NAME,
-        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
-        ExpressionAttributeValues: {
-          ':pk': `USER#${userId}`,
-          ':skPrefix': 'ITEM#',
-        },
-      }),
-    );
+    const result = await queryAll(docClient, {
+      TableName: TABLE_NAME,
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+      ExpressionAttributeValues: {
+        ':pk': `USER#${userId}`,
+        ':skPrefix': 'ITEM#',
+      },
+    });
 
     const allItems = result.Items ?? [];
     const lowerQuery = trimmedQuery.toLowerCase();
@@ -790,7 +747,7 @@ async function updateInventoryGroup(
   }
   let parsed: { threshold?: number | null; thresholdUnit?: string };
   try {
-    parsed = JSON.parse(body);
+    parsed = parseObject(body);
   } catch {
     return response(400, { error: 'VALIDATION_ERROR', message: 'Invalid JSON body' });
   }

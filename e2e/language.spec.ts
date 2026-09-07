@@ -62,10 +62,11 @@ async function choose(page: Page, language: string) {
 
 test('new browser inherits account, while each device keeps its own language', async ({
   browser,
+  baseURL,
 }) => {
   const account: Account = { language: 'es' };
-  const first = await browser.newContext({ baseURL: 'http://localhost:5173', locale: 'en-US' });
-  const second = await browser.newContext({ baseURL: 'http://localhost:5173', locale: 'en-US' });
+  const first = await browser.newContext({ baseURL, locale: 'en-US' });
+  const second = await browser.newContext({ baseURL, locale: 'en-US' });
   try {
     await setup(first, account);
     await setup(second, account);
@@ -96,13 +97,14 @@ test('new browser inherits account, while each device keeps its own language', a
 
 test('detects supported browser language and uses English for unsupported languages', async ({
   browser,
+  baseURL,
 }) => {
   for (const [locale, expected] of [
     ['it-IT', 'it'],
     ['es-MX', 'es'],
     ['fr-FR', 'en'],
   ]) {
-    const context = await browser.newContext({ baseURL: 'http://localhost:5173', locale });
+    const context = await browser.newContext({ baseURL, locale });
     try {
       await setup(context);
       const page = await context.newPage();

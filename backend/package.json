@@ -6,7 +6,7 @@
     "build": "tsc",
     "type-check": "tsc --noEmit",
     "test": "jest",
-    "test:unit": "jest",
+    "test:unit": "jest --testPathIgnorePatterns=\"\\.property\\.test\\.\"",
     "test:property": "jest --testPathPattern=property"
   },
   "devDependencies": {
@@ -23,6 +23,7 @@
     "@aws-sdk/client-s3": "^3.600.0",
     "@aws-sdk/lib-dynamodb": "^3.600.0",
     "@aws-sdk/s3-request-presigner": "^3.600.0",
-    "aws-jwt-verify": "^5.1.1"
+    "aws-jwt-verify": "^5.1.1",
+    "@pantry/domain": "0.0.1"
   }
 }

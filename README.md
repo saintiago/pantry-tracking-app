@@ -15,14 +15,14 @@ npm run build --workspace frontend
 
 ## Develop and test without AWS
 
-The existing Playwright setup provides mock Cognito authentication and per-test API fixtures. It automatically starts Vite on http://localhost:5173.
+The existing Playwright setup provides mock Cognito authentication and per-test API fixtures. It automatically starts a separate Vite test server on http://localhost:4173.
 
 ```sh
 npm run test:e2e -- e2e/meal-planner.spec.ts
 npm run test:e2e:ui -- e2e/meal-planner.spec.ts
 ```
 
-The UI command opens Playwright's interactive test runner. API mocks only apply inside tests; they do not provide a backend for an ordinary browser tab. Stop any independently running Vite server before these commands so the test runner starts it with the correct mock environment.
+The UI command opens Playwright's interactive test runner. API mocks only apply inside tests; they do not provide a backend for an ordinary browser tab. Tests refuse to reuse a server on their port. Set `PLAYWRIGHT_PORT` to another free port if needed; the ordinary development server can stay on 5173.
 
 Other checks:
 
@@ -47,7 +47,13 @@ npm run dev --workspace frontend
 
 Open http://localhost:5173. The current Vite configuration reads these values from the shell environment, so putting them in `.env.local` alone will not configure the app. Real sign-in and data require the AWS services; there is no local Lambda/DynamoDB server in this repository.
 
-Architecture and workflow details are in `.kiro/steering/` and `CLAUDE.md`.
+Start with the [documentation index](docs/README.md) for architecture, contracts,
+testing, feature history and the maintenance audit. Agent instructions live in
+[AGENTS.md](AGENTS.md).
+
+`npm run verify` runs the same full validation gate used by commits and CI.
+The `@pantry/domain` workspace owns shared units; root test/type-check commands rebuild
+it automatically. Run `npm run build:domain` after edits when using Vite directly.
 
 ## Production deployment
 

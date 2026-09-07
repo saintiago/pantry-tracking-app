@@ -9,10 +9,14 @@ import type { InventoryIndex } from '../../../api/recipes/availability';
 
 jest.mock('../../../api/recipes/recipes');
 
-const mockFetchRecipes = recipesApi.fetchRecipes as jest.MockedFunction<typeof recipesApi.fetchRecipes>;
+const mockFetchRecipes = recipesApi.fetchRecipes as jest.MockedFunction<
+  typeof recipesApi.fetchRecipes
+>;
 
 // Restore the real computeTotalTime since it's a pure function
-const { computeTotalTime: realComputeTotalTime } = jest.requireActual('../../../api/recipes/recipes');
+const { computeTotalTime: realComputeTotalTime } = jest.requireActual(
+  '../../../api/recipes/recipes',
+);
 const recipesApiModule = jest.requireMock('../../../api/recipes/recipes');
 recipesApiModule.computeTotalTime = realComputeTotalTime;
 
@@ -120,7 +124,9 @@ describe('RecipeList', () => {
   });
 
   it('shows missing-ingredient badge when missingCount > 0', async () => {
-    const recipeWithMissing = { ...sampleRecipes[0], missingCount: 2 } as Recipe & { missingCount: number };
+    const recipeWithMissing = { ...sampleRecipes[0], missingCount: 2 } as Recipe & {
+      missingCount: number;
+    };
     mockFetchRecipes.mockResolvedValue([recipeWithMissing, sampleRecipes[1]]);
     render(<RecipeList {...defaultProps} />);
     await waitFor(() => screen.getByText('Pasta Carbonara'));
@@ -131,7 +137,9 @@ describe('RecipeList', () => {
   });
 
   it('does not show missing-ingredient badge when missingCount is 0', async () => {
-    const recipeNoMissing = { ...sampleRecipes[0], missingCount: 0 } as Recipe & { missingCount: number };
+    const recipeNoMissing = { ...sampleRecipes[0], missingCount: 0 } as Recipe & {
+      missingCount: number;
+    };
     mockFetchRecipes.mockResolvedValue([recipeNoMissing]);
     render(<RecipeList {...defaultProps} />);
     await waitFor(() => screen.getByText('Pasta Carbonara'));
@@ -142,7 +150,12 @@ describe('RecipeList', () => {
   // ─── Time badge ───────────────────────────────────────────────────────────────
 
   it('renders time badge for recipes with time fields', async () => {
-    const recipeWithTime = makeRecipe({ recipeId: 'r1', name: 'Pasta Carbonara', prepTime: 10, cookTime: 20 });
+    const recipeWithTime = makeRecipe({
+      recipeId: 'r1',
+      name: 'Pasta Carbonara',
+      prepTime: 10,
+      cookTime: 20,
+    });
     mockFetchRecipes.mockResolvedValue([recipeWithTime]);
     render(<RecipeList {...defaultProps} />);
     await waitFor(() => screen.getByText('Pasta Carbonara'));
@@ -165,12 +178,7 @@ describe('RecipeList', () => {
 
   it('filter panel renders below the tag cloud and above the recipe list (Requirement 1.1)', async () => {
     mockFetchRecipes.mockResolvedValue(sampleRecipes);
-    render(
-      <RecipeList
-        {...defaultProps}
-        allTags={['italian', 'soup']}
-      />,
-    );
+    render(<RecipeList {...defaultProps} allTags={['italian', 'soup']} />);
     await waitFor(() => screen.getByText('Pasta Carbonara'));
 
     // Get the container element
@@ -180,8 +188,7 @@ describe('RecipeList', () => {
     const recipeList = screen.getByRole('list');
 
     // Check DOM order: tagCloud < filterPanel < recipeList
-    const position = (el: Element) =>
-      Array.from(container.querySelectorAll('*')).indexOf(el);
+    const position = (el: Element) => Array.from(container.querySelectorAll('*')).indexOf(el);
 
     expect(position(tagCloud)).toBeLessThan(position(filterPanel));
     expect(position(filterPanel)).toBeLessThan(position(recipeList));

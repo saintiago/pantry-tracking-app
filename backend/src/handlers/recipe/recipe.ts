@@ -1,3 +1,5 @@
+import { queryAll } from '../../db/query';
+import { parseObject } from '../../http/request';
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
@@ -16,223 +18,19 @@ const TABLE_NAME = process.env.TABLE_NAME ?? 'PantryApp';
 const ddbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(ddbClient);
 
-const headers = {
-  'Content-Type': 'application/json',
-  'Access-Control-Allow-Origin': '*',
-};
+import { getUserId, response } from '../../http/response';
 
-function getUserId(event: APIGatewayProxyEvent): string | null {
-  return (
-    event.requestContext.authorizer?.claims?.sub ?? event.requestContext.authorizer?.sub ?? null
-  );
-}
-
-function response(statusCode: number, body: unknown): APIGatewayProxyResult {
-  return { statusCode, headers, body: JSON.stringify(body) };
-}
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-export interface RecipeIngredient {
-  name: string;
-  quantity: number | null;
-  unit: string;
-  section?: string;
-  inventoryItemId?: string;
-}
-
-export interface InventoryItem {
-  name: string;
-  quantity: number;
-  [key: string]: unknown;
-}
-
-export interface IngredientStatus {
-  name: string;
-  required: number | null;
-  unit: string;
-  available: number;
-  status: 'available' | 'partial' | 'missing';
-}
-
-// ─── Validation ──────────────────────────────────────────────────────────────
-
-/**
- * Validates optional prepTime and cookTime fields in a parsed request body.
- * Returns the name of the first failing field, or null if both are absent or valid.
- * Note: null values are treated as explicit removal signals and are not validated here.
- */
-export function validateTimeFields(parsed: Record<string, unknown>): string | null {
-  for (const field of ['prepTime', 'cookTime'] as const) {
-    if (parsed[field] !== undefined && parsed[field] !== null) {
-      const v = parsed[field];
-      if (typeof v !== 'number' || !Number.isInteger(v) || v < 0) {
-        return field;
-      }
-    }
-  }
-  return null;
-}
-
-/**
- * Computes total time from optional prepTime and cookTime.
- * Returns undefined when both are absent; otherwise returns (prepTime ?? 0) + (cookTime ?? 0).
- */
-export function computeTotalTime(prepTime?: number, cookTime?: number): number | undefined {
-  if (prepTime === undefined && cookTime === undefined) return undefined;
-  return (prepTime ?? 0) + (cookTime ?? 0);
-}
-
-/**
- * Validates the portions field in a parsed request body.
- * Returns an error message string if invalid, or null if valid or absent.
- * Absence is not an error here — the caller checks for required presence separately.
- */
-export function validatePortions(parsed: Record<string, unknown>): string | null {
-  if (parsed.portions === undefined) return null;
-  const v = parsed.portions;
-  if (typeof v !== 'number' || !Number.isInteger(v) || v < 1) {
-    return 'portions must be a positive integer';
-  }
-  return null;
-}
-
-/**
- * Normalizes a raw tags input: trims, lowercases, filters empty strings, deduplicates.
- * Pure function — no side effects.
- */
-export function normalizeTags(raw: unknown[]): string[] {
-  const seen = new Set<string>();
-  const result: string[] = [];
-  for (const item of raw) {
-    if (typeof item !== 'string') continue;
-    const normalized = item.trim().toLowerCase();
-    if (normalized.length === 0) continue;
-    if (seen.has(normalized)) continue;
-    seen.add(normalized);
-    result.push(normalized);
-  }
-  return result;
-}
-
-/**
- * Validates the tags field in a parsed request body.
- * Returns an error string if tags is absent, not an array, or empty after normalization.
- * Returns null if valid.
- */
-export function validateTags(parsed: Record<string, unknown>): string | null {
-  if (parsed.tags === undefined || parsed.tags === null) {
-    return 'tags is required';
-  }
-  if (!Array.isArray(parsed.tags)) {
-    return 'tags must be an array';
-  }
-  const normalized = normalizeTags(parsed.tags as unknown[]);
-  if (normalized.length === 0) {
-    return 'At least one tag is required';
-  }
-  return null;
-}
-
-/**
- * Scales a list of ingredient quantities from one portions base to another.
- * Returns a new array of scaled quantities (rounded to at most 2 decimal places).
- * Does NOT mutate the input ingredients.
- *
- * @param ingredients - The source ingredient list
- * @param fromPortions - The base portions value (positive integer)
- * @param toPortions - The target portions value (positive integer)
- * @returns Array of scaled quantities in the same order as the input
- */
-export function scaleIngredients(
-  ingredients: RecipeIngredient[],
-  fromPortions: number,
-  toPortions: number,
-): Array<number | null> {
-  const factor = toPortions / fromPortions;
-  return ingredients.map((ing) =>
-    ing.quantity === null ? null : Math.round(ing.quantity * factor * 100) / 100,
-  );
-}
-
-/**
- * Validates the instructions field. Accepts either a non-empty string or a
- * non-empty array of non-empty strings (the array form is what new clients send).
- * `undefined` is allowed so callers can treat instructions as optional.
- */
-function validateInstructions(instructions: unknown): string | null {
-  if (instructions === undefined) return null;
-  if (typeof instructions === 'string') {
-    return instructions.trim() === '' ? 'instructions must not be empty' : null;
-  }
-  if (Array.isArray(instructions)) {
-    if (instructions.length === 0) return 'instructions must have at least one step';
-    for (const step of instructions) {
-      if (typeof step !== 'string' || step.trim() === '') {
-        return 'Each instruction step must be a non-empty string';
-      }
-    }
-    return null;
-  }
-  return 'instructions must be a string or an array of strings';
-}
-
-function validateIngredients(ingredients: unknown): string | null {
-  if (!Array.isArray(ingredients) || ingredients.length === 0) {
-    return 'At least one ingredient is required';
-  }
-  for (const ing of ingredients) {
-    if (!ing || typeof ing !== 'object') return 'Each ingredient must be an object';
-    const ingredient = ing as Record<string, unknown>;
-    if (!ingredient.unit || String(ingredient.unit).trim() === '') {
-      return 'Each ingredient must have a unit';
-    }
-    const unit = String(ingredient.unit).trim();
-    const quantity = ingredient.quantity;
-    const validHandfulQuantity = unit === 'handful' && quantity === null;
-    const validNumericQuantity =
-      typeof quantity === 'number' && Number.isFinite(quantity) && quantity > 0;
-    if (!validHandfulQuantity && !validNumericQuantity) {
-      return 'Each ingredient must have a positive quantity, except handful may be empty';
-    }
-  }
-  return null;
-}
-
-// ─── Availability Calculator (pure function) ─────────────────────────────────
-
-export function computeAvailability(
-  ingredients: RecipeIngredient[],
-  inventoryItems: InventoryItem[],
-): { ingredientAvailability: IngredientStatus[]; missingCount: number } {
-  const ingredientAvailability = ingredients.map((ing) => {
-    const totalAvailable = inventoryItems
-      .filter((item) => item.name.toLowerCase() === ing.name.toLowerCase())
-      .reduce((sum, item) => sum + item.quantity, 0);
-
-    const status: 'available' | 'partial' | 'missing' =
-      ing.quantity === null
-        ? totalAvailable > 0
-          ? 'available'
-          : 'missing'
-        : totalAvailable >= ing.quantity
-          ? 'available'
-          : totalAvailable > 0
-            ? 'partial'
-            : 'missing';
-
-    return {
-      name: ing.name,
-      required: ing.quantity,
-      unit: ing.unit,
-      available: totalAvailable,
-      status,
-    };
-  });
-
-  const missingCount = ingredientAvailability.filter((a) => a.status !== 'available').length;
-  return { ingredientAvailability, missingCount };
-}
+import {
+  validateTimeFields,
+  validatePortions,
+  normalizeTags,
+  validateTags,
+  validateInstructions,
+  validateIngredients,
+  computeAvailability,
+} from './recipe-rules';
+import type { RecipeIngredient, InventoryItem } from './recipe-rules';
+export * from './recipe-rules';
 
 // ─── Auto-create placeholder inventory items for unrecognized ingredients ────
 
@@ -241,16 +39,14 @@ async function autoCreateMissingIngredients(
   ingredients: RecipeIngredient[],
 ): Promise<void> {
   // Fetch all existing inventory items for this user
-  const inventoryResult = await docClient.send(
-    new QueryCommand({
-      TableName: TABLE_NAME,
-      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
-      ExpressionAttributeValues: {
-        ':pk': `USER#${userId}`,
-        ':skPrefix': 'ITEM#',
-      },
-    }),
-  );
+  const inventoryResult = await queryAll(docClient, {
+    TableName: TABLE_NAME,
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+    ExpressionAttributeValues: {
+      ':pk': `USER#${userId}`,
+      ':skPrefix': 'ITEM#',
+    },
+  });
 
   const existingNames = new Set(
     (inventoryResult.Items ?? []).map((item) => (item.name as string).toLowerCase()),
@@ -304,17 +100,22 @@ async function listRecipes(userId: string): Promise<APIGatewayProxyResult> {
   return response(200, { recipes: await readRecipePages(userId) });
 }
 
-async function readRecipePages(userId: string, projection?: string): Promise<Record<string, unknown>[]> {
+async function readRecipePages(
+  userId: string,
+  projection?: string,
+): Promise<Record<string, unknown>[]> {
   const items: Record<string, unknown>[] = [];
   let cursor: Record<string, unknown> | undefined;
   do {
-    const result = await docClient.send(new QueryCommand({
-      TableName: TABLE_NAME,
-      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
-      ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':skPrefix': 'RECIPE#' },
-      ...(projection ? { ProjectionExpression: projection } : {}),
-      ...(cursor ? { ExclusiveStartKey: cursor } : {}),
-    }));
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+        ExpressionAttributeValues: { ':pk': `USER#${userId}`, ':skPrefix': 'RECIPE#' },
+        ...(projection ? { ProjectionExpression: projection } : {}),
+        ...(cursor ? { ExclusiveStartKey: cursor } : {}),
+      }),
+    );
     items.push(...(result.Items ?? []));
     cursor = result.LastEvaluatedKey;
   } while (cursor);
@@ -328,7 +129,7 @@ async function createRecipe(userId: string, body: string | null): Promise<APIGat
 
   let parsed: Record<string, unknown>;
   try {
-    parsed = JSON.parse(body);
+    parsed = parseObject(body);
   } catch {
     return response(400, { error: 'VALIDATION_ERROR', message: 'Invalid JSON body' });
   }
@@ -452,16 +253,14 @@ async function getRecipeWithAvailability(
   const recipe = recipeResult.Item;
 
   // Fetch all inventory items for availability calculation
-  const inventoryResult = await docClient.send(
-    new QueryCommand({
-      TableName: TABLE_NAME,
-      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
-      ExpressionAttributeValues: {
-        ':pk': `USER#${userId}`,
-        ':skPrefix': 'ITEM#',
-      },
-    }),
-  );
+  const inventoryResult = await queryAll(docClient, {
+    TableName: TABLE_NAME,
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+    ExpressionAttributeValues: {
+      ':pk': `USER#${userId}`,
+      ':skPrefix': 'ITEM#',
+    },
+  });
 
   const inventoryItems = (inventoryResult.Items ?? []) as InventoryItem[];
   const ingredients = (recipe.ingredients ?? []) as RecipeIngredient[];
@@ -481,7 +280,7 @@ async function updateRecipe(
 
   let parsed: Record<string, unknown>;
   try {
-    parsed = JSON.parse(body);
+    parsed = parseObject(body);
   } catch {
     return response(400, { error: 'VALIDATION_ERROR', message: 'Invalid JSON body' });
   }
@@ -653,18 +452,16 @@ async function deleteRecipe(userId: string, recipeId: string): Promise<APIGatewa
   }
 
   // Check if recipe is assigned to any meal plan
-  const mealPlanResult = await docClient.send(
-    new QueryCommand({
-      TableName: TABLE_NAME,
-      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
-      FilterExpression: 'recipeId = :recipeId',
-      ExpressionAttributeValues: {
-        ':pk': `USER#${userId}`,
-        ':skPrefix': 'MEAL#',
-        ':recipeId': recipeId,
-      },
-    }),
-  );
+  const mealPlanResult = await queryAll(docClient, {
+    TableName: TABLE_NAME,
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+    FilterExpression: 'recipeId = :recipeId',
+    ExpressionAttributeValues: {
+      ':pk': `USER#${userId}`,
+      ':skPrefix': 'MEAL#',
+      ':recipeId': recipeId,
+    },
+  });
 
   const mealPlanCount = (mealPlanResult.Items ?? []).length;
 

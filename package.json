@@ -3,12 +3,13 @@
   "version": "0.0.1",
   "private": true,
   "workspaces": [
+    "packages/domain",
     "infrastructure",
     "backend",
     "frontend"
   ],
   "scripts": {
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "npm run test --workspaces --if-present",
@@ -19,7 +20,16 @@
     "test:e2e:headed": "playwright test --headed",
     "migrate:inventory-groups": "node scripts/migrate-inventory-groups.mjs",
     "type-check": "npm run type-check --workspaces --if-present",
-    "prepare": "husky"
+    "prepare": "npm run build:domain && husky",
+    "build:domain": "npm run build --workspace @pantry/domain",
+    "pretest": "npm run build:domain",
+    "pretest:unit": "npm run build:domain",
+    "pretest:property": "npm run build:domain",
+    "pretype-check": "npm run build:domain",
+    "check:architecture": "node scripts/check-architecture.mjs",
+    "check:docs": "node scripts/check-docs.mjs",
+    "verify:static": "npm run type-check && npm run lint && npm run check:architecture && npm run check:docs",
+    "verify": "npm run verify:static && npm test && npm run build --workspace frontend && npm run verify:bundle --workspace frontend && npm run test:e2e"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",

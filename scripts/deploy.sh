@@ -69,9 +69,10 @@ echo "✅ Frontend built (v$APP_VERSION)"
 # ─── Step 4: Upload to S3 ────────────────────────────────────────────
 echo "📤 Uploading to S3..."
 
+# Preserve prior assets for open tabs. Cleanup requires a separate retention policy;
+# deleting during rollout breaks lazy imports from an earlier index.html.
 # Upload hashed assets with long-lived cache (1 year) — filenames change on content change
 aws s3 sync "$ROOT_DIR/frontend/build" "s3://$WEBSITE_BUCKET" \
-  --delete \
   --cache-control "public, max-age=31536000, immutable" \
   --exclude "index.html" \
   --exclude "sw.js" \

@@ -1,8 +1,9 @@
+import { queryAll } from '../../db/query';
+import { parseObject } from '../../http/request';
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
   DynamoDBDocumentClient,
-  QueryCommand,
   PutCommand,
   UpdateCommand,
   DeleteCommand,
@@ -14,37 +15,21 @@ const TABLE_NAME = process.env.TABLE_NAME ?? 'PantryApp';
 const ddbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(ddbClient);
 
-const headers = {
-  'Content-Type': 'application/json',
-  'Access-Control-Allow-Origin': '*',
-};
-
-function getUserId(event: APIGatewayProxyEvent): string | null {
-  return (
-    event.requestContext.authorizer?.claims?.sub ??
-    event.requestContext.authorizer?.sub ??
-    null
-  );
-}
-
-function response(statusCode: number, body: unknown): APIGatewayProxyResult {
-  return { statusCode, headers, body: JSON.stringify(body) };
-}
+import { getUserId, response } from '../../http/response';
 
 async function listLocations(userId: string): Promise<APIGatewayProxyResult> {
-  const result = await docClient.send(
-    new QueryCommand({
-      TableName: TABLE_NAME,
-      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
-      ExpressionAttributeValues: {
-        ':pk': `USER#${userId}`,
-        ':skPrefix': 'LOCATION#',
-      },
-    }),
-  );
+  const result = await queryAll(docClient, {
+    TableName: TABLE_NAME,
+    ConsistentRead: true,
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+    ExpressionAttributeValues: {
+      ':pk': `USER#${userId}`,
+      ':skPrefix': 'LOCATION#',
+    },
+  });
 
   let locations = (result.Items ?? []).sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    (a, b) => new Date(String(a.createdAt)).getTime() - new Date(String(b.createdAt)).getTime(),
   );
 
   // Auto-create default "Pantry" location on first access
@@ -63,9 +48,7 @@ async function listLocations(userId: string): Promise<APIGatewayProxyResult> {
       syncVersion: 1,
     };
 
-    await docClient.send(
-      new PutCommand({ TableName: TABLE_NAME, Item: defaultLocation }),
-    );
+    await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: defaultLocation }));
 
     locations = [defaultLocation];
   }
@@ -73,40 +56,36 @@ async function listLocations(userId: string): Promise<APIGatewayProxyResult> {
   return response(200, { locations });
 }
 
-async function createLocation(
-  userId: string,
-  body: string | null,
-): Promise<APIGatewayProxyResult> {
+async function createLocation(userId: string, body: string | null): Promise<APIGatewayProxyResult> {
   if (!body) {
     return response(400, { error: 'VALIDATION_ERROR', message: 'Missing request body' });
   }
 
-  let parsed: { name?: string };
+  let parsed: Record<string, unknown>;
   try {
-    parsed = JSON.parse(body);
+    parsed = parseObject(body);
   } catch {
     return response(400, { error: 'VALIDATION_ERROR', message: 'Invalid JSON body' });
   }
 
-  const name = parsed.name?.trim();
+  const name = typeof parsed.name === 'string' ? parsed.name.trim() : '';
   if (!name) {
     return response(400, { error: 'VALIDATION_ERROR', message: 'Name is required' });
   }
 
   // Check for duplicate name (case-insensitive)
-  const existing = await docClient.send(
-    new QueryCommand({
-      TableName: TABLE_NAME,
-      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
-      ExpressionAttributeValues: {
-        ':pk': `USER#${userId}`,
-        ':skPrefix': 'LOCATION#',
-      },
-    }),
-  );
+  const existing = await queryAll(docClient, {
+    TableName: TABLE_NAME,
+    ConsistentRead: true,
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+    ExpressionAttributeValues: {
+      ':pk': `USER#${userId}`,
+      ':skPrefix': 'LOCATION#',
+    },
+  });
 
   const duplicate = (existing.Items ?? []).some(
-    (item) => item.name.toLowerCase() === name.toLowerCase(),
+    (item) => String(item.name).toLowerCase() === name.toLowerCase(),
   );
 
   if (duplicate) {
@@ -144,32 +123,32 @@ async function renameLocation(
     return response(400, { error: 'VALIDATION_ERROR', message: 'Missing request body' });
   }
 
-  let parsed: { name?: string };
+  let parsed: Record<string, unknown>;
   try {
-    parsed = JSON.parse(body);
+    parsed = parseObject(body);
   } catch {
     return response(400, { error: 'VALIDATION_ERROR', message: 'Invalid JSON body' });
   }
 
-  const name = parsed.name?.trim();
+  const name = typeof parsed.name === 'string' ? parsed.name.trim() : '';
   if (!name) {
     return response(400, { error: 'VALIDATION_ERROR', message: 'Name is required' });
   }
 
   // Check for duplicate name (case-insensitive), excluding the current location
-  const existing = await docClient.send(
-    new QueryCommand({
-      TableName: TABLE_NAME,
-      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
-      ExpressionAttributeValues: {
-        ':pk': `USER#${userId}`,
-        ':skPrefix': 'LOCATION#',
-      },
-    }),
-  );
+  const existing = await queryAll(docClient, {
+    TableName: TABLE_NAME,
+    ConsistentRead: true,
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+    ExpressionAttributeValues: {
+      ':pk': `USER#${userId}`,
+      ':skPrefix': 'LOCATION#',
+    },
+  });
 
   const duplicate = (existing.Items ?? []).some(
-    (item) => item.locationId !== locationId && item.name.toLowerCase() === name.toLowerCase(),
+    (item) =>
+      item.locationId !== locationId && String(item.name).toLowerCase() === name.toLowerCase(),
   );
 
   if (duplicate) {
@@ -203,21 +182,17 @@ async function renameLocation(
   }
 }
 
-async function deleteLocation(
-  userId: string,
-  locationId: string,
-): Promise<APIGatewayProxyResult> {
+async function deleteLocation(userId: string, locationId: string): Promise<APIGatewayProxyResult> {
   // Check if location exists and count total locations
-  const locations = await docClient.send(
-    new QueryCommand({
-      TableName: TABLE_NAME,
-      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
-      ExpressionAttributeValues: {
-        ':pk': `USER#${userId}`,
-        ':skPrefix': 'LOCATION#',
-      },
-    }),
-  );
+  const locations = await queryAll(docClient, {
+    TableName: TABLE_NAME,
+    ConsistentRead: true,
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+    ExpressionAttributeValues: {
+      ':pk': `USER#${userId}`,
+      ':skPrefix': 'LOCATION#',
+    },
+  });
 
   const locationItems = locations.Items ?? [];
   const target = locationItems.find((item) => item.locationId === locationId);
@@ -235,17 +210,18 @@ async function deleteLocation(
   }
 
   // Guard: cannot delete location that contains inventory items
-  const inventoryCheck = await docClient.send(
-    new QueryCommand({
-      TableName: TABLE_NAME,
-      IndexName: 'GSI1',
-      KeyConditionExpression: 'GSI1PK = :gsi1pk',
-      ExpressionAttributeValues: {
-        ':gsi1pk': `USER#${userId}#LOC#${locationId}`,
-      },
-      Limit: 1,
-    }),
-  );
+  const inventoryCheck = await queryAll(docClient, {
+    TableName: TABLE_NAME,
+    ConsistentRead: true,
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+    FilterExpression: '#location = :location',
+    ExpressionAttributeNames: { '#location': 'location' },
+    ExpressionAttributeValues: {
+      ':pk': `USER#${userId}`,
+      ':skPrefix': 'ITEM#',
+      ':location': locationId,
+    },
+  });
 
   if ((inventoryCheck.Items ?? []).length > 0) {
     return response(400, {
@@ -264,9 +240,7 @@ async function deleteLocation(
   return response(200, { message: 'Storage location deleted' });
 }
 
-export async function handler(
-  event: APIGatewayProxyEvent,
-): Promise<APIGatewayProxyResult> {
+export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   const userId = getUserId(event);
   if (!userId) {
     return response(401, { error: 'UNAUTHORIZED', message: 'Missing authentication' });

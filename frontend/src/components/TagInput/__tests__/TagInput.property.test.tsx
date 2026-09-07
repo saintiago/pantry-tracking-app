@@ -68,23 +68,19 @@ describe('TagInput — property tests', () => {
     fc.assert(
       fc.property(
         fc.array(
-          fc
-            .string({ minLength: 1, maxLength: 20 })
-            .filter((s) => s.trim().length > 0),
+          fc.string({ minLength: 1, maxLength: 20 }).filter((s) => s.trim().length > 0),
           { maxLength: 20 },
         ),
         fc.array(
-          fc
-            .string({ minLength: 1, maxLength: 20 })
-            .filter((s) => s.trim().length > 0),
+          fc.string({ minLength: 1, maxLength: 20 }).filter((s) => s.trim().length > 0),
           { maxLength: 5 },
         ),
         fc.string({ maxLength: 10 }),
         (allTagsRaw, currentTagsRaw, inputValue) => {
           const allTags = [...new Set(allTagsRaw.map((t) => t.trim().toLowerCase()))];
-          const currentTags = [...new Set(currentTagsRaw.map((t) => t.trim().toLowerCase()))].filter(
-            (t) => allTags.includes(t),
-          );
+          const currentTags = [
+            ...new Set(currentTagsRaw.map((t) => t.trim().toLowerCase())),
+          ].filter((t) => allTags.includes(t));
 
           const { unmount } = render(
             <TagInput
@@ -199,8 +195,8 @@ describe('TagInput — property tests', () => {
             // No arrow press → highlightedIndex = -1 → commit first
             expect(onChange).toHaveBeenCalledWith([allTags[0]]);
           } else {
-            const expectedIndex = ((arrowDownCount - 1) % allTags.length + allTags.length) %
-              allTags.length;
+            const expectedIndex =
+              (((arrowDownCount - 1) % allTags.length) + allTags.length) % allTags.length;
             expect(onChange).toHaveBeenCalledWith([allTags[expectedIndex]]);
           }
           unmount();

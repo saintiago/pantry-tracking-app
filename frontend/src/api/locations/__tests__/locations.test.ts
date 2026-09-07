@@ -1,9 +1,4 @@
-import {
-  fetchLocations,
-  createLocation,
-  renameLocation,
-  deleteLocation,
-} from '../locations';
+import { fetchLocations, createLocation, renameLocation, deleteLocation } from '../locations';
 
 // Mock config
 jest.mock('../../../config', () => ({

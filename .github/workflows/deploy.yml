@@ -1,6 +1,7 @@
 name: Deploy production
 
 on:
+  pull_request:
   push:
     branches: [main]
   workflow_dispatch:
@@ -10,12 +11,11 @@ permissions:
 
 # Never interrupt an in-flight infrastructure deployment.
 concurrency:
-  group: pantry-production
+  group: pantry-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   verify:
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -25,10 +25,8 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npm run type-check
-      - run: npm run build --workspace frontend
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e -- e2e/meal-planner*.spec.ts e2e/shopping-list.spec.ts e2e/language.spec.ts --workers=2
+      - run: npm run verify
 
   deploy:
     needs: verify

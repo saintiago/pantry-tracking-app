@@ -17,7 +17,7 @@ import ShoppingEditPage from './pages/ShoppingListPage/ShoppingEditPage';
 import type { ShoppingEditRequest } from './pages/ShoppingListPage/ShoppingEditPage';
 import type { PurchaseRequest } from './pages/PurchasePage/PurchasePage';
 import type { AddItemData } from './pages/AddItemPage/AddItemPage';
-import type { InventoryItem } from './components/InventoryList/InventoryList';
+import type { InventoryItem } from './domain/inventory/types';
 import type { StorageLocation } from './api/locations/locations';
 
 interface AddItemPageState {

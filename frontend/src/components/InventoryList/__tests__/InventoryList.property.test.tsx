@@ -109,10 +109,8 @@ function expectedFilteredItems(
  * that satisfy all active filter criteria simultaneously.
  */
 describe('Property 7: Combined Filter Correctness', () => {
-  it(
-    'filtered results contain exactly the items satisfying all active filter criteria',
-    async () => {
-      await fc.assert(
+  it('filtered results contain exactly the items satisfying all active filter criteria', async () => {
+    await fc.assert(
       fc.asyncProperty(
         inventoryListArb.chain((items) =>
           filterComboArbFor(items).map((filters) => ({ items, filters })),
@@ -165,9 +163,7 @@ describe('Property 7: Combined Filter Correctness', () => {
             // In category-summary view: verify category cards are shown, not item cards
             const distinctCats = new Set(expected.map((i) => i.category));
             if (expected.length === 0) {
-              expect(
-                view.getByText('No items match the current filters.'),
-              ).toBeInTheDocument();
+              expect(view.getByText('No items match the current filters.')).toBeInTheDocument();
             } else {
               for (const cat of distinctCats) {
                 expect(view.queryByTestId(`category-card-${cat}`)).toBeInTheDocument();
@@ -176,9 +172,7 @@ describe('Property 7: Combined Filter Correctness', () => {
           } else {
             // In item-list view: verify item cards
             if (expected.length === 0) {
-              expect(
-                view.getByText('No items match the current filters.'),
-              ).toBeInTheDocument();
+              expect(view.getByText('No items match the current filters.')).toBeInTheDocument();
             } else {
               expect(
                 view.queryByText('No items match the current filters.'),
@@ -187,9 +181,7 @@ describe('Property 7: Combined Filter Correctness', () => {
               // Items are rendered inside collapsible Grouped_Rows that are
               // collapsed by default; expand every group so each child item
               // card is visible for the assertions below.
-              const toggles = container.querySelectorAll(
-                '[role="button"][aria-expanded="false"]',
-              );
+              const toggles = container.querySelectorAll('[role="button"][aria-expanded="false"]');
               for (const toggle of Array.from(toggles)) {
                 await user.click(toggle);
               }
@@ -213,6 +205,5 @@ describe('Property 7: Combined Filter Correctness', () => {
       ),
       { numRuns: 20 }, // Reduced from 100 to avoid timeout
     );
-  },
-  30000); // 30 second timeout for property test
+  }, 30000); // 30 second timeout for property test
 });

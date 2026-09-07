@@ -17,12 +17,8 @@ function AuthConsumer() {
       <span data-testid="loading">{String(auth.isLoading)}</span>
       <span data-testid="user">{auth.user ? auth.user.email : 'null'}</span>
       <span data-testid="error">{auth.error ?? 'null'}</span>
-      <button onClick={() => auth.login('test@example.com', 'Password1')}>
-        Login
-      </button>
-      <button onClick={() => auth.signup('test@example.com', 'Password1')}>
-        Signup
-      </button>
+      <button onClick={() => auth.login('test@example.com', 'Password1')}>Login</button>
+      <button onClick={() => auth.signup('test@example.com', 'Password1')}>Signup</button>
       <button onClick={auth.logout}>Logout</button>
       <button onClick={auth.clearError}>Clear Error</button>
     </div>
@@ -48,9 +44,7 @@ describe('AuthContext', () => {
     // Initially loading
     expect(screen.getByTestId('loading').textContent).toBe('true');
     // After session check resolves
-    await waitFor(() =>
-      expect(screen.getByTestId('loading').textContent).toBe('false'),
-    );
+    await waitFor(() => expect(screen.getByTestId('loading').textContent).toBe('false'));
     expect(screen.getByTestId('authenticated').textContent).toBe('false');
     expect(screen.getByTestId('user').textContent).toBe('null');
   });
@@ -67,9 +61,7 @@ describe('AuthContext', () => {
 
     renderWithProvider();
 
-    await waitFor(() =>
-      expect(screen.getByTestId('authenticated').textContent).toBe('true'),
-    );
+    await waitFor(() => expect(screen.getByTestId('authenticated').textContent).toBe('true'));
     expect(screen.getByTestId('user').textContent).toBe('existing@example.com');
   });
 
@@ -85,15 +77,11 @@ describe('AuthContext', () => {
     });
 
     renderWithProvider();
-    await waitFor(() =>
-      expect(screen.getByTestId('loading').textContent).toBe('false'),
-    );
+    await waitFor(() => expect(screen.getByTestId('loading').textContent).toBe('false'));
 
     await user.click(screen.getByText('Login'));
 
-    await waitFor(() =>
-      expect(screen.getByTestId('authenticated').textContent).toBe('true'),
-    );
+    await waitFor(() => expect(screen.getByTestId('authenticated').textContent).toBe('true'));
     expect(screen.getByTestId('user').textContent).toBe('test@example.com');
   });
 
@@ -102,16 +90,12 @@ describe('AuthContext', () => {
     mockedCognito.signIn.mockRejectedValue(new Error('Invalid credentials'));
 
     renderWithProvider();
-    await waitFor(() =>
-      expect(screen.getByTestId('loading').textContent).toBe('false'),
-    );
+    await waitFor(() => expect(screen.getByTestId('loading').textContent).toBe('false'));
 
     await user.click(screen.getByText('Login'));
 
     await waitFor(() =>
-      expect(screen.getByTestId('error').textContent).toBe(
-        'Invalid credentials',
-      ),
+      expect(screen.getByTestId('error').textContent).toBe('Invalid credentials'),
     );
     expect(screen.getByTestId('authenticated').textContent).toBe('false');
   });
@@ -121,17 +105,12 @@ describe('AuthContext', () => {
     mockedCognito.signUp.mockResolvedValue({ userConfirmed: false });
 
     renderWithProvider();
-    await waitFor(() =>
-      expect(screen.getByTestId('loading').textContent).toBe('false'),
-    );
+    await waitFor(() => expect(screen.getByTestId('loading').textContent).toBe('false'));
 
     await user.click(screen.getByText('Signup'));
 
     await waitFor(() =>
-      expect(mockedCognito.signUp).toHaveBeenCalledWith(
-        'test@example.com',
-        'Password1',
-      ),
+      expect(mockedCognito.signUp).toHaveBeenCalledWith('test@example.com', 'Password1'),
     );
   });
 
@@ -147,9 +126,7 @@ describe('AuthContext', () => {
     });
 
     renderWithProvider();
-    await waitFor(() =>
-      expect(screen.getByTestId('authenticated').textContent).toBe('true'),
-    );
+    await waitFor(() => expect(screen.getByTestId('authenticated').textContent).toBe('true'));
 
     await user.click(screen.getByText('Logout'));
 
@@ -163,14 +140,10 @@ describe('AuthContext', () => {
     mockedCognito.signIn.mockRejectedValue(new Error('Bad password'));
 
     renderWithProvider();
-    await waitFor(() =>
-      expect(screen.getByTestId('loading').textContent).toBe('false'),
-    );
+    await waitFor(() => expect(screen.getByTestId('loading').textContent).toBe('false'));
 
     await user.click(screen.getByText('Login'));
-    await waitFor(() =>
-      expect(screen.getByTestId('error').textContent).toBe('Bad password'),
-    );
+    await waitFor(() => expect(screen.getByTestId('error').textContent).toBe('Bad password'));
 
     await user.click(screen.getByText('Clear Error'));
     expect(screen.getByTestId('error').textContent).toBe('null');
@@ -179,9 +152,7 @@ describe('AuthContext', () => {
   it('throws when useAuth is used outside AuthProvider', () => {
     // Suppress console.error for this test
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    expect(() => render(<AuthConsumer />)).toThrow(
-      'useAuth must be used within an AuthProvider',
-    );
+    expect(() => render(<AuthConsumer />)).toThrow('useAuth must be used within an AuthProvider');
     spy.mockRestore();
   });
 });

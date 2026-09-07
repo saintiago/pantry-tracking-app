@@ -32,27 +32,35 @@ function mockAuthPlugin(): Plugin | null {
   };
 }
 
-export default defineConfig({
-  plugins: [mockAuthPlugin(), react()].filter(Boolean),
-  build: {
-    outDir: 'build',
-    rollupOptions: {
-      output: {
-        // Catalogs are cached separately from changing app code and loaded with the app
-        // so switching languages also works offline.
-        manualChunks(id) {
-          if (id.split(path.sep).join('/').endsWith('/src/i18n/messages.ts')) return 'translations';
+export default defineConfig(({ command }) => {
+  if (command === 'build' && process.env.VITE_MOCK_AUTH === 'true') {
+    throw new Error('Mock authentication must never be included in a production build.');
+  }
+  return {
+    plugins: [mockAuthPlugin(), react()].filter(Boolean),
+    optimizeDeps: { include: ['@pantry/domain'] },
+    build: {
+      outDir: 'build',
+      commonjsOptions: { include: [/node_modules/, /packages[\\/]domain[\\/]dist/] },
+      rollupOptions: {
+        output: {
+          // Catalogs are cached separately from changing app code and loaded with the app
+          // so switching languages also works offline.
+          manualChunks(id) {
+            if (id.split(path.sep).join('/').endsWith('/src/i18n/messages.ts'))
+              return 'translations';
+          },
         },
       },
     },
-  },
-  define: {
-    global: 'globalThis',
-    __APP_VERSION__: JSON.stringify(version),
-    'globalThis.__VITE_ENV__': JSON.stringify({
-      VITE_USER_POOL_ID: process.env.VITE_USER_POOL_ID ?? '',
-      VITE_USER_POOL_CLIENT_ID: process.env.VITE_USER_POOL_CLIENT_ID ?? '',
-      VITE_API_URL: process.env.VITE_API_URL ?? '',
-    }),
-  },
+    define: {
+      global: 'globalThis',
+      __APP_VERSION__: JSON.stringify(version),
+      'globalThis.__VITE_ENV__': JSON.stringify({
+        VITE_USER_POOL_ID: process.env.VITE_USER_POOL_ID ?? '',
+        VITE_USER_POOL_CLIENT_ID: process.env.VITE_USER_POOL_CLIENT_ID ?? '',
+        VITE_API_URL: process.env.VITE_API_URL ?? '',
+      }),
+    },
+  };
 });

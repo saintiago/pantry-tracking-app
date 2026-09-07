@@ -131,8 +131,7 @@ describe('Feature: inventory-category-view, Property 4: Drill-down shows only se
           await user.click(card);
 
           // All displayed item cards must belong to the selected category
-          const itemCards = document
-            .querySelectorAll('[data-testid^="item-card-"]');
+          const itemCards = document.querySelectorAll('[data-testid^="item-card-"]');
           for (const itemCard of Array.from(itemCards)) {
             const testId = itemCard.getAttribute('data-testid') ?? '';
             const itemId = testId.replace('item-card-', '');
@@ -145,9 +144,7 @@ describe('Feature: inventory-category-view, Property 4: Drill-down shows only se
           for (const otherCat of otherCategories) {
             const otherItems = items.filter((i) => i.category === otherCat);
             for (const otherItem of otherItems) {
-              expect(
-                screen.queryByTestId(`item-card-${otherItem.itemId}`),
-              ).not.toBeInTheDocument();
+              expect(screen.queryByTestId(`item-card-${otherItem.itemId}`)).not.toBeInTheDocument();
             }
           }
 
@@ -176,9 +173,7 @@ describe('Feature: inventory-category-view, Property 5: Category card aria-label
 
     fc.assert(
       fc.property(categorySummaryArb, (summary) => {
-        const { unmount } = render(
-          <CategoryCard summary={summary} onClick={() => {}} />,
-        );
+        const { unmount } = render(<CategoryCard summary={summary} onClick={() => {}} />);
 
         const card = screen.getByRole('button');
         const label = card.getAttribute('aria-label') ?? '';

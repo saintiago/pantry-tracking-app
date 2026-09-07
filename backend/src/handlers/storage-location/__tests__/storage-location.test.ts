@@ -45,9 +45,56 @@ describe('Storage Location Lambda handler', () => {
     jest.clearAllMocks();
   });
 
+  it.each(['null', '[]', '{"name":42}', '{"name":[]}'])(
+    'rejects malformed names: %s',
+    async (body) => {
+      const result = await handler(makeEvent({ httpMethod: 'POST', body }));
+      expect(result.statusCode).toBe(400);
+      expect(mockSend).not.toHaveBeenCalled();
+    },
+  );
+
+  it('finds occupied locations beyond an empty filtered inventory page', async () => {
+    const cursor = { PK: 'USER#user-123', SK: 'ITEM#page-one' };
+    mockSend
+      .mockResolvedValueOnce({ Items: [{ locationId: 'a' }, { locationId: 'b' }] })
+      .mockResolvedValueOnce({ Items: [], LastEvaluatedKey: cursor })
+      .mockResolvedValueOnce({ Items: [{ itemId: 'stock', location: 'a' }] });
+    const result = await handler(
+      makeEvent({ httpMethod: 'DELETE', pathParameters: { locationId: 'a' } }),
+    );
+    expect(result.statusCode).toBe(400);
+    expect(JSON.parse(result.body).message).toContain('contains inventory');
+    expect(mockSend.mock.calls[1][0]).toMatchObject({
+      ConsistentRead: true,
+      FilterExpression: '#location = :location',
+      ExpressionAttributeValues: { ':pk': 'USER#user-123', ':skPrefix': 'ITEM#', ':location': 'a' },
+    });
+    expect(mockSend.mock.calls[1][0].IndexName).toBeUndefined();
+    expect(mockSend.mock.calls[2][0].ExclusiveStartKey).toEqual(cursor);
+    expect(mockSend).toHaveBeenCalledTimes(3);
+  });
+
+  it('checks duplicate names on later location pages', async () => {
+    mockSend
+      .mockResolvedValueOnce({
+        Items: [],
+        LastEvaluatedKey: { PK: 'USER#user-123', SK: 'LOCATION#a' },
+      })
+      .mockResolvedValueOnce({ Items: [{ name: 'Freezer' }] });
+    const result = await handler(makeEvent({ httpMethod: 'POST', body: '{"name":"freezer"}' }));
+    expect(result.statusCode).toBe(400);
+    expect(mockSend).toHaveBeenCalledTimes(2);
+  });
+
   it('returns 401 when userId is missing', async () => {
     const result = await handler(
-      makeEvent({ requestContext: { authorizer: {}, requestId: 'req-1' } as unknown as APIGatewayProxyEvent['requestContext'] }),
+      makeEvent({
+        requestContext: {
+          authorizer: {},
+          requestId: 'req-1',
+        } as unknown as APIGatewayProxyEvent['requestContext'],
+      }),
     );
     expect(result.statusCode).toBe(401);
   });
@@ -125,9 +172,7 @@ describe('Storage Location Lambda handler', () => {
     });
 
     it('returns 400 when name is missing', async () => {
-      const result = await handler(
-        makeEvent({ httpMethod: 'POST', body: JSON.stringify({}) }),
-      );
+      const result = await handler(makeEvent({ httpMethod: 'POST', body: JSON.stringify({}) }));
       expect(result.statusCode).toBe(400);
     });
 

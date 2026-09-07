@@ -11,10 +11,7 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import fc from 'fast-check';
-import InventoryList, {
-  groupItemsByGroupingKey,
-  normalizeGroupName,
-} from '../InventoryList';
+import InventoryList, { groupItemsByGroupingKey, normalizeGroupName } from '../InventoryList';
 import type { InventoryItem } from '../InventoryList';
 import type { StorageLocation } from '../../../api/locations';
 import { UNIT_METADATA, getUnitLabel, resolveUnit } from '../../../types/units';
@@ -213,7 +210,8 @@ describe('Feature: inventory-merge-and-grouping, Property 11: Grouped rows are o
 describe('Feature: inventory-merge-and-grouping, Property 12: Child items are ordered by expiration', () => {
   it('children sort by expirationDate, then createdAt, then itemId', () => {
     const cmp = (a: InventoryItem, b: InventoryItem): number => {
-      if (a.expirationDate !== b.expirationDate) return a.expirationDate < b.expirationDate ? -1 : 1;
+      if (a.expirationDate !== b.expirationDate)
+        return a.expirationDate < b.expirationDate ? -1 : 1;
       if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? -1 : 1;
       if (a.itemId !== b.itemId) return a.itemId < b.itemId ? -1 : 1;
       return 0;

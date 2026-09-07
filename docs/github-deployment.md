@@ -1,6 +1,6 @@
 # GitHub Actions production deployment
 
-`.github/workflows/deploy.yml` deploys the infrastructure and frontend on pushes to `main`. You can also run it manually from the Actions tab on `main`. Other branches cannot deploy. It checks types, builds the frontend, and runs the meal-planner browser suite before obtaining AWS credentials. These checks are not the entire test suite. Deployments run one at a time and wait for CloudFront invalidation to finish.
+`.github/workflows/deploy.yml` verifies pull requests and deploys the infrastructure and frontend on pushes to `main`. You can also run it manually from the Actions tab on `main`. Other branches cannot deploy. It runs `npm run verify` (types, lint, architecture, all Jest suites, production build, bundle check and all browser tests) before obtaining AWS credentials. Production deployments run one at a time and wait for CloudFront invalidation to finish.
 
 ## One-time activation by an AWS/GitHub administrator
 
@@ -49,8 +49,13 @@ The target is the existing `PantryStack` in AWS account `698643713254`, region `
 
 ## Deployment behavior
 
+Publishing preserves prior hashed assets so open tabs can load older lazy chunks after
+a release. There is currently no automated asset cleanup; do not reintroduce `--delete`
+on the website sync. Any cleanup must first retain assets referenced by supported
+releases. The service worker recognizes Vite hashes and removes only Pantry-owned caches.
+
 The script uses `--ci` to disable interactive CDK approval in Actions; ordinary local invocation still prompts for IAM broadening. CDK outputs configure the frontend automatically. The job fails if the role variable is missing, AWS authentication fails, infrastructure deployment fails, or publishing/invalidation fails. A failed frontend upload does not automatically roll back a successful infrastructure deployment; inspect the run before retrying.
 
-The current infrastructure still uses Node.js 18 Lambda runtimes and destructive removal policies for stored data and Cognito. Review those and the dependency audit findings before introducing production user data. This workflow does not change those policies.
+Application Lambdas use Node.js 24. DynamoDB, Cognito and both S3 buckets are retained on deletion/replacement; DynamoDB point-in-time recovery is enabled. Retention prevents accidental stack removal from deleting data, but a tested restore procedure and separate development environment are still needed. Inspect `cdk diff` before infrastructure changes and preserve existing construct IDs. See the [architecture audit](architecture/audit-2026-09.md).
 
 References: [GitHub OIDC with AWS](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws), [CDK bootstrapping](https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html).

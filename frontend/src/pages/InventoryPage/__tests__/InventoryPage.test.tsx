@@ -7,7 +7,7 @@ import InventoryPage, {
   BarcodeScannerLoadingFallback,
 } from '../InventoryPage';
 import type { StorageLocation } from '../../../api/locations/locations';
-import type { InventoryItem } from '../../../components/InventoryList/InventoryList';
+import type { InventoryItem } from '../../../domain/inventory/types';
 import type { PageId } from '../../../components/Layout/Layout';
 import type { AddItemData } from '../../AddItemPage/AddItemPage';
 
@@ -452,11 +452,9 @@ describe('Inventory integration', () => {
     mockAddInventoryItem.mockResolvedValue({
       item: { ...defaultItems[0], itemId: 'item-2', name: 'Eggs' },
     });
-    mockFetchInventory
-      .mockResolvedValueOnce({ items: defaultItems })
-      .mockResolvedValueOnce({
-        items: [...defaultItems, { ...defaultItems[0], itemId: 'item-2', name: 'Eggs' }],
-      });
+    mockFetchInventory.mockResolvedValueOnce({ items: defaultItems }).mockResolvedValueOnce({
+      items: [...defaultItems, { ...defaultItems[0], itemId: 'item-2', name: 'Eggs' }],
+    });
 
     let capturedOnSubmit: ((item: AddItemData) => Promise<{ error?: string }>) | undefined;
     const onNavigateToAddItem = jest.fn((_locations, onSubmit) => {
@@ -531,7 +529,11 @@ describe('Inventory integration', () => {
     mockAddInventoryItem.mockResolvedValue({
       item: { ...defaultItems[0], itemId: 'item-2', name: 'Butter', isLowStock: true },
       lowStockTransition: true,
-      notification: { type: 'LOW_STOCK', message: 'Butter is running low on stock', itemId: 'item-2' },
+      notification: {
+        type: 'LOW_STOCK',
+        message: 'Butter is running low on stock',
+        itemId: 'item-2',
+      },
     });
     mockFetchInventory
       .mockResolvedValueOnce({ items: defaultItems })
@@ -633,7 +635,8 @@ describe('BarcodeScanner lazy loading', () => {
     expect(screen.queryByTestId('barcode-scanner-loading')).not.toBeInTheDocument();
 
     // Close scanner by invoking the onClose prop on the mock
-    const { default: BarcodeScanner } = await import('../../../components/BarcodeScanner/BarcodeScanner');
+    const { default: BarcodeScanner } =
+      await import('../../../components/BarcodeScanner/BarcodeScanner');
     const mockCalls = (BarcodeScanner as jest.Mock).mock.calls;
     const lastCallProps = mockCalls[mockCalls.length - 1][0];
     act(() => lastCallProps.onClose());
@@ -685,7 +688,8 @@ describe('BarcodeScanner lazy loading', () => {
     setupDefaults();
 
     // Override the module-level mock to reject for this test
-    const { default: BarcodeScanner } = await import('../../../components/BarcodeScanner/BarcodeScanner');
+    const { default: BarcodeScanner } =
+      await import('../../../components/BarcodeScanner/BarcodeScanner');
     (BarcodeScanner as jest.Mock).mockImplementation(() => {
       throw new Error('Loading chunk failed');
     });
@@ -713,7 +717,9 @@ describe('BarcodeScanner lazy loading', () => {
     expect(screen.getByLabelText('Add item')).toBeInTheDocument();
 
     // Restore mock to normal behavior
-    (BarcodeScanner as jest.Mock).mockImplementation(() => <div data-testid="barcode-scanner-mock" />);
+    (BarcodeScanner as jest.Mock).mockImplementation(() => (
+      <div data-testid="barcode-scanner-mock" />
+    ));
     consoleSpy.mockRestore();
   });
 
@@ -735,10 +741,7 @@ describe('BarcodeScanner lazy loading', () => {
       const [retried, setRetried] = React.useState(false);
       const LazyComponent = retried ? LazySecond : LazyFirst;
       return (
-        <BarcodeScannerErrorBoundary
-          onClose={jest.fn()}
-          onRetry={() => setRetried(true)}
-        >
+        <BarcodeScannerErrorBoundary onClose={jest.fn()} onRetry={() => setRetried(true)}>
           <React.Suspense fallback={<BarcodeScannerLoadingFallback />}>
             <LazyComponent />
           </React.Suspense>

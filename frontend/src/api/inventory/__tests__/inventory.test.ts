@@ -43,6 +43,31 @@ beforeEach(() => {
 const mockFetch = () => global.fetch as jest.MockedFunction<typeof fetch>;
 
 describe('fetchInventory', () => {
+  it('loads all pages and merges repeated groups', async () => {
+    mockFetch()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          items: [{ itemId: 'first' }],
+          groups: [{ groupId: 'g', totalQuantity: 2 }],
+          lastEvaluatedKey: 'a%20b',
+        }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          items: [{ itemId: 'second' }],
+          groups: [{ groupId: 'g', totalQuantity: 3 }],
+        }),
+      } as Response);
+    const result = await fetchInventory();
+    expect(result.items.map((item) => item.itemId)).toEqual(['first', 'second']);
+    expect(result.groups).toEqual([{ groupId: 'g', totalQuantity: 3 }]);
+    expect(mockFetch().mock.calls[1][0]).toBe(
+      'https://api.example.com/inventory?lastEvaluatedKey=a%2520b',
+    );
+    expect(result.lastEvaluatedKey).toBeUndefined();
+  });
   it('sends GET /inventory with auth header and returns items', async () => {
     const items = [{ itemId: 'item-1', name: 'Milk' }];
     mockFetch().mockResolvedValue({
