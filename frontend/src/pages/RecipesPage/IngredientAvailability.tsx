@@ -1,7 +1,7 @@
 import { message as translateMessage, t, useLanguage } from '../../i18n/i18n';
 import React from 'react';
 import type { IngredientStatus, RecipeIngredient } from '../../api/recipes/recipes';
-import { formatQuantity } from '../../utils/quantity';
+import { measurementParts, formatMeasurement } from '../../types/units';
 import { getUnitLabel } from '../../types/units';
 
 interface IngredientAvailabilityProps {
@@ -52,17 +52,11 @@ const IngredientAvailability: React.FC<IngredientAvailabilityProps> = ({
           const quantityLabel =
             ingredient.quantity === null
               ? getUnitLabel(ingredient.unit, 1)
-              : `${formatQuantity(ingredient.quantity)} ${getUnitLabel(
-                  ingredient.unit,
-                  ingredient.quantity,
-                )}`;
+              : formatMeasurement(ingredient.quantity, ingredient.unit);
 
           let statusLabel: string = status?.status ?? 'missing';
           if (status?.status === 'partial' && status.required !== null) {
-            statusLabel = `have ${status.available} / need ${status.required} ${getUnitLabel(
-              status.unit,
-              status.required,
-            )}`;
+            statusLabel = `have ${measurementParts(status.available, status.unit).amount} / need ${measurementParts(status.required, status.unit).amount} ${measurementParts(status.required, status.unit).label}`;
           }
 
           return (

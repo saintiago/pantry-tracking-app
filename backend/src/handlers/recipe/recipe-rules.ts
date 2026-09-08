@@ -1,3 +1,4 @@
+import { convertStockQuantity } from '@pantry/domain';
 import type { RecipeIngredient, IngredientStatus } from '@pantry/domain';
 export type { RecipeIngredient, IngredientStatus } from '@pantry/domain';
 export { computeTotalTime, scaleIngredients } from '@pantry/domain';
@@ -133,7 +134,14 @@ export function computeAvailability(
   const ingredientAvailability = ingredients.map((ing) => {
     const totalAvailable = inventoryItems
       .filter((item) => item.name.toLowerCase() === ing.name.toLowerCase())
-      .reduce((sum, item) => sum + item.quantity, 0);
+      .reduce(
+        (sum, item) =>
+          sum +
+          (typeof item.unit === 'string'
+            ? (convertStockQuantity(item.quantity, item.unit, ing.unit) ?? 0)
+            : item.quantity),
+        0,
+      );
 
     const status: 'available' | 'partial' | 'missing' =
       ing.quantity === null

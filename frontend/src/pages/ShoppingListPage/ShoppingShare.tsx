@@ -1,3 +1,4 @@
+import { displayQuantity } from '../../preferences/measurements';
 import React from 'react';
 import ShareButton from '../../components/ShareButton/ShareButton';
 import { t, useLanguage } from '../../i18n/i18n';
@@ -27,7 +28,7 @@ export default function ShoppingShare({
         group.title ? t(group.title) : '',
         ...group.lines.map(
           (line) =>
-            `${lineChecked(line, state) ? '☑' : '☐'} ${line.name} — ${line.unknown && !line.quantity ? t('Quantity to check') : amount(line.quantity) + ' ' + unitLabel(line.unit, line.quantity)}`,
+            `${lineChecked(line, state) ? '☑' : '☐'} ${line.name} — ${line.unknown && !line.quantity ? t('Quantity to check') : amount(displayQuantity(line.quantity, line.unit)) + ' ' + unitLabel(line.unit, line.quantity)}`,
         ),
       ]
         .filter(Boolean)

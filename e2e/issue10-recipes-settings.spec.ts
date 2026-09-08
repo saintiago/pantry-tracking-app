@@ -1,3 +1,4 @@
+import { openLanguage, closeSettings } from './helpers/settings';
 import { test, expect, type Page } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
@@ -288,13 +289,13 @@ for (const [language, settings, recipes, filter, image] of [
   test(`${language} Settings and expiration controls fit a 320px screen`, async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 844 });
     await setup(page);
-    await page.locator('header button[aria-controls="language-options"]').click();
+    await openLanguage(page);
     await page.getByRole('button', { name: new RegExp(language) }).click();
     await expect(page.getByRole('button', { name: new RegExp(language) })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
-    await page.locator('#language-options').press('Escape');
+    await closeSettings(page);
     await page.getByRole('button', { name: settings, exact: true }).click();
     await expect(page.getByRole('heading', { name: settings, exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(

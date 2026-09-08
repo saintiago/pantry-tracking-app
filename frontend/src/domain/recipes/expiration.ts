@@ -1,15 +1,11 @@
 import type { InventoryItem } from '../inventory/types';
 import type { Recipe } from './types';
-import { resolveUnit } from '@pantry/domain';
+import { canonicalStockUnit, STOCK_MEASURES } from '@pantry/domain';
 
 const normalized = (name: string) => name.trim().toLocaleLowerCase();
 const dimension = (unit: string) => {
-  const resolved = resolveUnit(unit);
-  return ['g', 'kg'].includes(resolved)
-    ? 'mass'
-    : ['ml', 'l'].includes(resolved)
-      ? 'volume'
-      : resolved;
+  const resolved = canonicalStockUnit(unit);
+  return STOCK_MEASURES[resolved]?.dimension ?? resolved;
 };
 
 /** Only positive, unexpired stock can prioritize a recipe. Linked lots use their group. */

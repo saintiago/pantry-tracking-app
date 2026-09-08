@@ -1,3 +1,5 @@
+import MeasurementInput, { changeMeasureUnit } from '../../preferences/MeasurementInput';
+import { displayUnit } from '../../preferences/measurements';
 import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useEffect, useState } from 'react';
 import { localizedUnits, getUnitLabel } from '../../types/units';
@@ -97,18 +99,23 @@ export default function ShoppingEditPage({
     );
   }
   function numberPref(label: string, key: 'reserve' | 'packageSize' | 'packagePrice') {
+    const unit =
+      key === 'reserve'
+        ? (request.line?.unit ?? '')
+        : key === 'packageSize'
+          ? (pref.packageUnit ?? request.line?.unit ?? 'piece')
+          : '';
     return (
       <label style={field}>
         {translateMessage(label)}
-        <input
+        <MeasurementInput
+          unit={unit}
           style={input}
           type="number"
           min={key === 'packageSize' ? '0.000001' : '0'}
           step="any"
           value={pref[key] ?? ''}
-          onChange={(e) =>
-            setPref({ ...pref, [key]: e.target.value === '' ? undefined : Number(e.target.value) })
-          }
+          onValue={(value) => setPref({ ...pref, [key]: value === '' ? undefined : Number(value) })}
         />
       </label>
     );
@@ -187,24 +194,33 @@ export default function ShoppingEditPage({
             </label>
             <label style={field}>
               {t('Quantity')}{' '}
-              <input
+              <MeasurementInput
+                unit={manual.unit}
                 style={input}
                 type="number"
                 min="0.000001"
                 step="any"
                 required
                 value={manual.quantity}
-                onChange={(e) => setManual({ ...manual, quantity: Number(e.target.value) })}
+                onValue={(quantity) => setManual({ ...manual, quantity: Number(quantity) })}
               />
             </label>
             <label style={field}>
               {t('Unit')}{' '}
               <select
                 style={input}
-                value={manual.unit}
-                onChange={(e) => setManual({ ...manual, unit: e.target.value })}
+                value={displayUnit(manual.unit)}
+                onChange={(e) =>
+                  setManual({
+                    ...manual,
+                    unit: e.target.value,
+                    quantity: Number(
+                      changeMeasureUnit(String(manual.quantity), manual.unit, e.target.value),
+                    ),
+                  })
+                }
               >
-                {localizedUnits().map((u) => (
+                {localizedUnits(displayUnit(manual.unit)).map((u) => (
                   <option key={u} value={u}>
                     {getUnitLabel(u, 1)}
                   </option>
@@ -291,20 +307,40 @@ export default function ShoppingEditPage({
               </select>
             </label>
             {request.line?.id.startsWith('group:') &&
-              numberPref(`Desired stock after meals (${request.line.unit})`, 'reserve')}
+              numberPref(
+                `Desired stock after meals (${displayUnit(request.line.unit)})`,
+                'reserve',
+              )}
             {numberPref('Package size', 'packageSize')}
             <label style={field}>
               {t('Package unit')}{' '}
               <select
                 style={input}
-                value={pref.packageUnit ?? request.line?.unit}
-                onChange={(e) => setPref({ ...pref, packageUnit: e.target.value })}
+                value={displayUnit(pref.packageUnit ?? request.line?.unit ?? 'piece')}
+                onChange={(e) =>
+                  setPref({
+                    ...pref,
+                    packageUnit: e.target.value,
+                    packageSize:
+                      pref.packageSize === undefined
+                        ? undefined
+                        : Number(
+                            changeMeasureUnit(
+                              String(pref.packageSize),
+                              pref.packageUnit ?? request.line?.unit ?? 'piece',
+                              e.target.value,
+                            ),
+                          ),
+                  })
+                }
               >
-                {localizedUnits().map((u) => (
-                  <option key={u} value={u}>
-                    {getUnitLabel(u, 1)}
-                  </option>
-                ))}
+                {localizedUnits(displayUnit(pref.packageUnit ?? request.line?.unit ?? 'piece')).map(
+                  (u) => (
+                    <option key={u} value={u}>
+                      {getUnitLabel(u, 1)}
+                    </option>
+                  ),
+                )}
               </select>
             </label>
             {numberPref('Estimated price per package (€)', 'packagePrice')}

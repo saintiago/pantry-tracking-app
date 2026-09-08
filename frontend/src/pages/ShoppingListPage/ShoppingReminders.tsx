@@ -1,3 +1,4 @@
+import { displayQuantity } from '../../preferences/measurements';
 import React from 'react';
 import { t, date, getLanguage, useLanguage } from '../../i18n/i18n';
 import { getShoppingUnitLabel as getUnitLabel } from '../../types/units';
@@ -56,7 +57,8 @@ export default function ShoppingReminders({
         .reverse()
         .map((h, i) => (
           <p key={`${h.date}-${i}`} style={muted}>
-            {h.name} · {amount(h.quantity)} {getUnitLabel(h.unit, h.quantity)} ·{' '}
+            {h.name} · {amount(displayQuantity(h.quantity, h.unit))}{' '}
+            {getUnitLabel(h.unit, h.quantity)} ·{' '}
             {new Date(h.date).toLocaleDateString(getLanguage())}
           </p>
         ))}

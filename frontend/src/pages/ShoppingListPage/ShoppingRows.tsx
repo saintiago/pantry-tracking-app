@@ -1,3 +1,5 @@
+import Emoji from '../../preferences/Emoji';
+import { displayQuantity } from '../../preferences/measurements';
 import { arrangeLines, shoppingIcon, type Arrangement } from './arrangement';
 import { getShoppingUnitLabel as getUnitLabel } from '../../types/units';
 import { number, getLanguage } from '../../i18n/i18n';
@@ -91,7 +93,9 @@ export default function ShoppingRows(props: Props) {
               onChange={() => props.onCheck(line)}
               style={{ width: 22, height: 22, flexShrink: 0 }}
             />
-            <span aria-hidden="true">{shoppingIcon(line)}</span>
+            <span aria-hidden="true">
+              <Emoji>{shoppingIcon(line)}</Emoji>
+            </span>
             <strong style={{ overflowWrap: 'anywhere' }}>{line.name}</strong>
           </label>
           <strong
@@ -102,7 +106,11 @@ export default function ShoppingRows(props: Props) {
             }}
           >
             {line.quantity > 0
-              ? t('Buy {0} {1}', amount(line.quantity), getUnitLabel(line.unit, line.quantity))
+              ? t(
+                  'Buy {0} {1}',
+                  amount(displayQuantity(line.quantity, line.unit)),
+                  getUnitLabel(line.unit, line.quantity),
+                )
               : line.unknown
                 ? t('Quantity to check')
                 : mode === 'low'
@@ -132,8 +140,9 @@ export default function ShoppingRows(props: Props) {
               {t('Needed')}{' '}
               {line.meal.unknown && line.meal.needed === 0
                 ? t('quantity to check')
-                : `${amount(line.meal.needed)} ${getUnitLabel(line.unit, line.quantity)}`}{' '}
-              {t('· In inventory for these meals')} {amount(line.meal.available)}{' '}
+                : `${amount(displayQuantity(line.meal.needed, line.unit))} ${getUnitLabel(line.unit, line.quantity)}`}{' '}
+              {t('· In inventory for these meals')}{' '}
+              {amount(displayQuantity(line.meal.available, line.unit))}{' '}
               {getUnitLabel(line.unit, line.quantity)}
             </p>
           </>
@@ -179,15 +188,16 @@ export default function ShoppingRows(props: Props) {
               {line.meal
                 ? t(
                     'Also low stock · {0} {1} extra to keep',
-                    amount(line.extra),
+                    amount(displayQuantity(line.extra, line.unit)),
                     getUnitLabel(line.unit, line.quantity),
                   )
                 : t(
                     'Buy {0} {1} to complete',
-                    amount(line.extra),
+                    amount(displayQuantity(line.extra, line.unit)),
                     getUnitLabel(line.unit, line.quantity),
                   )}{' '}
-              {t('the')} {amount(line.reserve)} {getUnitLabel(line.unit, line.quantity)}{' '}
+              {t('the')} {amount(displayQuantity(line.reserve, line.unit))}{' '}
+              {getUnitLabel(line.unit, line.quantity)}{' '}
               {pref.reserve === undefined ? t('threshold') : t('desired stock')}
               {line.meal ? t(' after planned meals.') : '.'}
             </p>
@@ -205,12 +215,12 @@ export default function ShoppingRows(props: Props) {
               {t(
                 pack.count === 1 ? '{0} package × {1} {2}' : '{0} packages × {1} {2}',
                 pack.count,
-                amount(pref.packageSize!),
+                amount(displayQuantity(pref.packageSize!, pref.packageUnit ?? line.unit)),
                 getUnitLabel(pref.packageUnit ?? line.unit, pref.packageSize ?? 1),
               )}
               {' · '}
-              {amount(pack.remainder)} {getUnitLabel(line.unit, line.quantity)}{' '}
-              {t('beyond this list')}{' '}
+              {amount(displayQuantity(pack.remainder, line.unit))}{' '}
+              {getUnitLabel(line.unit, line.quantity)} {t('beyond this list')}{' '}
               {pack.price === undefined
                 ? ''
                 : t(' · estimated €{0}', number(pack.price, { minimumFractionDigits: 2 }))}

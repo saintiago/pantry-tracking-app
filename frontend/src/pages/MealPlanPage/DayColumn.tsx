@@ -1,3 +1,4 @@
+import Emoji from '../../preferences/Emoji';
 import { t, useLanguage } from '../../i18n/i18n';
 import React from 'react';
 import RecipeCard from './RecipeCard';
@@ -88,11 +89,13 @@ const DayColumn: React.FC<DayColumnProps> = ({
               }}
               style={styles.mealButton}
             >
-              {{ breakfast: '☀️', lunch: '🍴', dinner: '🌙' }[mealType]} {t(mealType)}
+              <Emoji>{{ breakfast: '☀️', lunch: '🍴', dinner: '🌙' }[mealType]}</Emoji>{' '}
+              {t(mealType)}
             </button>
           ) : (
             <div style={styles.mealLabel}>
-              {{ breakfast: '☀️', lunch: '🍴', dinner: '🌙' }[mealType]} {t(mealType)}
+              <Emoji>{{ breakfast: '☀️', lunch: '🍴', dinner: '🌙' }[mealType]}</Emoji>{' '}
+              {t(mealType)}
             </div>
           )}
           <div style={styles.cards}>

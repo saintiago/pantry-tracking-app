@@ -1,3 +1,4 @@
+import Emoji from '../../preferences/Emoji';
 import DialogShell from '../../components/DialogShell/DialogShell';
 import React, { useEffect, useState } from 'react';
 import type { Cookbook } from '@pantry/domain';
@@ -85,7 +86,10 @@ export default function Cookbooks({
   return (
     <section aria-label={t('Cookbooks')} style={{ marginBottom: 16 }}>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <h3>📚 {t('Cookbooks')}</h3>
+        <h3>
+          <Emoji>📚 </Emoji>
+          {t('Cookbooks')}
+        </h3>
         <button style={button} aria-pressed={selected === 'all'} onClick={() => select('all')}>
           {t('All recipes')}
         </button>
@@ -147,7 +151,9 @@ export default function Cookbooks({
                 {book.imageId ? (
                   <RecipePhoto imageId={book.imageId} alt={book.name} />
                 ) : (
-                  <span aria-hidden="true">📖 </span>
+                  <span aria-hidden="true">
+                    <Emoji>📖 </Emoji>
+                  </span>
                 )}
                 <strong>{book.name}</strong>
               </button>

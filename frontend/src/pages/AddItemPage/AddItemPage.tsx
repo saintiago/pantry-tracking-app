@@ -1,3 +1,4 @@
+import AddItemMeasurements from './AddItemMeasurements';
 import { INITIAL_FORM, AUTOFILL_STYLES } from './form';
 import type { AddItemData, FormErrors, DropdownState } from './form';
 export type { AddItemData } from './form';
@@ -7,13 +8,7 @@ import { styles } from './styles';
 import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { StorageLocation } from '../../api/locations/locations';
-import {
-  localizedUnits,
-  VALID_UNITS,
-  LEGACY_UNIT_MAP,
-  getUnitLabel,
-  resolveUnit,
-} from '../../types/units';
+import { VALID_UNITS, LEGACY_UNIT_MAP, resolveUnit } from '../../types/units';
 import type { UnitType } from '../../types/units';
 import { searchInventory, lookupBarcode } from '../../api/inventory/inventory';
 import type { InventoryItem } from '../../api/inventory/inventory';
@@ -308,9 +303,8 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
     [lastLookupBarcode, lookupLoading],
   );
 
-  const handleChange = useCallback(
-    (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-      const value = e.target.value;
+  const changeField = useCallback(
+    (field: string, value: string) => {
       setForm((prev) => ({ ...prev, [field]: value }));
       setErrors((prev) => ({ ...prev, [field]: undefined }));
       setSubmitError(null);
@@ -365,6 +359,9 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
     },
     [triggerSearch, triggerExternalLookup],
   );
+  const handleChange =
+    (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      changeField(field, e.target.value);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setPictureFile(e.target.files?.[0] ?? null);
@@ -650,55 +647,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
           />
         </div>
 
-        {/* Quantity */}
-        <div style={styles.fieldGroup}>
-          <label htmlFor="add-item-quantity" style={styles.label}>
-            {t('Quantity')} <span aria-hidden="true">*</span>
-          </label>
-          <input
-            id="add-item-quantity"
-            type="text"
-            value={form.quantity}
-            onChange={handleChange('quantity')}
-            style={styles.input}
-            aria-required="true"
-            aria-invalid={!!errors.quantity}
-            placeholder="e.g. 2, 1/2, 1 1/4"
-          />
-          {errors.quantity && (
-            <span style={styles.fieldError} role="alert">
-              {translateMessage(errors.quantity)}
-            </span>
-          )}
-        </div>
-
-        {/* Unit */}
-        <div style={styles.fieldGroup}>
-          <label htmlFor="add-item-unit" style={styles.label}>
-            {t('Unit')} <span aria-hidden="true">*</span>
-          </label>
-          <select
-            id="add-item-unit"
-            value={form.unit}
-            onChange={handleChange('unit')}
-            style={styles.select}
-            aria-required="true"
-            aria-invalid={!!errors.unit}
-          >
-            <option value="">{t('Select a unit')}</option>
-            {localizedUnits().map((u) => (
-              <option key={u} value={u}>
-                {getUnitLabel(u, 1)}
-              </option>
-            ))}
-          </select>
-          {errors.unit && (
-            <span style={styles.fieldError} role="alert">
-              {translateMessage(errors.unit)}
-            </span>
-          )}
-        </div>
-
+        <AddItemMeasurements form={form} errors={errors} onField={changeField} />
         {/* Barcode (optional) */}
         <div style={styles.fieldGroup}>
           <label htmlFor="add-item-barcode" style={styles.label}>

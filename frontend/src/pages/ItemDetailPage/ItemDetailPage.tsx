@@ -1,3 +1,6 @@
+import Emoji from '../../preferences/Emoji';
+import MeasurementInput, { changeMeasureUnit } from '../../preferences/MeasurementInput';
+import { displayUnit } from '../../preferences/measurements';
 import { styles } from './styles';
 import ExpirationField from '../../components/ExpirationField/ExpirationField';
 import ItemIconField from '../../components/ItemIconField/ItemIconField';
@@ -7,8 +10,8 @@ import React, { useCallback, useState } from 'react';
 import type { InventoryItem } from '../../domain/inventory/types';
 import type { StorageLocation } from '../../api/locations/locations';
 import { updateInventoryItem } from '../../api/inventory/inventory';
-import { localizedUnits, getUnitLabel, resolveUnit } from '../../types/units';
-import { parseFractionalQuantity, formatQuantity } from '../../utils/quantity';
+import { localizedUnits, formatMeasurement, getUnitLabel, resolveUnit } from '../../types/units';
+import { parseFractionalQuantity } from '../../utils/quantity';
 
 export interface ItemDetailPageProps {
   item: InventoryItem;
@@ -67,7 +70,7 @@ function initForm(item: InventoryItem): EditFormState {
     category: item.category,
     locationId: item.location,
     locationDetails: item.locationDetails ?? '',
-    quantity: formatQuantity(item.quantity),
+    quantity: String(item.quantity),
     unit: resolveUnit(item.unit),
     expirationDate: item.expirationDate,
     icon: item.icon ?? '',
@@ -168,7 +171,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
           {t('← Back')}{' '}
         </button>
         <h2 style={styles.pageTitle}>
-          {item.icon} {item.name}
+          <Emoji>{item.icon}</Emoji> {item.name}
         </h2>
       </div>
 
@@ -181,9 +184,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
           marginBottom: 12,
         }}
       >
-        <span>
-          {formatQuantity(item.quantity)} {getUnitLabel(item.unit, item.quantity)}
-        </span>
+        <span>{formatMeasurement(item.quantity, item.unit)}</span>
         <LocationTag
           ids={[item.location]}
           names={Object.fromEntries(locations.map((loc) => [loc.locationId, loc.name]))}
@@ -292,11 +293,12 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
           <label htmlFor="edit-quantity" style={styles.label}>
             {t('Quantity')} <span aria-hidden="true">*</span>
           </label>
-          <input
+          <MeasurementInput
+            unit={editForm.unit}
             id="edit-quantity"
             type="text"
             value={editForm.quantity}
-            onChange={handleChange('quantity')}
+            onValue={(quantity) => setEditForm((prev) => ({ ...prev, quantity }))}
             style={styles.input}
             aria-required="true"
             aria-invalid={!!errors.quantity}
@@ -316,14 +318,21 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
           </label>
           <select
             id="edit-unit"
-            value={editForm.unit}
-            onChange={handleChange('unit')}
+            value={displayUnit(editForm.unit)}
+            onChange={(e) => {
+              const unit = e.target.value;
+              setEditForm((prev) => ({
+                ...prev,
+                unit,
+                quantity: changeMeasureUnit(prev.quantity, prev.unit, unit),
+              }));
+            }}
             style={styles.select}
             aria-required="true"
             aria-invalid={!!errors.unit}
           >
             <option value="">{t('Select a unit')}</option>
-            {localizedUnits().map((u) => (
+            {localizedUnits(displayUnit(editForm.unit)).map((u) => (
               <option key={u} value={u}>
                 {getUnitLabel(u, 1)}
               </option>

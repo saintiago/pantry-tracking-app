@@ -1,4 +1,6 @@
-import { getUnitLabel } from '../../types/units';
+import MeasurementInput from '../../preferences/MeasurementInput';
+import { displayUnit } from '../../preferences/measurements';
+import { formatMeasurement, getUnitLabel } from '../../types/units';
 import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useEffect, useState } from 'react';
 import { fetchLocations } from '../../api/locations/locations';
@@ -6,7 +8,7 @@ import type { StorageLocation } from '../../api/locations/locations';
 import { addInventoryItem } from '../../api/inventory/inventory';
 import AddItemPage from '../AddItemPage/AddItemPage';
 import type { AddItemData } from '../AddItemPage/AddItemPage';
-import { baseUnit, readState, amount } from '../ShoppingListPage/shopping';
+import { baseUnit, readState } from '../ShoppingListPage/shopping';
 import { completePurchase, readCompanion } from '../ShoppingListPage/companion';
 import type { ShoppingLine } from '../ShoppingListPage/companion';
 
@@ -159,22 +161,26 @@ export default function PurchasePage({
   return (
     <>
       <p style={{ maxWidth: 650, margin: '16px auto' }}>
-        {t('Shopping requirement:')} {amount(purchase.line?.quantity ?? purchase.quantity)}{' '}
-        {getUnitLabel(purchase.line?.unit ?? purchase.unit, 1)}
+        {t('Shopping requirement:')}{' '}
+        {formatMeasurement(
+          purchase.line?.quantity ?? purchase.quantity,
+          purchase.line?.unit ?? purchase.unit,
+        )}
         {t('. Edit the actual product, quantity, unit and storage details below.')}{' '}
       </p>
       <details style={{ maxWidth: 650, margin: '16px auto' }}>
         <summary>{t('Changing between packages and ingredient units?')}</summary>
         <label>
           {t('Shopping quantity covered (')}
-          {getUnitLabel(purchase.line?.unit ?? purchase.unit, 1)})
-          <input
+          {getUnitLabel(displayUnit(purchase.line?.unit ?? purchase.unit), 1)})
+          <MeasurementInput
+            unit={purchase.line?.unit ?? purchase.unit}
             aria-label={t('Shopping quantity covered')}
             type="number"
             min="0"
             step="any"
             value={covered}
-            onChange={(e) => setCovered(e.target.value)}
+            onValue={setCovered}
           />
         </label>
         <p>

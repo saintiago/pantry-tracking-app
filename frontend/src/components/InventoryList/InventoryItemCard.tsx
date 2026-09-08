@@ -1,9 +1,9 @@
+import Emoji from '../../preferences/Emoji';
 import { departmentColor, departmentFor } from './departments';
 import React from 'react';
 import { date, t, useLanguage } from '../../i18n/i18n';
 import { styles } from './styles';
-import { getUnitLabel } from '../../types/units';
-import { formatQuantity } from '../../utils/quantity';
+import { formatMeasurement } from '../../types/units';
 import { useHoverState, useInteractionFeedback } from '../../hooks/useInventoryAnimations';
 import type { InventoryItem } from '../../domain/inventory/types';
 import Tooltip from '../Tooltip/Tooltip';
@@ -82,7 +82,7 @@ export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
           <img src={item.pictureUrl} alt={item.name} style={styles.thumbnailImg} />
         ) : (
           <span style={styles.thumbnailPlaceholder} aria-hidden="true">
-            {item.icon || '📦'}
+            <Emoji>{item.icon || '📦'}</Emoji>
           </span>
         )}
       </div>
@@ -108,9 +108,7 @@ export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
 
         <div style={{ ...styles.cardDetails, gridColumn: '1 / -1', gap: '0.5rem' }}>
           <span style={styles.locationBadge}>{locationName}</span>
-          <span>
-            {formatQuantity(item.quantity)} {getUnitLabel(item.unit, item.quantity)}
-          </span>
+          <span>{formatMeasurement(item.quantity, item.unit)}</span>
           <span style={styles.expiration}>
             {t('Exp:')}{' '}
             {item.expirationDate === null ? t('Not applicable') : date(item.expirationDate)}

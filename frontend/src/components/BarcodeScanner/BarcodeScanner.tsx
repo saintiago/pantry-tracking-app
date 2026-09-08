@@ -1,3 +1,5 @@
+import { styles } from './styles';
+import Emoji from '../../preferences/Emoji';
 import { t, useLanguage } from '../../i18n/i18n';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Quagga from '@ericblade/quagga2';
@@ -267,7 +269,9 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarc
         {/* Permission denied */}
         {error === 'permission-denied' && (
           <div style={styles.errorContent} data-testid="permission-denied">
-            <div style={styles.errorIcon}>📷</div>
+            <div style={styles.errorIcon}>
+              <Emoji>📷</Emoji>
+            </div>
             <p style={styles.errorText}>{t('Camera permission was denied.')}</p>
             <p style={styles.instructionText}>
               {t(
@@ -283,7 +287,9 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarc
         {/* Camera unavailable — manual fallback */}
         {(error === 'camera-unavailable' || error === 'permission-denied') && (
           <div style={styles.errorContent} data-testid="camera-unavailable">
-            <div style={styles.errorIcon}>📷</div>
+            <div style={styles.errorIcon}>
+              <Emoji>📷</Emoji>
+            </div>
             {error === 'camera-unavailable' && (
               <p style={styles.errorText}>{t('Camera is not available on this device.')}</p>
             )}
@@ -314,7 +320,9 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarc
         {/* Timeout prompt */}
         {timedOut && !error && (
           <div style={styles.errorContent} data-testid="timeout-prompt">
-            <div style={styles.errorIcon}>⏱️</div>
+            <div style={styles.errorIcon}>
+              <Emoji>⏱️</Emoji>
+            </div>
             <p style={styles.errorText}>{t('No barcode detected within 30 seconds.')}</p>
             <div style={styles.buttonGroup}>
               <button
@@ -364,158 +372,3 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarc
 };
 
 export default BarcodeScanner;
-
-const styles: Record<string, React.CSSProperties> = {
-  overlay: {
-    position: 'fixed',
-    inset: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 100,
-    padding: '1rem',
-  },
-  modal: {
-    backgroundColor: 'var(--color-surface)',
-    borderRadius: 12,
-    width: '100%',
-    maxWidth: 480,
-    maxHeight: '90vh',
-    overflowY: 'auto',
-    padding: '1.25rem',
-    boxSizing: 'border-box',
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: '1rem',
-  },
-  title: {
-    fontSize: '1.25rem',
-    fontWeight: 700,
-    margin: 0,
-  },
-  closeButton: {
-    minWidth: 44,
-    minHeight: 44,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '1.125rem',
-    background: 'none',
-    border: '1px solid var(--color-border)',
-    borderRadius: 8,
-    cursor: 'pointer',
-    color: 'var(--color-text)',
-  },
-  videoWrapper: {
-    position: 'relative',
-    width: '100%',
-    borderRadius: 8,
-    overflow: 'hidden',
-    backgroundColor: 'var(--color-text)',
-    aspectRatio: '4 / 3',
-  },
-  videoContainer: {
-    width: '100%',
-    height: '100%',
-  },
-  scanRegion: {
-    position: 'absolute',
-    top: '25%',
-    left: '10%',
-    width: '80%',
-    height: '50%',
-    border: '2px solid var(--color-action)',
-    borderRadius: 8,
-    boxSizing: 'border-box',
-    pointerEvents: 'none',
-  },
-  timerContainer: {
-    display: 'flex',
-    justifyContent: 'center',
-    marginTop: '0.75rem',
-  },
-  timerText: {
-    fontSize: '1rem',
-    fontWeight: 600,
-    color: 'var(--color-text)',
-  },
-  statusMessage: {
-    textAlign: 'center',
-    padding: '2rem 1rem',
-    fontSize: '1rem',
-    color: 'var(--color-secondary)',
-  },
-  errorContent: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '0.75rem',
-    padding: '1.5rem 0.5rem',
-    textAlign: 'center',
-  },
-  errorIcon: {
-    fontSize: '2.5rem',
-  },
-  errorText: {
-    fontSize: '1rem',
-    fontWeight: 600,
-    color: 'var(--color-text)',
-    margin: 0,
-  },
-  instructionText: {
-    fontSize: '0.875rem',
-    color: 'var(--color-secondary)',
-    margin: 0,
-    lineHeight: 1.5,
-  },
-  manualInputGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.5rem',
-    width: '100%',
-    marginTop: '0.5rem',
-  },
-  input: {
-    minHeight: 44,
-    padding: '0.5rem 0.75rem',
-    fontSize: '1rem',
-    border: '1px solid var(--color-border)',
-    borderRadius: 6,
-    outline: 'none',
-    width: '100%',
-    boxSizing: 'border-box',
-  },
-  buttonGroup: {
-    display: 'flex',
-    gap: '0.75rem',
-    marginTop: '0.5rem',
-  },
-  primaryButton: {
-    minHeight: 44,
-    minWidth: 44,
-    padding: '0.625rem 1.25rem',
-    fontSize: '1rem',
-    fontWeight: 600,
-    color: 'var(--color-text)',
-    backgroundColor: 'var(--color-mint)',
-    border: 'none',
-    borderRadius: 8,
-    cursor: 'pointer',
-  },
-  secondaryButton: {
-    minHeight: 44,
-    minWidth: 44,
-    padding: '0.625rem 1.25rem',
-    fontSize: '1rem',
-    fontWeight: 600,
-    color: 'var(--color-text)',
-    backgroundColor: 'var(--color-canvas)',
-    border: '1px solid var(--color-border)',
-    borderRadius: 8,
-    cursor: 'pointer',
-  },
-};

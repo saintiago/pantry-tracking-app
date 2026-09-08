@@ -1,3 +1,4 @@
+import { openLanguage, closeSettings } from './helpers/settings';
 import { test, expect } from '@playwright/test';
 import { setupPlanner, slot, monday, meal } from './helpers/planner';
 test('batch yield and linked leftovers persist, shopping counts once, and source removal resolves dependents', async ({
@@ -127,13 +128,13 @@ for (const [language, plannerLabel, copyLabel, drawer] of [
   test(`${language} expanded planner controls remain usable at 320px`, async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 850 });
     await setupPlanner(page, []);
-    await page.locator('header button[aria-controls="language-options"]').click();
+    await openLanguage(page);
     await page.getByRole('button', { name: new RegExp(language) }).click();
     await expect(page.getByRole('button', { name: new RegExp(language) })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
-    await page.locator('#language-options').press('Escape');
+    await closeSettings(page);
     await expect(page.getByRole('heading', { name: plannerLabel, exact: true })).toBeVisible();
     await page.getByRole('button', { name: drawer, exact: true }).click();
     await expect(page.getByText(copyLabel, { exact: true })).toBeVisible();

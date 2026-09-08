@@ -8,8 +8,8 @@ import {
 } from '../units';
 
 describe('VALID_UNITS', () => {
-  it('contains exactly 17 entries', () => {
-    expect(VALID_UNITS).toHaveLength(17);
+  it('contains 23 supported entries including imperial units', () => {
+    expect(VALID_UNITS).toHaveLength(23);
   });
 
   it('contains all expected unit keys', () => {

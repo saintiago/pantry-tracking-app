@@ -1,3 +1,4 @@
+import { openLanguage, closeSettings } from './helpers/settings';
 import { test, expect, type Page, type BrowserContext } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
@@ -62,13 +63,13 @@ async function login(page: Page) {
   await expect(page.locator('header')).toBeVisible();
 }
 async function choose(page: Page, language: string) {
-  await page.locator('header button[aria-controls="language-options"]').click();
+  await openLanguage(page);
   await page.getByRole('button', { name: new RegExp(language) }).click();
   await expect(page.getByRole('button', { name: new RegExp(language) })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
-  await page.locator('#language-options').press('Escape');
+  await closeSettings(page);
 }
 
 test('new browser inherits account, while each device keeps its own language', async ({
@@ -89,10 +90,10 @@ test('new browser inherits account, while each device keeps its own language', a
       .poll(() => a.evaluate((key) => JSON.parse(localStorage.getItem(key)!).language, deviceKey))
       .toBe('es');
     await choose(a, 'Italiano');
-    await a.locator('header button[aria-controls="language-options"]').click();
+    await openLanguage(a);
     await a.getByRole('button', { name: "Usa questa lingua per l'account" }).click();
     await expect.poll(() => account.language).toBe('it');
-    await a.locator('#language-options').press('Escape');
+    await closeSettings(a);
     await login(b);
     await expect(b.locator('html')).toHaveAttribute('lang', 'it');
     await choose(b, 'Español');
@@ -211,7 +212,7 @@ test('errors retranslate after switching and account-save failure can be retried
   await setup(context, account);
   await login(page);
   await choose(page, 'Español');
-  await page.locator('header button[aria-controls="language-options"]').click();
+  await openLanguage(page);
   await page.getByRole('button', { name: 'Usar este idioma para la cuenta' }).click();
   await expect(page.getByRole('alert')).toContainText('No se pudo guardar el idioma');
   await page.getByRole('button', { name: /Italiano/ }).click();
@@ -244,7 +245,7 @@ test('shopping, manual department options and calendar use the selected language
   await page.getByRole('button', { name: /Piano pasti/ }).click();
   await expect(page.getByRole('heading', { name: 'Pianificazione pasti' })).toBeVisible();
   await expect(page.locator('[data-meal-type="breakfast"]').first()).toContainText('☀️ colazione');
-  await page.locator('header button[aria-controls="language-options"]').click();
+  await openLanguage(page);
   await expect(page.locator('#language-options')).toBeInViewport();
   const menu = await page.locator('#language-options').boundingBox();
   expect(menu!.x).toBeGreaterThanOrEqual(0);
@@ -327,6 +328,6 @@ test('blocked local storage keeps the app usable and explains the persistence fa
   await login(page);
   await choose(page, 'Español');
   await expect(page.locator('html')).toHaveAttribute('lang', 'es');
-  await page.locator('header button[aria-controls="language-options"]').click();
+  await openLanguage(page);
   await expect(page.getByRole('alert')).toContainText('no se pudo guardar en el dispositivo');
 });

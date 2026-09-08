@@ -1,3 +1,4 @@
+import Emoji from '../../preferences/Emoji';
 import React, { useState } from 'react';
 import type { FavoriteWeek, PlannerSnapshot } from '@pantry/domain';
 import type { PlannableRecipe } from '../../api/meal-plans/meal-plans';
@@ -68,7 +69,10 @@ export default function PlannerCopies({
   return (
     <details className="planner-copies">
       <summary>
-        <span aria-hidden="true">💗</span> <span>{t('Favorite Weeks/Days')}</span>
+        <span aria-hidden="true">
+          <Emoji>💗</Emoji>
+        </span>{' '}
+        <span>{t('Favorite Weeks/Days')}</span>
       </summary>
       <p>
         {t(
@@ -90,8 +94,10 @@ export default function PlannerCopies({
                 setSaved('');
               }}
             >
-              <span aria-hidden="true">{f.kind === 'day' ? '📅' : '🗓️'}</span> {f.name} ·{' '}
-              {t(f.kind === 'day' ? 'Day' : 'Week')}
+              <span aria-hidden="true">
+                <Emoji>{f.kind === 'day' ? '📅' : '🗓️'}</Emoji>
+              </span>{' '}
+              {f.name} · {t(f.kind === 'day' ? 'Day' : 'Week')}
             </button>
           </li>
         ))}

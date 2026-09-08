@@ -69,5 +69,5 @@ const colors: Record<Department, string> = {
 };
 
 export function departmentColor(department: string): string {
-  return colors[department as Department] ?? colors.Other;
+  return `var(--department-tone, ${colors[department as Department] ?? colors.Other})`;
 }

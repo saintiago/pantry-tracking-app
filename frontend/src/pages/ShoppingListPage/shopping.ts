@@ -1,3 +1,4 @@
+import { STOCK_MEASURES } from '@pantry/domain';
 import type { InventoryGroup } from '../../api/inventory/inventory';
 import type { ShoppingData } from '../../api/shopping-list/types';
 export type { ShoppingData } from '../../api/shopping-list/types';
@@ -8,9 +9,10 @@ import { number } from '../../i18n/i18n';
 export const normalize = (value: string): string => value.trim().toLowerCase().replace(/\s+/g, ' ');
 export function baseUnit(unit: string): { unit: string; factor: number } {
   const key = LEGACY_UNIT_MAP[unit] ?? unit;
-  if (key === 'kg') return { unit: 'g', factor: 1000 };
-  if (key === 'l') return { unit: 'ml', factor: 1000 };
-  return { unit: key, factor: 1 };
+  const measure = STOCK_MEASURES[key];
+  return measure
+    ? { unit: measure.dimension === 'mass' ? 'g' : 'ml', factor: measure.scale }
+    : { unit: key, factor: 1 };
 }
 export function localToday(now = new Date()): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;

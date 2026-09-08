@@ -22,7 +22,7 @@ Mobile-first smartphone experience optimized for quick add/remove operations. In
 
 ## Languages
 
-English (default), Spanish, and Italian are available from the top-panel flag selector.
+English (default), Spanish, and Italian are available in Settings and on the login screen.
 Device preference takes precedence over account locale; new devices copy account locale,
 or detect a supported browser language and fall back to English. Device choices are scoped
 per account. Saving an account default is explicit and leaves other devices unchanged.
@@ -151,3 +151,17 @@ period-scoped removal with restoration. Both Shopping and Meal Plan offer native
 or a plain-text copy fallback. View and a servings slider share the planner toolbar;
 Undo stays visible but disabled when empty. Prepared batches and saved favorite days/weeks
 are beneath the recipe sidebar. See [issue #15](features/recipe-management/cookbooks-and-sharing.md).
+
+## Settings and help (issue #16)
+
+Language selection is now in Settings; the login screen keeps its selector. Help sits
+beside Settings in the header and provides searchable instructions in all three languages.
+Both utilities preserve the page underneath, including unsaved form contents.
+
+Measurement preferences offer As recorded, Metric and explicitly US customary Imperial.
+Quantities and units convert together across recipes/cooking, inventory, shopping and
+editors without rewriting saved data when switching. Supported unit choices can be
+added, removed and reordered; saved units remain readable. Mass and volume never mix.
+Appearance offers Pastel, black/white Minimalist without decorative emojis, and System
+mode following device light/dark preferences. Settings are per account on this device.
+See [preferences and help](features/settings/preferences-and-help.md).

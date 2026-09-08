@@ -77,8 +77,8 @@ One JSON catalog per language is fetched on demand through `i18n/catalogs.ts`; o
 metadata belongs in the initial bundle. Do not import catalog contents into production
 TypeScript modules or restore an eager combined translation chunk. Language activation
 and device persistence wait for successful loading and ignore superseded requests.
-Preserve user names, tags, notes, canonical unit keys and IDs. `localizedUnits()` sorts
-display labels; request values and calculations must remain locale-independent.
+Preserve user names, tags, notes, canonical unit keys and IDs. `localizedUnits()` returns the preferred picker order (localized sorting by default),
+retaining an edited unit even if removed. Request values and calculations remain locale-independent.
 
 Recipe photo transport belongs to `api/recipes/images.ts`; shared photo display/upload
 controls are in `components/RecipePhoto/`. The existing Recipe Lambda also serves
@@ -122,3 +122,14 @@ sharing and copy fallback, while each page formats its own visible data. Shoppin
 and restore controls, and `ShoppingReminders` composes the existing reminder display.
 Planner servings and favorites remain separate feature controls; favorite day/week
 transforms preserve the existing transaction and preview boundaries.
+
+Issue #16 adds account/device display preferences under `frontend/src/preferences/`.
+The validated external store is bound to auth by PreferencesProvider; translated views
+subscribe without remounting. Measurements converts display units, MeasurementInput
+preserves source precision during editing, and Emoji suppresses decoration without
+rewriting user strings. CSS owns light/dark/monochrome palettes. The shared domain owns
+US customary conversion factors; frontend formatting and backend availability use them.
+Settings composes DisplaySettings and the existing language/location controls. HelpPage
+owns translated searchable guidance. App preserves its underlying page while either
+utility is open. Barcode styles, inventory filters and add-item measurement fields are
+extracted into feature helpers to keep existing module size boundaries.

@@ -1,3 +1,4 @@
+import Emoji from '../../preferences/Emoji';
 import Cookbooks from './Cookbooks';
 import RecipeCreateMenu from './RecipeCreateMenu';
 import { prioritizeExpiringRecipes, recipeExpiration } from '../../domain/recipes/expiration';
@@ -229,8 +230,7 @@ const RecipeList: React.FC<RecipeListProps> = ({
                         {recipe.name}
                         {activeCookingSession?.recipeId === recipe.recipeId && (
                           <span style={styles.cookingIndicator} aria-label={t('Currently cooking')}>
-                            {' '}
-                            🍳
+                            <Emoji> 🍳</Emoji>
                           </span>
                         )}
                       </span>

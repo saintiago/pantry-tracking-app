@@ -1,11 +1,10 @@
 {
-  "frontend/src/pages/AddItemPage/AddItemPage.tsx": 883,
+  "frontend/src/pages/AddItemPage/AddItemPage.tsx": 832,
   "frontend/src/pages/MealPlanPage/MealPlanPage.tsx": 710,
   "frontend/src/pages/RecipesPage/RecipeDetail.tsx": 389,
-  "frontend/src/pages/RecipesPage/RecipeEditor.tsx": 896,
+  "frontend/src/pages/RecipesPage/RecipeEditor.tsx": 861,
   "frontend/src/pages/ShoppingListPage/ShoppingListPage.tsx": 796,
-  "frontend/src/components/BarcodeScanner/BarcodeScanner.tsx": 521,
-  "frontend/src/components/InventoryList/InventoryList.tsx": 711,
+  "frontend/src/components/InventoryList/InventoryList.tsx": 638,
   "backend/src/handlers/inventory/inventory.ts": 620,
   "backend/src/handlers/recipe/recipe.ts": 481
 }

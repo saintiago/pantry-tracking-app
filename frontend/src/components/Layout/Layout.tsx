@@ -1,10 +1,11 @@
 import { t, useLanguage } from '../../i18n/i18n';
 import React from 'react';
-import LanguageSwitcher from '../LanguageSwitcher/LanguageSwitcher';
+import Emoji from '../../preferences/Emoji';
 import OnlineIndicator from '../OnlineIndicator/OnlineIndicator';
 import { APP_VERSION } from '../../config';
 
 export type PageId =
+  | 'help'
   | 'settings'
   | 'inventory'
   | 'recipes'
@@ -87,9 +88,23 @@ const Layout: React.FC<LayoutProps> = ({
               fontSize: 22,
             }}
           >
-            <span aria-hidden="true">⚙️</span>
+            <Emoji fallback="⚙">⚙️</Emoji>
           </button>
-          <LanguageSwitcher />
+          <button
+            type="button"
+            aria-label={t('Help')}
+            aria-current={activePage === 'help' ? 'page' : undefined}
+            onClick={() => onNavigate('help')}
+            style={{
+              minWidth: 44,
+              minHeight: 44,
+              border: '1px solid var(--color-border)',
+              borderRadius: 8,
+              background: activePage === 'help' ? 'var(--color-mint)' : 'var(--color-surface)',
+            }}
+          >
+            ?
+          </button>
         </div>
       </header>
 
@@ -110,7 +125,7 @@ const Layout: React.FC<LayoutProps> = ({
         <div style={styles.cookingBanner} data-testid="return-to-cooking-banner">
           <div style={styles.cookingBannerInner}>
             <span style={styles.cookingBannerIcon} aria-hidden="true">
-              🍳
+              <Emoji>🍳</Emoji>
             </span>
             <span style={styles.cookingBannerText}>
               {t('Cooking: “')}
@@ -152,7 +167,7 @@ const Layout: React.FC<LayoutProps> = ({
               }}
             >
               <span style={styles.navIcon} aria-hidden="true">
-                {item.icon}
+                <Emoji>{item.icon}</Emoji>
               </span>
               <span style={styles.navLabel}>{t(item.label)}</span>
             </button>

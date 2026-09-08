@@ -9,7 +9,7 @@ import {
 import { useLanguagePreferences } from '../../i18n/LanguageProvider';
 import Flag from './Flag';
 
-export default function LanguageSwitcher() {
+export default function LanguageSwitcher({ inline = false }: { inline?: boolean }) {
   const language = useLanguage();
   const request = useLanguageRequest();
   const preferences = useLanguagePreferences();
@@ -54,9 +54,9 @@ export default function LanguageSwitcher() {
           role="group"
           aria-label={t('Language')}
           style={{
-            position: 'absolute',
-            right: 0,
-            top: '100%',
+            position: inline ? 'relative' : 'absolute',
+            right: inline ? undefined : 0,
+            top: inline ? undefined : '100%',
             zIndex: 30,
             width: 270,
             maxWidth: 'calc(100vw - 32px)',

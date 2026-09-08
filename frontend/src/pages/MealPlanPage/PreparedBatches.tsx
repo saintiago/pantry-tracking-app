@@ -1,3 +1,4 @@
+import Emoji from '../../preferences/Emoji';
 import React, { useState } from 'react';
 import { batchBalance, type CookingBatch, type PlannerSnapshot } from '@pantry/domain';
 import type { Changes } from './usePlannerWorkspace';
@@ -18,7 +19,9 @@ export default function PreparedBatches({
   return (
     <details>
       <summary>
-        <span aria-hidden="true">🍱 </span>
+        <span aria-hidden="true">
+          <Emoji>🍱 </Emoji>
+        </span>
         {t('Prepared batches')} ({batches.length})
       </summary>
       {batches.length === 0 && (

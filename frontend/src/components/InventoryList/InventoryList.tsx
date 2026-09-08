@@ -1,3 +1,8 @@
+import { QuickFilterInput, LocationFilter, CategorySelector } from './InventoryFilters';
+export { QuickFilterInput, LocationFilter, CategorySelector } from './InventoryFilters';
+import MeasurementInput, { changeMeasureUnit } from '../../preferences/MeasurementInput';
+import { displayUnit } from '../../preferences/measurements';
+import Emoji from '../../preferences/Emoji';
 import Tooltip from '../Tooltip/Tooltip';
 import { InventoryItemCard } from './InventoryItemCard';
 export { InventoryItemCard } from './InventoryItemCard';
@@ -9,8 +14,7 @@ import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import { departmentFor, departmentColor } from './departments';
 import React, { useMemo, useState } from 'react';
 import type { StorageLocation } from '../../api/locations/locations';
-import { getUnitLabel, resolveUnit } from '../../types/units';
-import { formatQuantity } from '../../utils/quantity';
+import { formatMeasurement, getUnitLabel, resolveUnit } from '../../types/units';
 import { useHoverState, useInteractionFeedback } from '../../hooks/useInventoryAnimations';
 import { thresholdUnits } from '../../types/thresholdUnits';
 
@@ -33,7 +37,7 @@ export function formatQuantityByUnit(quantityByUnit: Record<string, number>): st
   const entries = Object.entries(quantityByUnit);
   if (entries.length === 1) {
     const [unit, qty] = entries[0];
-    return `${formatQuantity(qty)} ${getUnitLabel(unit, qty)}`;
+    return formatMeasurement(qty, unit);
   }
   return t('mixed units');
 }
@@ -64,88 +68,6 @@ export const InAppNotification: React.FC<InAppNotificationProps> = ({
         ✕
       </button>
     </div>
-  );
-};
-
-/* ── QuickFilterInput ───────────────────────────────────────────── */
-
-interface QuickFilterInputProps {
-  value: string;
-  onChange: (value: string) => void;
-}
-
-export const QuickFilterInput: React.FC<QuickFilterInputProps> = ({ value, onChange }) => {
-  useLanguage();
-  return (
-    <input
-      type="text"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={t('Search by name…')}
-      aria-label={t('Filter by product name')}
-      className="inv-input"
-      style={styles.filterInput}
-    />
-  );
-};
-
-/* ── CategorySelector ───────────────────────────────────────────── */
-
-interface CategorySelectorProps {
-  categories: string[];
-  value: string;
-  onChange: (value: string) => void;
-}
-
-export const CategorySelector: React.FC<CategorySelectorProps> = ({
-  categories,
-  value,
-  onChange,
-}) => {
-  useLanguage();
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      aria-label={t('Filter by category')}
-      className="inv-select"
-      style={styles.filterSelect}
-    >
-      <option value="All">{t('All Categories')}</option>
-      {categories.map((cat) => (
-        <option key={cat} value={cat}>
-          {cat}
-        </option>
-      ))}
-    </select>
-  );
-};
-
-/* ── LocationFilter ─────────────────────────────────────────────── */
-
-interface LocationFilterProps {
-  locations: StorageLocation[];
-  value: string;
-  onChange: (value: string) => void;
-}
-
-export const LocationFilter: React.FC<LocationFilterProps> = ({ locations, value, onChange }) => {
-  useLanguage();
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      aria-label={t('Filter by location')}
-      className="inv-select"
-      style={styles.filterSelect}
-    >
-      <option value="All">{t('All Locations')}</option>
-      {locations.map((loc) => (
-        <option key={loc.locationId} value={loc.locationId}>
-          {loc.name}
-        </option>
-      ))}
-    </select>
   );
 };
 
@@ -208,7 +130,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
             style={styles.categoryLowStockBadge}
             aria-label={t('{0} low stock', summary.lowStockCount)}
           >
-            ⚠️ {summary.lowStockCount} {t('low stock')}{' '}
+            <Emoji>⚠️</Emoji> {summary.lowStockCount} {t('low stock')}{' '}
           </span>
         )}
       </div>
@@ -336,7 +258,7 @@ export const GroupedRowView: React.FC<GroupedRowProps> = ({
 
   const quantityText = group.hasIncompatibleUnits
     ? t('mixed units')
-    : `${formatQuantity(group.totalQuantity)} ${getUnitLabel(group.unit, group.totalQuantity)}`;
+    : formatMeasurement(group.totalQuantity, group.unit);
   const countText = `${group.childCount} ${group.childCount === 1 ? 'item' : 'items'}`;
 
   return (
@@ -368,7 +290,7 @@ export const GroupedRowView: React.FC<GroupedRowProps> = ({
         <div style={styles.groupedRowBody}>
           <div style={styles.groupedRowHeader}>
             <span style={styles.groupedRowName}>
-              {group.childItems.find((item) => item.icon)?.icon} {group.name}
+              <Emoji>{group.childItems.find((item) => item.icon)?.icon}</Emoji> {group.name}
             </span>
             {group.hasLowStock && <LowStockBadge />}
             {onUpdateThreshold && (
@@ -387,7 +309,7 @@ export const GroupedRowView: React.FC<GroupedRowProps> = ({
                 {t('⚙ Threshold')}{' '}
                 {group.threshold === undefined
                   ? ''
-                  : `: ${group.threshold} ${getUnitLabel(group.thresholdUnit ?? group.unit, group.threshold)}`}
+                  : `: ${formatMeasurement(group.threshold, group.thresholdUnit ?? group.unit)}`}
               </button>
             )}
           </div>
@@ -420,22 +342,27 @@ export const GroupedRowView: React.FC<GroupedRowProps> = ({
           }}
         >
           <label htmlFor={`threshold-${group.groupId}`}>{t('Low-stock threshold')}</label>
-          <input
+          <MeasurementInput
+            unit={thresholdUnit}
             id={`threshold-${group.groupId}`}
             type="number"
             min="0"
             step="any"
             value={thresholdValue}
-            onChange={(event) => setThresholdValue(event.target.value)}
+            onValue={setThresholdValue}
             style={styles.thresholdInput}
           />
           <label htmlFor={`threshold-unit-${group.groupId}`}>{t('Threshold unit')}</label>
           <select
             id={`threshold-unit-${group.groupId}`}
-            value={thresholdUnit}
-            onChange={(event) => setThresholdUnit(resolveUnit(event.target.value))}
+            value={displayUnit(thresholdUnit)}
+            onChange={(event) => {
+              const unit = resolveUnit(event.target.value);
+              setThresholdValue(changeMeasureUnit(thresholdValue, thresholdUnit, unit));
+              setThresholdUnit(unit);
+            }}
           >
-            {thresholdUnits(group.unit).map((unit) => (
+            {thresholdUnits(group.unit, displayUnit(thresholdUnit)).map((unit) => (
               <option key={unit} value={unit}>
                 {getUnitLabel(unit, 1)}
               </option>

@@ -1,3 +1,4 @@
+import { usePreferences } from '../../preferences/store';
 import React from 'react';
 import { t, useLanguage } from '../../i18n/i18n';
 
@@ -39,6 +40,8 @@ export default function ItemIconField({
 }) {
   useLanguage();
   const id = React.useId();
+  const { appearance } = usePreferences();
+  if (appearance === 'minimal') return null;
   return (
     <label htmlFor={id} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       {t('Product icon')}

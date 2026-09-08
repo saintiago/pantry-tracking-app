@@ -1,3 +1,4 @@
+import { displayQuantity } from '../../preferences/measurements';
 import { dateLabel, views } from './view';
 import ShoppingReminders from './ShoppingReminders';
 import ShoppingArrangement from './ShoppingArrangement';
@@ -702,7 +703,7 @@ export default function ShoppingListPage({
                           }}
                         >
                           <strong>
-                            {line.name} · {amount(line.quantity)}{' '}
+                            {line.name} · {amount(displayQuantity(line.quantity, line.unit))}{' '}
                             {getUnitLabel(line.unit, line.quantity)}
                           </strong>
                           <p style={muted}>
@@ -736,7 +737,7 @@ export default function ShoppingListPage({
                   const text = shopLines
                     .map(
                       (l) =>
-                        `${storeLabel(l.store)} / ${t(l.department)}: ${l.name} — ${amount(l.quantity)} ${getUnitLabel(l.unit, l.quantity)}`,
+                        `${storeLabel(l.store)} / ${t(l.department)}: ${l.name} — ${amount(displayQuantity(l.quantity, l.unit))} ${getUnitLabel(l.unit, l.quantity)}`,
                     )
                     .join('\n');
                   try {
@@ -756,7 +757,7 @@ export default function ShoppingListPage({
                 value={shopLines
                   .map(
                     (l) =>
-                      `${storeLabel(l.store)} / ${t(l.department)}: ${l.name} — ${amount(l.quantity)} ${getUnitLabel(l.unit, l.quantity)}`,
+                      `${storeLabel(l.store)} / ${t(l.department)}: ${l.name} — ${amount(displayQuantity(l.quantity, l.unit))} ${getUnitLabel(l.unit, l.quantity)}`,
                   )
                   .join('\n')}
                 style={{ ...input, marginTop: 12, minHeight: 120 }}

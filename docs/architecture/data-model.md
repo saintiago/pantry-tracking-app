@@ -64,7 +64,7 @@ keyed by a short unit key. Each entry carries `key`, `singular`, `abbreviation`,
 ```typescript
 type UnitType = keyof typeof UNIT_METADATA;
 // Keys: tsp, tbsp, cup, ml, l, g, kg, piece, slice, clove, pinch,
-//       handful, stick, can, bottle, zest, unit
+//       handful, stick, can, bottle, zest, unit, oz, lb, floz, pint, quart, gallon
 
 // VALID_UNITS is sorted alphabetically by the visible singular label (locale compare).
 const VALID_UNITS: UnitType[] = (Object.keys(UNIT_METADATA) as UnitType[]).sort((a, b) =>
@@ -807,3 +807,20 @@ Manual companion entries optionally store `createdAt`; computed/carry lines opti
 carry `addedAt` and the inventory product `icon`. Old records remain readable. The
 session shopping view remembers arrangement. Existing canonical department values are
 preserved; `Herbs & spices` is added as an editable suggested department.
+
+## Settings and measurement extensions (issue #16)
+
+Device settings use `pantry-settings-v1:<userId>` (or `:guest`), containing
+`measurement: 'original' | 'metric' | 'imperial'`,
+`appearance: 'pastel' | 'minimal' | 'system'`, and `units: UnitType[] | null`.
+Defaults are original/pastel/null; invalid stored values recover independently, and
+unit lists must be nonempty, deduplicated supported keys. No new API/entity is added.
+Language retains its existing separate preference keys/account locale contract.
+
+Canonical units gain `oz`, `lb`, `floz`, `pint`, `quart`, `gallon`. Fluid measures and
+cups/spoons use US customary factors in shared `STOCK_MEASURES`; `oz` is mass and `floz`
+is volume. Shared stock conversion, thresholds, shopping/availability and expiration
+matching accept compatible dimensions. Existing keys/quantities are not migrated.
+Preferences convert both display amounts and labels; editing a converted field inversely
+converts to its recorded unit, preserving untouched precision. Unit removal affects the
+picker only, never historical records. Count units remain distinct and unconverted.

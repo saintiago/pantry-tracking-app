@@ -1,3 +1,4 @@
+import Emoji from '../../preferences/Emoji';
 import ShareButton from '../../components/ShareButton/ShareButton';
 import PlannerServings from './PlannerServings';
 import './planner.css';
@@ -214,7 +215,9 @@ export default function ExpandedMealPlanner({
   const library = (
     <>
       <h2>
-        <span aria-hidden="true">📖 </span>
+        <span aria-hidden="true">
+          <Emoji>📖 </Emoji>
+        </span>
         {t('Recipes')}
       </h2>
       {recipesLoading && <p role="status">{t('Loading recipes…')}</p>}
@@ -530,7 +533,10 @@ ${
                   disabled={locked || !planner.undo}
                   onClick={() => run(planner.undoChange)}
                 >
-                  <span aria-hidden="true">↩️</span> {t('Undo')}
+                  <span aria-hidden="true">
+                    <Emoji>↩️</Emoji>
+                  </span>{' '}
+                  {t('Undo')}
                 </button>
               </div>
             }

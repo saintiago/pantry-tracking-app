@@ -1,3 +1,5 @@
+import HelpPage from './pages/HelpPage/HelpPage';
+import PreferencesProvider from './preferences/PreferencesProvider';
 import { t, useLanguage } from './i18n/i18n';
 import React, { useCallback, useState } from 'react';
 import { LanguageProvider } from './i18n/LanguageProvider';
@@ -88,6 +90,7 @@ const LoadingSpinner: React.FC = () => {
 const AuthenticatedApp: React.FC = () => {
   useLanguage();
   const [activePage, setActivePage] = useState<PageId>('inventory');
+  const [utilityPage, setUtilityPage] = useState<'settings' | 'help' | null>(null);
   const [inventoryKey, setInventoryKey] = useState(0);
   const [shoppingEdit, setShoppingEdit] = useState<ShoppingEditRequest | null>(null);
   const [purchase, setPurchase] = useState<PurchaseRequest | null>(null);
@@ -138,12 +141,17 @@ const AuthenticatedApp: React.FC = () => {
   }, [cookingOrigin]);
 
   const handleNavigate = (page: PageId) => {
+    if (page === 'settings' || page === 'help') {
+      setUtilityPage(page);
+      return;
+    }
+    setUtilityPage(null);
     if (page === 'meal-plan') setPlannerVisited(true);
     if (page === 'shopping-list') setShoppingSelection(null);
     // Bump key when navigating back to inventory from another page — forces a fresh data fetch
     if (
       page === 'inventory' &&
-      activePage !== 'inventory' &&
+      (activePage !== 'inventory' || utilityPage === 'settings') &&
       activePage !== 'add-item' &&
       activePage !== 'item-detail'
     ) {
@@ -171,7 +179,6 @@ const AuthenticatedApp: React.FC = () => {
   };
 
   const renderPage = () => {
-    if (activePage === 'settings') return <SettingsPage />;
     if (activePage === 'shopping-edit' && shoppingEdit)
       return (
         <ShoppingEditPage
@@ -276,28 +283,37 @@ const AuthenticatedApp: React.FC = () => {
 
   return (
     <Layout
-      activePage={activePage}
+      activePage={utilityPage ?? activePage}
       onNavigate={handleNavigate}
       cookingSession={cookingSession}
       onReturnToCooking={() => {
         window.history.pushState({ ...window.history.state, cooking: true }, '');
+        setUtilityPage(null);
         setActivePage('cooking');
       }}
     >
-      {plannerVisited && (
-        <div style={{ display: activePage === 'meal-plan' ? 'block' : 'none' }}>
-          <MealPlanPage
-            active={activePage === 'meal-plan'}
-            activeCookingSession={cookingSession}
-            onStartCooking={startCookingSession}
-            onShopping={(selection) => {
-              setShoppingSelection(selection);
-              setActivePage('shopping-list');
-            }}
-          />
+      <div hidden={!!utilityPage}>
+        {plannerVisited && (
+          <div style={{ display: activePage === 'meal-plan' ? 'block' : 'none' }}>
+            <MealPlanPage
+              active={activePage === 'meal-plan'}
+              activeCookingSession={cookingSession}
+              onStartCooking={startCookingSession}
+              onShopping={(selection) => {
+                setShoppingSelection(selection);
+                setActivePage('shopping-list');
+              }}
+            />
+          </div>
+        )}
+        {renderPage()}
+      </div>
+      {utilityPage && (
+        <div>
+          <button onClick={() => handleNavigate(activePage)}>{t('Back to previous page')}</button>
+          {utilityPage === 'settings' ? <SettingsPage /> : <HelpPage />}
         </div>
       )}
-      {renderPage()}
     </Layout>
   );
 };
@@ -329,9 +345,11 @@ const App: React.FC = () => {
   useLanguage();
   return (
     <AuthProvider>
-      <LanguageProvider>
-        <AppContent />
-      </LanguageProvider>
+      <PreferencesProvider>
+        <LanguageProvider>
+          <AppContent />
+        </LanguageProvider>
+      </PreferencesProvider>
     </AuthProvider>
   );
 };

@@ -235,3 +235,17 @@ cookbook save failure/retry, membership, reload, confirmed removal, shopping ord
 removal/restoration, and sidebar favorite-day creation/application at mobile/desktop
 widths. Existing API fixtures supply empty cookbooks. Recipe filter tests now operate
 sliders with keyboard input; arbitrary-number validation UI cases are superseded.
+
+## Issue #16 settings, measurements and help
+
+Preference tests exercise known US customary conversions, reversible precision,
+incompatible dimensions, tiny quantities, editing converted values, account isolation,
+corrupt storage and removed-unit compatibility. Backend availability tests compare
+imperial stock against metric demand and exclude volume from mass totals.
+`issue16-settings.spec.ts` verifies recipe/inventory edit persistence through conversion,
+shopping/share amounts, unit add/remove/order/reload, unsaved forms across Settings,
+Help search, and minimal/system palettes at 320px and 390px. Existing language journeys
+now open Settings and return to the underlying form; login language controls remain.
+The helper in `e2e/helpers/settings.ts` owns that navigation. Updated catalog-size tests
+include the new canonical imperial units. Unit presentation never substitutes for testing
+stored quantities after saves.

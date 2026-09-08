@@ -1,3 +1,5 @@
+import DisplaySettings from './DisplaySettings';
+import LanguageSwitcher from '../../components/LanguageSwitcher/LanguageSwitcher';
 import React, { useCallback, useEffect, useState } from 'react';
 import { t, useLanguage, message } from '../../i18n/i18n';
 import StorageLocationManager from '../../components/StorageLocationManager/StorageLocationManager';
@@ -77,6 +79,11 @@ export default function SettingsPage() {
   return (
     <div style={{ maxWidth: 800, margin: 'auto' }}>
       <h2>{t('Settings')}</h2>
+      <section aria-label={t('Language')} style={{ marginTop: 16 }}>
+        <h3>{t('Language')}</h3>
+        <LanguageSwitcher inline />
+      </section>
+      <DisplaySettings />
       <details
         style={{
           marginTop: 16,

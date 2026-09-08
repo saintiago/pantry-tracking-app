@@ -1,3 +1,4 @@
+import Emoji from '../../preferences/Emoji';
 import DialogShell from '../DialogShell/DialogShell';
 import React, { useState } from 'react';
 import { t, useLanguage } from '../../i18n/i18n';
@@ -44,7 +45,10 @@ export default function ShareButton({
           }
         }}
       >
-        <span aria-hidden="true">📤</span> {t('Share {0}', title)}
+        <span aria-hidden="true">
+          <Emoji>📤</Emoji>
+        </span>{' '}
+        {t('Share {0}', title)}
       </button>
       {fallback && (
         <DialogShell label={t('Share {0}', title)} onClose={() => setFallback(false)}>

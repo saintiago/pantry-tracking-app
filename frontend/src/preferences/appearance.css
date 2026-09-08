@@ -1,0 +1,85 @@
+:root[data-appearance='minimal'] {
+  color-scheme: light;
+  --color-canvas: #fff;
+  --color-surface: #fff;
+  --color-text: #111;
+  --color-secondary: #444;
+  --color-muted: #666;
+  --color-border: #aaa;
+  --color-mint: #e5e5e5;
+  --color-lavender: #eee;
+  --color-peach: #eee;
+  --color-sky: #eee;
+  --color-success: #eee;
+  --color-warning: #eee;
+  --color-danger: #e5e5e5;
+  --color-action: #111;
+  --color-danger-text: #111;
+  --color-warning-text: #111;
+  --color-breakfast: #f5f5f5;
+  --color-lunch: #eee;
+  --color-dinner: #e5e5e5;
+}
+:root[data-appearance='minimal'] svg[role='img'][aria-label] {
+  filter: grayscale(1);
+}
+:root[data-appearance='minimal'] button[aria-pressed='true'],
+:root[data-appearance='minimal'] button[aria-current='page'] {
+  outline: 1px solid var(--color-text);
+}
+:root[data-appearance='system'] {
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-appearance='system'] {
+    --color-canvas: #15181d;
+    --color-surface: #20252c;
+    --color-text: #f2f4f8;
+    --color-secondary: #c0c8d4;
+    --color-muted: #acb7c7;
+    --color-border: #596474;
+    --color-mint: #294236;
+    --color-lavender: #34334f;
+    --color-peach: #49372f;
+    --color-sky: #233e50;
+    --color-success: #2b402b;
+    --color-warning: #493e24;
+    --color-danger: #492e32;
+    --color-action: #c2ebce;
+    --color-danger-text: #ffb8bf;
+    --color-warning-text: #f4d489;
+    --color-breakfast: #493e24;
+    --color-lunch: #49372f;
+    --color-dinner: #34334f;
+  }
+}
+:root[data-appearance='system'] input,
+:root[data-appearance='system'] select,
+:root[data-appearance='system'] textarea {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
+:root[data-appearance='minimal'] {
+  --department-tone: #eee;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-appearance='system'] {
+    --department-tone: #303740;
+  }
+  :root[data-appearance='system'] [style*='background-color: rgb('],
+  :root[data-appearance='system'] [style*='background: rgb('] {
+    background-color: var(--color-surface) !important;
+    color: var(--color-text) !important;
+  }
+  :root[data-appearance='system'] [style*='color: rgb('] {
+    color: var(--color-text) !important;
+  }
+}
+:root[data-appearance='minimal'] [style*='background-color: rgb('],
+:root[data-appearance='minimal'] [style*='background: rgb('] {
+  background-color: var(--color-surface) !important;
+  color: var(--color-text) !important;
+}
+:root[data-appearance='minimal'] [style*='color: rgb('] {
+  color: var(--color-text) !important;
+}

@@ -7,6 +7,9 @@ first. Older designs and unchecked tasks are not an implementation inventory.
 
 Key precedence notes:
 
+- [Settings and help](settings/preferences-and-help.md) supersedes the header language
+  selector and adds reversible measurement preferences, unit lists and appearance choices.
+
 - `shopping-list/second-brain.md` extends its initial requirements/design.
 - `meal-planner/recipe-navigation.md` and `open-issues-4-6/` record later planner behavior.
 - `meal-planner/expanded-planner.md` supersedes their drag handles, overflow menus and
@@ -46,5 +49,6 @@ Feature folders:
 - [recipe-search-filter](recipe-search-filter/)
 - [recipe-time-fields](recipe-time-fields/)
 - [recipe-units-format](recipe-units-format/)
+- [settings](settings/)
 - [shopping-list](shopping-list/)
 - [threshold-revamp](threshold-revamp/)

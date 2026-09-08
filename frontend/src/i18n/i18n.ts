@@ -1,3 +1,4 @@
+import { appText, usePreferences } from '../preferences/store';
 import { useSyncExternalStore } from 'react';
 import { cachedCatalog, loadCatalog, type Catalog, type Language } from './catalogs';
 export type { Language } from './catalogs';
@@ -73,6 +74,7 @@ function subscribe(listener: () => void) {
 }
 /** Subscribe without remounting components, so forms and cooking progress survive a switch. */
 export function useLanguage(): Language {
+  usePreferences();
   return useSyncExternalStore(subscribe, getLanguage, () => 'en' as Language);
 }
 export function supportedLanguage(value: unknown): Language | undefined {
@@ -99,7 +101,7 @@ export function t(source: string, ...values: (string | number | undefined | null
         (catalog.messages[source.trim()]
           ? source.replace(source.trim(), catalog.messages[source.trim()])
           : source));
-  return translated.replace(/\{(\d+)\}/g, (match, index: string) =>
+  return appText(translated).replace(/\{(\d+)\}/g, (match, index: string) =>
     Number(index) < values.length ? String(values[Number(index)] ?? '') : match,
   );
 }

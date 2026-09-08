@@ -1,7 +1,7 @@
 # Language selection
 
 - Support English (`en`), Spanish (`es`), and Italian (`it`). English is the app fallback.
-- A flag button in the top panel opens a language selector with native language names.
+- A flag button in Settings opens a language selector with native language names (issue #16).
   The login screen also offers the selector. Use SVG flags so Windows renders flags.
 - Resolve language from the current account's preference on this browser first; otherwise
   read the account locale, then the first supported browser language, then English.
