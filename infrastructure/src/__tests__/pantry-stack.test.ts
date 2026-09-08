@@ -43,7 +43,9 @@ test('all application Lambdas use Node 24 with bounded execution', () => {
   expect(functions).toHaveLength(5);
   for (const resource of functions) {
     expect(resource.Properties.Runtime).toBe('nodejs24.x');
-    expect(resource.Properties.Timeout).toBe(10);
+    expect(resource.Properties.Timeout).toBe(
+      resource.Properties.FunctionName === 'PantryRecipeFunction' ? 28 : 10,
+    );
   }
 });
 

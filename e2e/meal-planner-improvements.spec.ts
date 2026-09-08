@@ -84,7 +84,7 @@ test('calorie estimates show per-person, all-portions and unknown subtotals', as
   ]);
   const day = page.locator(`[data-date="${monday}"]`);
   await expect(day).toContainText('kcal per person: 400');
-  await expect(day).toContainText('All planned portions: 800 kcal');
+  await expect(day).not.toContainText('All planned portions');
   await expect(day).toContainText('Incomplete: 1 entries unknown');
 });
 test('fewest groceries ranks independently and shows stock loading failures honestly', async ({

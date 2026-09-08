@@ -1,0 +1,110 @@
+.planner-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.planner-heading h1 {
+  margin: 0;
+  font-size: 26px;
+}
+.planner-subtitle {
+  color: var(--color-secondary);
+  margin: 6px 0 0;
+  font-size: 14px;
+}
+.planner-shop,
+.planner-undo,
+.planner-view button,
+.planner-copies button,
+.planner-servings button {
+  min-height: 44px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.planner-heading .planner-shop {
+  background: var(--color-mint);
+  color: var(--color-action);
+  font-weight: 600;
+}
+.planner-view {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: 4px;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+}
+.planner-view span {
+  padding: 0 6px;
+  font-size: 14px;
+}
+.planner-view button {
+  border: 0;
+  padding: 6px 10px;
+}
+.planner-view button[aria-pressed='true'] {
+  background: var(--color-mint);
+  font-weight: 600;
+}
+.planner-servings,
+.planner-copies {
+  margin: 8px 0;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 0 12px;
+}
+.planner-servings summary,
+.planner-copies summary {
+  min-height: 44px;
+  align-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+.planner-servings form {
+  padding: 8px 0;
+  align-items: center;
+}
+.planner-servings input,
+.planner-copies input,
+.planner-copies select {
+  min-height: 40px;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.planner-copies label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 100%;
+  font-size: 14px;
+}
+.planner-copies fieldset {
+  min-width: 0;
+  align-items: end;
+}
+.planner-undo span {
+  font-size: 20px;
+}
+@media (max-width: 600px) {
+  .planner-heading {
+    gap: 12px;
+  }
+  .planner-shop {
+    margin-left: auto;
+  }
+  .planner-view {
+    width: 100%;
+  }
+}

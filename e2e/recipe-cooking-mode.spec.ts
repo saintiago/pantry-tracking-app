@@ -22,7 +22,13 @@ const mockRecipes = [
       { name: 'Eggs', quantity: 3, unit: 'Unit' },
       { name: 'Bacon', quantity: 100, unit: 'g' },
     ],
-    instructions: ['Boil pasta', 'Fry bacon', 'Mix eggs and cheese', 'Combine all ingredients', 'Serve immediately'],
+    instructions: [
+      'Boil pasta',
+      'Fry bacon',
+      'Mix eggs and cheese',
+      'Combine all ingredients',
+      'Serve immediately',
+    ],
     sourceUrl: 'https://example.com/carbonara',
     prepTime: 10,
     cookTime: 20,
@@ -166,7 +172,9 @@ test.describe('Recipe Cooking Mode', () => {
 
   test('"Cook" button appears in recipe detail action bar', async ({ page }) => {
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
 
     await expect(page.getByTestId('cook-button')).toBeVisible();
     await expect(page.getByTestId('cook-button')).toHaveText('🍳 Cook');
@@ -174,7 +182,9 @@ test.describe('Recipe Cooking Mode', () => {
 
   test('clicking "Cook" starts a session and navigates to cooking page', async ({ page }) => {
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
 
     await page.getByTestId('cook-button').click();
 
@@ -183,9 +193,13 @@ test.describe('Recipe Cooking Mode', () => {
     await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible();
   });
 
-  test('cooking page shows split layout with steps, ingredients, and drag handle', async ({ page }) => {
+  test('cooking page shows split layout with steps, ingredients, and drag handle', async ({
+    page,
+  }) => {
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
     await page.getByTestId('cook-button').click();
 
     // Should show steps panel
@@ -200,7 +214,9 @@ test.describe('Recipe Cooking Mode', () => {
 
   test('dragging the resize handle changes panel sizes', async ({ page }) => {
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
     await page.getByTestId('cook-button').click();
     await expect(page.getByTestId('cooking-step-0')).toBeVisible({ timeout: 5000 });
 
@@ -208,7 +224,7 @@ test.describe('Recipe Cooking Mode', () => {
     await expect(handle).toBeVisible();
 
     const topPanel = page.getByTestId('resizable-split-top');
-    const initialFlex = parseFloat(await topPanel.evaluate(el => el.style.flex));
+    const initialFlex = parseFloat(await topPanel.evaluate((el) => el.style.flex));
 
     // Drag handle down by 100px to enlarge the steps panel
     const box = await handle.boundingBox();
@@ -223,13 +239,15 @@ test.describe('Recipe Cooking Mode', () => {
     await page.mouse.up();
 
     // Wait for React state update (ratio is persisted on pointer up)
-    const newFlex = parseFloat(await topPanel.evaluate(el => el.style.flex));
+    const newFlex = parseFloat(await topPanel.evaluate((el) => el.style.flex));
     expect(newFlex).toBeGreaterThan(initialFlex);
   });
 
   test('step navigation: Next advances, Previous goes back', async ({ page }) => {
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
     await page.getByTestId('cook-button').click();
 
     // Initial state: step 1 of 5
@@ -246,7 +264,9 @@ test.describe('Recipe Cooking Mode', () => {
 
   test('Previous disabled at first step, Next disabled at last step', async ({ page }) => {
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
     await page.getByTestId('cook-button').click();
 
     await expect(page.getByTestId('cooking-step-0')).toBeVisible({ timeout: 5000 });
@@ -268,7 +288,9 @@ test.describe('Recipe Cooking Mode', () => {
 
   test('tapping a step directly sets it as current', async ({ page }) => {
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
     await page.getByTestId('cook-button').click();
 
     await expect(page.getByTestId('cooking-step-0')).toBeVisible({ timeout: 5000 });
@@ -285,7 +307,9 @@ test.describe('Recipe Cooking Mode', () => {
 
   test('progress bar updates with step position', async ({ page }) => {
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
     await page.getByTestId('cook-button').click();
 
     await expect(page.getByTestId('cooking-step-0')).toBeVisible({ timeout: 5000 });
@@ -305,7 +329,9 @@ test.describe('Recipe Cooking Mode', () => {
 
   test('completed steps show checkmark indicator', async ({ page }) => {
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
     await page.getByTestId('cook-button').click();
 
     await expect(page.getByTestId('cooking-step-0')).toBeVisible({ timeout: 5000 });
@@ -321,7 +347,9 @@ test.describe('Recipe Cooking Mode', () => {
 
   test('"Finish Cooking" with all steps done returns to recipe list', async ({ page }) => {
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
     await page.getByTestId('cook-button').click();
 
     await expect(page.getByTestId('cooking-step-0')).toBeVisible({ timeout: 5000 });
@@ -341,7 +369,9 @@ test.describe('Recipe Cooking Mode', () => {
 
   test('"Finish Cooking" with unfinished steps shows confirmation dialog', async ({ page }) => {
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
     await page.getByTestId('cook-button').click();
 
     await expect(page.getByTestId('cooking-step-0')).toBeVisible({ timeout: 5000 });
@@ -355,7 +385,9 @@ test.describe('Recipe Cooking Mode', () => {
 
   test('"Keep Cooking" dismisses confirmation dialog', async ({ page }) => {
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
     await page.getByTestId('cook-button').click();
 
     await expect(page.getByTestId('cooking-step-0')).toBeVisible({ timeout: 5000 });
@@ -374,7 +406,9 @@ test.describe('Recipe Cooking Mode', () => {
 
   test('"Finish Anyway" ends session and returns to recipes', async ({ page }) => {
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
     await page.getByTestId('cook-button').click();
 
     await expect(page.getByTestId('cooking-step-0')).toBeVisible({ timeout: 5000 });
@@ -392,7 +426,9 @@ test.describe('Recipe Cooking Mode', () => {
 
   test('navigating away from cooking page shows "Return to Cooking" banner', async ({ page }) => {
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
     await page.getByTestId('cook-button').click();
 
     await expect(page.getByTestId('cooking-step-0')).toBeVisible({ timeout: 5000 });
@@ -408,7 +444,9 @@ test.describe('Recipe Cooking Mode', () => {
 
   test('"Return to Cooking" banner navigates back to cooking page', async ({ page }) => {
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
     await page.getByTestId('cook-button').click();
 
     await expect(page.getByTestId('cooking-step-0')).toBeVisible({ timeout: 5000 });
@@ -427,7 +465,9 @@ test.describe('Recipe Cooking Mode', () => {
 
   test('step progress is preserved after navigating away and returning', async ({ page }) => {
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
     await page.getByTestId('cook-button').click();
 
     await expect(page.getByTestId('cooking-step-0')).toBeVisible({ timeout: 5000 });
@@ -449,10 +489,14 @@ test.describe('Recipe Cooking Mode', () => {
     await expect(page.getByText('Step 3 of 5')).toBeVisible();
   });
 
-  test('"Resume Cooking" button appears on the same recipe when session is active', async ({ page }) => {
+  test('"Resume Cooking" button appears on the same recipe when session is active', async ({
+    page,
+  }) => {
     // Start cooking
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
     await page.getByTestId('cook-button').click();
     await expect(page.getByTestId('cooking-step-0')).toBeVisible({ timeout: 5000 });
 
@@ -464,16 +508,22 @@ test.describe('Recipe Cooking Mode', () => {
 
     // Re-open the same recipe
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
 
     // Cook button should say "Resume Cooking"
     await expect(page.getByTestId('cook-button')).toHaveText('🍳 Resume Cooking');
   });
 
-  test('"Cook" button shows correct state for different recipe when session active', async ({ page }) => {
+  test('"Cook" button shows correct state for different recipe when session active', async ({
+    page,
+  }) => {
     // Start cooking Pasta Carbonara
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
     await page.getByTestId('cook-button').click();
     await expect(page.getByTestId('cooking-step-0')).toBeVisible({ timeout: 5000 });
 
@@ -491,7 +541,9 @@ test.describe('Recipe Cooking Mode', () => {
 
   test('portions scaler works in cooking mode', async ({ page }) => {
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
     await page.getByTestId('cook-button').click();
 
     await expect(page.getByTestId('cooking-step-0')).toBeVisible({ timeout: 5000 });
@@ -512,7 +564,9 @@ test.describe('Recipe Cooking Mode', () => {
 
   test('back button in cooking mode returns to recipe list', async ({ page }) => {
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
     await page.getByTestId('cook-button').click();
 
     await expect(page.getByTestId('cooking-step-0')).toBeVisible({ timeout: 5000 });
@@ -530,7 +584,9 @@ test.describe('Recipe Cooking Mode', () => {
   test('recipe list shows cooking indicator for the actively cooking recipe', async ({ page }) => {
     // Start cooking
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
     await page.getByTestId('cook-button').click();
     await expect(page.getByTestId('cooking-step-0')).toBeVisible({ timeout: 5000 });
 
@@ -546,7 +602,9 @@ test.describe('Recipe Cooking Mode', () => {
 
   test('cooking mode banner is not shown on the cooking page itself', async ({ page }) => {
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
-    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Pasta Carbonara' })).toBeVisible({
+      timeout: 5000,
+    });
     await page.getByTestId('cook-button').click();
 
     await expect(page.getByTestId('cooking-step-0')).toBeVisible({ timeout: 5000 });

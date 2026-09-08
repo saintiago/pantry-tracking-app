@@ -66,8 +66,10 @@ export default function PlannerCopies({
     void apply({ favorites: [{ ...value, name: name.trim() }] });
   };
   return (
-    <details style={{ padding: '10px 0' }}>
-      <summary>{t('Copy plans / Favorite weeks')}</summary>
+    <details className="planner-copies">
+      <summary>
+        <span aria-hidden="true">♡</span> <span>{t('Copy plans / Favorite weeks')}</span>
+      </summary>
       <fieldset
         disabled={disabled || busy}
         style={{ display: 'flex', flexWrap: 'wrap', gap: 10, border: 0, padding: '10px 0' }}

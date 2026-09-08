@@ -116,10 +116,25 @@ operations fail before saving. Favorite/batch metadata has a bounded account sto
 limit and reports an actionable error when full.
 
 Recipe kcal are optional manual estimates stored for the whole recipe. Yield changes
-keep total kcal fixed. Calendar figures show one portion of every dish and all planned
-portions, clearly marking unknown entries. Ordinary meals use current recipe nutrition;
+keep total kcal fixed. Calendar figures show kcal per person for one portion of every
+dish, clearly marking unknown entries. Ordinary meals use current recipe nutrition;
 prepared food retains its cooking snapshot. Shopping counts planned cooking yield once,
 including a source outside the selection with a notice; prepared portions and notes add
 no ingredient demand. The optional Fewest additional groceries sort compares independent
 candidates against stock remaining after planned cooking, flags uncertainty, and counts
 missing ingredient lines rather than price.
+
+## Compact navigation and recipe imports (issue #14)
+
+Settings is the gear beside the language selector; storage locations start collapsed.
+The planner has a dedicated View group, top-right Shopping action, calendar-adjacent
+Undo, expandable servings/favorite controls and the subtitle “From recipes to your
+weekly plan.” Household/all-planned-portions kcal are no longer shown.
+
+Recipe availability and expiration filters are adjacent matching toggles; expiration
+reveals its one-/two-week window. New Recipe offers manual, photo and link imports.
+Bedrock extracts a review draft; unavailable AI falls back to webpage metadata/text
+or offers on-device printed-text recognition in English/Spanish/Italian. Imports
+never automatically save recipes. Review explains uncertainty and supports editing
+and reordering. Source images require an explicit permission choice. See
+[imports and navigation](features/recipe-management/imports-and-navigation.md).

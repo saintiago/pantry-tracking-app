@@ -1,3 +1,4 @@
+import RecipeCreateMenu from './RecipeCreateMenu';
 import { prioritizeExpiringRecipes, recipeExpiration } from '../../domain/recipes/expiration';
 import type { InventoryItem } from '../../domain/inventory/types';
 import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
@@ -15,7 +16,7 @@ import type { CookingSession } from '../CookingPage/CookingPage';
 
 interface RecipeListProps {
   onSelect: (recipeId: string) => void;
-  onNew: () => void;
+  onNew: (mode: 'manual' | 'photo' | 'link') => void;
   allTags: string[];
   tagsLoading: boolean;
   inventoryIndex: InventoryIndex;
@@ -117,9 +118,7 @@ const RecipeList: React.FC<RecipeListProps> = ({
     <div style={styles.container}>
       <div style={styles.header}>
         <h2 style={styles.title}>{t('Recipes')}</h2>
-        <button onClick={onNew} style={styles.newButton} type="button">
-          {t('+ New Recipe')}{' '}
-        </button>
+        <RecipeCreateMenu onSelect={onNew} />
       </div>
 
       <input

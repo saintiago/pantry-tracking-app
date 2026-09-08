@@ -1,3 +1,5 @@
+import RecipeImporter from './RecipeImporter';
+import type { RecipeImportDraft } from '@pantry/domain';
 import type { InventoryItem } from '../../domain/inventory/types';
 import { useLanguage } from '../../i18n/i18n';
 import React, { useEffect, useState } from 'react';
@@ -18,7 +20,8 @@ interface RecipesPageProps {
 type RecipeView =
   | { mode: 'list' }
   | { mode: 'detail'; recipeId: string }
-  | { mode: 'editor-new' }
+  | { mode: 'editor-new'; draft?: RecipeImportDraft }
+  | { mode: 'import'; source: 'photo' | 'link' }
   | { mode: 'editor-edit'; recipeId: string };
 
 const RecipesPage: React.FC<RecipesPageProps> = ({ activeCookingSession, onStartCooking }) => {
@@ -76,7 +79,9 @@ const RecipesPage: React.FC<RecipesPageProps> = ({ activeCookingSession, onStart
     return (
       <RecipeList
         onSelect={(id) => setView({ mode: 'detail', recipeId: id })}
-        onNew={() => setView({ mode: 'editor-new' })}
+        onNew={(source) =>
+          setView(source === 'manual' ? { mode: 'editor-new' } : { mode: 'import', source })
+        }
         allTags={allTags}
         tagsLoading={tagsLoading}
         inventoryIndex={inventoryIndex}
@@ -88,6 +93,15 @@ const RecipesPage: React.FC<RecipesPageProps> = ({ activeCookingSession, onStart
       />
     );
   }
+
+  if (view.mode === 'import')
+    return (
+      <RecipeImporter
+        mode={view.source}
+        onReview={(draft) => setView({ mode: 'editor-new', draft })}
+        onCancel={() => setView({ mode: 'list' })}
+      />
+    );
 
   if (view.mode === 'detail') {
     return (
@@ -105,6 +119,7 @@ const RecipesPage: React.FC<RecipesPageProps> = ({ activeCookingSession, onStart
   if (view.mode === 'editor-new') {
     return (
       <RecipeEditor
+        initialDraft={view.draft}
         onSaved={(id) => {
           refreshTags();
           setView({ mode: 'detail', recipeId: id });

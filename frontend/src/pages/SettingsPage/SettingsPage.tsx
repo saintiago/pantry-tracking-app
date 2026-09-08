@@ -77,21 +77,33 @@ export default function SettingsPage() {
   return (
     <div style={{ maxWidth: 800, margin: 'auto' }}>
       <h2>{t('Settings')}</h2>
-      {loading ? (
-        <p role="status">{t('Loading…')}</p>
-      ) : error ? (
-        <div role="alert">
-          <p>{message(error)}</p>
-          <button onClick={refresh}>{t('Retry')}</button>
-        </div>
-      ) : (
-        <StorageLocationManager
-          locations={locations}
-          onAdd={handleAddLocation}
-          onRename={handleRename}
-          onRemove={handleRemoveLocation}
-        />
-      )}
+      <details
+        style={{
+          marginTop: 16,
+          padding: 12,
+          border: '1px solid var(--color-border)',
+          borderRadius: 10,
+        }}
+      >
+        <summary style={{ minHeight: 44, cursor: 'pointer', fontWeight: 600 }}>
+          {t('Storage locations')}
+        </summary>
+        {loading ? (
+          <p role="status">{t('Loading…')}</p>
+        ) : error ? (
+          <div role="alert">
+            <p>{message(error)}</p>
+            <button onClick={refresh}>{t('Retry')}</button>
+          </div>
+        ) : (
+          <StorageLocationManager
+            locations={locations}
+            onAdd={handleAddLocation}
+            onRename={handleRename}
+            onRemove={handleRemoveLocation}
+          />
+        )}
+      </details>
     </div>
   );
 }

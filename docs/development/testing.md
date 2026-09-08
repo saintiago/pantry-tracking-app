@@ -210,3 +210,15 @@ through removal/restoration. Pure frontend tests cover recipe/daily calorie arit
 unknown values, batch shopping, cross-week dependencies, copy identity and pantry scoring.
 These doubles do not prove AWS transaction/IAM integration; verify released UI operations
 against the real authenticated API. Prepared-batch confirmation never deducts raw stock.
+
+## Issue #14 imports and navigation
+
+`issue14-imports-layout.spec.ts` verifies import review before the only recipe save,
+editing/reordering, replacement inputs/retry/manual recovery, real Tesseract OCR from
+a generated printed-recipe image, and header Settings/compact planner layouts.
+`recipe-import.test.ts` covers metadata, fractions, malformed/unsafe model output,
+authentication and explicit model fallbacks. `import-fetch.test.ts` covers public-address
+checks and DNS-pinned redirect rejection. Model invocation is mocked in the gate;
+account access and live extraction methods require separate release verification.
+Manual recipe tests now choose Add manually from New Recipe; expiration tests toggle
+the filter before choosing its window. Planner tests retain only per-person kcal.

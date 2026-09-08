@@ -1,3 +1,4 @@
+import './planner.css';
 import React, { useEffect, useRef, useState } from 'react';
 import { entryKcal, type PlannerEntry } from '@pantry/domain';
 import { t, message, useLanguage } from '../../i18n/i18n';
@@ -365,25 +366,14 @@ export default function ExpandedMealPlanner({
         style={{ display: detail || entry ? 'none' : 'block', padding: 16, overflowX: 'hidden' }}
       >
         {drag.drag && <RecipeDragPreview drag={drag.drag} />}
-        <h1>{t('Meal Planner')}</h1>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-          {(['day', 'week', 'two-weeks'] as const).map((mode) => (
-            <button key={mode} aria-pressed={view === mode} onClick={() => setView(mode)}>
-              {t(mode === 'day' ? 'Day' : mode === 'week' ? 'Week' : 'Two weeks')}
-            </button>
-          ))}
-          {view === 'day' && (
-            <label>
-              {t('Selected day')}
-              <select value={day} onChange={(e) => setSelectedDay(e.target.value)}>
-                {allDates.map((date) => (
-                  <option key={date}>{date}</option>
-                ))}
-              </select>
-            </label>
-          )}
+        <header className="planner-heading">
+          <div>
+            <h1>{t('Meal Planner')}</h1>
+            <p className="planner-subtitle">{t('From recipes to your weekly plan')}</p>
+          </div>
           {onShopping && (
             <button
+              className="planner-shop"
               onClick={() =>
                 onShopping({
                   start: week,
@@ -395,44 +385,64 @@ export default function ExpandedMealPlanner({
               {t('Shop for these meals')}
             </button>
           )}
-          {planner.undo && (
-            <button disabled={locked} onClick={() => run(planner.undoChange)}>
-              {t('Undo')}
-            </button>
+        </header>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+          <div role="group" aria-label={t('View')} className="planner-view">
+            <span>{t('View')}:</span>
+            {(['day', 'week', 'two-weeks'] as const).map((mode) => (
+              <button key={mode} aria-pressed={view === mode} onClick={() => setView(mode)}>
+                {t(mode === 'day' ? 'Day' : mode === 'week' ? 'Week' : 'Two weeks')}
+              </button>
+            ))}
+          </div>
+          {view === 'day' && (
+            <label>
+              {t('Selected day')}
+              <select value={day} onChange={(e) => setSelectedDay(e.target.value)}>
+                {allDates.map((date) => (
+                  <option key={date}>{date}</option>
+                ))}
+              </select>
+            </label>
           )}
         </div>
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            const today = new Date();
-            const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-            run(async () => {
-              const entries = state.mealPlans
-                .filter((e) => e.date >= date && !e.batchId)
-                .map((e) => ({ ...e, servings: Number(servings) }));
-              await planner.mutate({ entries });
-              setNotice(`Updated ${entries.length} planned meals to ${servings} servings.`);
-            });
-          }}
-          style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}
-        >
-          <label>
-            {t('Servings')}{' '}
-            <input
-              type="number"
-              required
-              min="0.01"
-              step="any"
-              value={servings}
-              onChange={(e) => setServings(e.target.value)}
-              style={{ width: 70 }}
-            />
-          </label>
-          <button disabled={locked}>{t('Update future meals')}</button>
-          <small>
-            {t('Applies to future meals without batch links. Edit batch portions individually.')}
-          </small>
-        </form>
+        <details className="planner-servings">
+          <summary>
+            {t('Servings')}: {servings}
+          </summary>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              const today = new Date();
+              const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+              run(async () => {
+                const entries = state.mealPlans
+                  .filter((e) => e.date >= date && !e.batchId)
+                  .map((e) => ({ ...e, servings: Number(servings) }));
+                await planner.mutate({ entries });
+                setNotice(`Updated ${entries.length} planned meals to ${servings} servings.`);
+              });
+            }}
+            style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}
+          >
+            <label>
+              {t('Servings')}{' '}
+              <input
+                type="number"
+                required
+                min="0.01"
+                step="any"
+                value={servings}
+                onChange={(e) => setServings(e.target.value)}
+                style={{ width: 70 }}
+              />
+            </label>
+            <button disabled={locked}>{t('Update future meals')}</button>
+            <small>
+              {t('Applies to future meals without batch links. Edit batch portions individually.')}
+            </small>
+          </form>
+        </details>
         <PlannerCopies
           state={state}
           recipes={recipes}
@@ -444,7 +454,7 @@ export default function ExpandedMealPlanner({
         <PreparedBatches state={state} disabled={locked} onSave={planner.mutate} />
         <p>
           {t(
-            'Daily kcal per person assumes one portion of every listed dish. All planned portions uses the meal quantities. Estimates use current recipe nutrition; prepared batches keep their cooking snapshot.',
+            'Kcal per person assumes one portion of every dish. Estimates use current recipes; prepared batches keep their cooking snapshot.',
           )}
         </p>
         <button
@@ -495,6 +505,17 @@ export default function ExpandedMealPlanner({
             {library}
           </aside>
           <div className="planner-calendar">
+            {planner.undo && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+                <button
+                  className="planner-undo"
+                  disabled={locked}
+                  onClick={() => run(planner.undoChange)}
+                >
+                  <span aria-hidden="true">↶</span> {t('Undo')}
+                </button>
+              </div>
+            )}
             <WeekCalendar
               weekDates={dates}
               assignments={state.mealPlans.map((e) => ({

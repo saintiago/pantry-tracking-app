@@ -1,3 +1,7 @@
+import RecipeNameField from './RecipeNameField';
+import type { RecipeImportDraft } from '@pantry/domain';
+import ImportReview from './ImportReview';
+import MoveRowButtons, { moveRow } from './MoveRowButtons';
 import { validateTimeField, validatePortionsField } from './recipeFormRules';
 import { validKcal } from '@pantry/domain';
 import RecipeCalories from './RecipeCalories';
@@ -22,6 +26,7 @@ import { parseFractionalQuantity, formatQuantity } from '../../utils/quantity';
 import TagInput from '../../components/TagInput/TagInput';
 
 export interface RecipeEditorProps {
+  initialDraft?: RecipeImportDraft;
   recipeId?: string; // undefined = create mode
   onSaved: (recipeId: string) => void;
   onCancel: () => void;
@@ -57,6 +62,7 @@ const makeRow = (): IngredientRow => ({ _id: ++nextId, name: '', quantityStr: ''
 
 const RecipeEditor: React.FC<RecipeEditorProps> = ({
   recipeId,
+  initialDraft,
   onSaved,
   onCancel,
   allTags,
@@ -65,44 +71,56 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
   useLanguage();
   const isEdit = recipeId !== undefined;
 
-  const [name, setName] = useState('');
+  const [name, setName] = useState(initialDraft?.name ?? '');
   const [imageId, setImageId] = useState<string | null>(null);
   const [uploads, setUploads] = useState(0);
   const imageBusy = useCallback((busy: boolean) => setUploads((n) => n + (busy ? 1 : -1)), []);
-  const [instructions, setInstructions] = useState<InstructionRow[]>([makeInstructionRow()]);
+  const [instructions, setInstructions] = useState<InstructionRow[]>(() =>
+    initialDraft?.instructions.length
+      ? initialDraft.instructions.map(makeInstructionRow)
+      : [makeInstructionRow()],
+  );
   const [chefNotes, setChefNotes] = useState('');
-  const [sourceUrl, setSourceUrl] = useState('');
-  const [ingredients, setIngredients] = useState<IngredientRow[]>([makeRow()]);
+  const [sourceUrl, setSourceUrl] = useState(initialDraft?.sourceUrl ?? '');
+  const [ingredients, setIngredients] = useState<IngredientRow[]>(() =>
+    initialDraft?.ingredients.length
+      ? initialDraft.ingredients.map((item) => ({
+          ...makeRow(),
+          name: item.name,
+          unit: item.unit,
+          quantityStr: item.quantity === null ? '' : String(item.quantity),
+        }))
+      : [makeRow()],
+  );
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [loading, setLoading] = useState(isEdit);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Tags
   const [tags, setTags] = useState<string[]>([]);
 
-  // Time fields (stored as strings for controlled number inputs)
   const [totalKcal, setTotalKcal] = useState<number | undefined>();
-  const [prepTime, setPrepTime] = useState('');
-  const [cookTime, setCookTime] = useState('');
-  // Original values to distinguish "never set" from "cleared" in edit mode
+  const [prepTime, setPrepTime] = useState(
+    initialDraft?.prepTime === undefined ? '' : String(initialDraft.prepTime),
+  );
+  const [cookTime, setCookTime] = useState(
+    initialDraft?.cookTime === undefined ? '' : String(initialDraft.cookTime),
+  );
   const [originalPrepTime, setOriginalPrepTime] = useState<number | undefined>(undefined);
   const [originalCookTime, setOriginalCookTime] = useState<number | undefined>(undefined);
 
-  // Portions field (create mode only)
-  const [portions, setPortions] = useState<string>('');
+  const [portions, setPortions] = useState<string>(
+    initialDraft?.portions ? String(initialDraft.portions) : '',
+  );
 
-  // Portions scaler (edit mode only)
   const [selectedPortions, setSelectedPortions] = useState<number>(1);
   const [originalPortions, setOriginalPortions] = useState<number>(1);
 
-  // Per-row ingredient name autocomplete dropdowns
   const [dropdowns, setDropdowns] = useState<Record<number, DropdownState>>({});
   const debounceTimers = useRef<Record<number, NodeJS.Timeout>>({});
   const abortControllers = useRef<Record<number, AbortController>>({});
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       Object.values(abortControllers.current).forEach((c) => c.abort());
@@ -110,7 +128,6 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
     };
   }, []);
 
-  // In edit mode, fetch and pre-populate
   useEffect(() => {
     if (!isEdit || !recipeId) return;
     let cancelled = false;
@@ -144,7 +161,6 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
               }))
             : [makeRow()],
         );
-        // Pre-populate time fields
         setPrepTime(recipe.prepTime !== undefined ? String(recipe.prepTime) : '');
         setCookTime(recipe.cookTime !== undefined ? String(recipe.cookTime) : '');
         setTotalKcal(recipe.totalKcal ?? undefined);
@@ -176,7 +192,6 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
   const updateIngredientField = useCallback(
     (id: number, field: keyof Omit<IngredientRow, '_id'>, value: string) => {
       setIngredients((prev) => prev.map((r) => (r._id === id ? { ...r, [field]: value } : r)));
-      // Clear per-row error on change
       setErrors((prev) => {
         const rowErrors = { ...(prev.ingredientRows ?? {}) };
         if (rowErrors[id]) {
@@ -219,7 +234,6 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
         const controller = new AbortController();
         abortControllers.current[rowId] = controller;
         try {
-          // Search by name, barcode, brand, category, and whereToBuy in parallel — all now return items
           const [nameRes, barcodeRes, brandRes, categoryRes, whereToBuyRes] = await Promise.all([
             searchInventory('name', value).catch(() => null),
             searchInventory('barcode', value).catch(() => null),
@@ -367,11 +381,8 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
         ingredients: ingredientsToSave,
       };
 
-      // Build time field payload
       const timeFields: { prepTime?: number | null; cookTime?: number | null } = {};
       if (isEdit) {
-        // Edit mode: empty string on a previously-set field = explicit null (removal)
-        // Empty string on a field that was never set = omit entirely
         if (prepTime !== '') {
           timeFields.prepTime = Number(prepTime);
         } else if (originalPrepTime !== undefined) {
@@ -383,7 +394,6 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
           timeFields.cookTime = null;
         }
       } else {
-        // Create mode: empty = omit (never null in create mode)
         if (prepTime !== '') timeFields.prepTime = Number(prepTime);
         if (cookTime !== '') timeFields.cookTime = Number(cookTime);
       }
@@ -401,7 +411,6 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
           });
           onSaved(recipeId);
         } else {
-          // In create mode, timeFields only contains number | undefined (never null)
           const createTimeFields: { prepTime?: number; cookTime?: number } = {};
           if (timeFields.prepTime != null)
             createTimeFields.prepTime = timeFields.prepTime as number;
@@ -478,6 +487,9 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
         <h2 style={styles.pageTitle}>{isEdit ? t('Edit Recipe') : t('New Recipe')}</h2>
       </div>
 
+      {initialDraft && (
+        <ImportReview draft={initialDraft} onImage={setImageId} onBusy={imageBusy} />
+      )}
       {submitError && (
         <div style={styles.errorBanner} role="alert">
           {translateMessage(submitError)}
@@ -491,30 +503,14 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
           onChange={setTotalKcal}
         />
         {errors.totalKcal && <p role="alert">{translateMessage(errors.totalKcal)}</p>}
-        {/* Name */}
-        <div style={styles.fieldGroup}>
-          <label htmlFor="recipe-name" style={styles.label}>
-            {t('Name')} <span aria-hidden="true">*</span>
-          </label>
-          <input
-            id="recipe-name"
-            type="text"
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              setErrors((prev) => ({ ...prev, name: undefined }));
-            }}
-            style={styles.input}
-            aria-required="true"
-            aria-invalid={!!errors.name}
-          />
-          {errors.name && (
-            <span style={styles.fieldError} role="alert">
-              {translateMessage(errors.name)}
-            </span>
-          )}
-        </div>
-
+        <RecipeNameField
+          value={name}
+          error={errors.name}
+          onChange={(value) => {
+            setName(value);
+            setErrors((previous) => ({ ...previous, name: undefined }));
+          }}
+        />
         <RecipePhotoField
           label={t('Recipe image')}
           imageId={imageId}
@@ -834,6 +830,15 @@ const RecipeEditor: React.FC<RecipeEditorProps> = ({
                         )}
                       </div>
                     </div>
+                    <MoveRowButtons
+                      index={index}
+                      count={ingredients.length}
+                      label={t('ingredient {0}', index + 1)}
+                      disabled={submitting}
+                      onMove={(direction) =>
+                        setIngredients((current) => moveRow(current, index, direction))
+                      }
+                    />
                   </div>
 
                   {/* Remove button */}

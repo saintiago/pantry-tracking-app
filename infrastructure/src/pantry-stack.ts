@@ -230,12 +230,24 @@ export class PantryStack extends cdk.Stack {
       environment: {
         TABLE_NAME: this.table.tableName,
         STORAGE_BUCKET: this.storageBucket.bucketName,
+        RECIPE_IMPORT_MODEL: 'amazon.nova-lite-v1:0',
       },
-      timeout: cdk.Duration.seconds(10),
+      timeout: cdk.Duration.seconds(28),
       memorySize: 256,
     });
 
     this.table.grantReadWriteData(recipeLambda);
+    recipeLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['bedrock:InvokeModel'],
+        resources: [
+          `arn:${this.partition}:bedrock:${this.region}::foundation-model/amazon.nova-lite-v1:0`,
+        ],
+      }),
+    );
+    this.api.root
+      .addResource('recipe-import')
+      .addMethod('POST', new apigateway.LambdaIntegration(recipeLambda), authMethodOptions);
     this.storageBucket.grantRead(recipeLambda, 'recipe-images/*');
     this.storageBucket.grantPut(recipeLambda, 'recipe-images/*');
     const recipeImages = this.api.root.addResource('recipe-images');

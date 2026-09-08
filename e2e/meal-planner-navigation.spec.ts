@@ -30,7 +30,7 @@ test('planned servings and cooking retain selected day and update only the assig
   await expect(page.getByLabel('Planned meal')).toContainText('2 servings');
   await page.getByRole('button', { name: 'Increase portions' }).click();
   await page.getByRole('button', { name: 'Save servings for this meal' }).click();
-  expect(model.state().mealPlans[0].servings).toBe(3);
+  await expect.poll(() => model.state().mealPlans[0].servings).toBe(3);
   expect(model.recipes[0].portions).toBe(4);
   await page.getByRole('button', { name: '🍳 Cook', exact: true }).click();
   await expect(page.getByText('Boil water', { exact: true })).toBeVisible();

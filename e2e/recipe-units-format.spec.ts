@@ -153,6 +153,7 @@ test.describe('Recipe Units Format', () => {
     await loginAndGoToRecipes(page);
 
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     const unitSelect = page.getByLabel('Ingredient 1 unit');
@@ -207,6 +208,7 @@ test.describe('Recipe Units Format', () => {
     await loginAndGoToRecipes(page);
 
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Fractional Recipe');
@@ -224,7 +226,9 @@ test.describe('Recipe Units Format', () => {
     await page.getByRole('button', { name: 'Create Recipe' }).click();
 
     // Should navigate to detail view
-    await expect(page.getByRole('heading', { name: 'Fractional Recipe' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Fractional Recipe' })).toBeVisible({
+      timeout: 5000,
+    });
 
     // Ingredient should display "1/2 cups" (plural because 0.5 ≠ 1)
     const ingredientsSection = page.getByRole('region', { name: 'Ingredients' });
@@ -267,6 +271,7 @@ test.describe('Recipe Units Format', () => {
     await loginAndGoToRecipes(page);
 
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Mixed Number Recipe');
@@ -282,7 +287,9 @@ test.describe('Recipe Units Format', () => {
 
     await page.getByRole('button', { name: 'Create Recipe' }).click();
 
-    await expect(page.getByRole('heading', { name: 'Mixed Number Recipe' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Mixed Number Recipe' })).toBeVisible({
+      timeout: 5000,
+    });
 
     // Ingredient should display "1 1/2 cups"
     const ingredientsSection = page.getByRole('region', { name: 'Ingredients' });
@@ -325,6 +332,7 @@ test.describe('Recipe Units Format', () => {
     await loginAndGoToRecipes(page);
 
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Singular Recipe');
@@ -340,7 +348,9 @@ test.describe('Recipe Units Format', () => {
 
     await page.getByRole('button', { name: 'Create Recipe' }).click();
 
-    await expect(page.getByRole('heading', { name: 'Singular Recipe' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Singular Recipe' })).toBeVisible({
+      timeout: 5000,
+    });
 
     // Ingredient should display "1 cup" (singular because quantity === 1)
     const ingredientsSection = page.getByRole('region', { name: 'Ingredients' });
@@ -355,6 +365,7 @@ test.describe('Recipe Units Format', () => {
     await loginAndGoToRecipes(page);
 
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Test Recipe');
@@ -368,9 +379,7 @@ test.describe('Recipe Units Format', () => {
     await page.getByRole('button', { name: 'Create Recipe' }).click();
 
     // Validation error should appear
-    await expect(
-      page.getByText('Enter a valid quantity (e.g. 1, 1/2, 1 1/4).'),
-    ).toBeVisible();
+    await expect(page.getByText('Enter a valid quantity (e.g. 1, 1/2, 1 1/4).')).toBeVisible();
 
     // Form should NOT have navigated away — still on New Recipe page
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible();
@@ -386,7 +395,13 @@ test.describe('Recipe Units Format', () => {
         body: JSON.stringify({
           recipe: mockRecipeWithLegacyUnit,
           ingredientAvailability: [
-            { name: 'Sugar', required: 100, unit: 'Gram', available: 0, status: 'missing' as const },
+            {
+              name: 'Sugar',
+              required: 100,
+              unit: 'Gram',
+              available: 0,
+              status: 'missing' as const,
+            },
           ],
           missingCount: 1,
         }),
@@ -397,7 +412,9 @@ test.describe('Recipe Units Format', () => {
 
     // Navigate to the legacy unit recipe detail
     await page.getByRole('button', { name: 'View Legacy Unit Recipe' }).click();
-    await expect(page.getByRole('heading', { name: 'Legacy Unit Recipe' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Legacy Unit Recipe' })).toBeVisible({
+      timeout: 5000,
+    });
 
     // Should display "100 grams" (resolved from "Gram" → "g" → "grams")
     const ingredientsSection = page.getByRole('region', { name: 'Ingredients' });
@@ -418,7 +435,13 @@ test.describe('Recipe Units Format', () => {
           body: JSON.stringify({
             recipe: mockRecipeWithLegacyUnit,
             ingredientAvailability: [
-              { name: 'Sugar', required: 100, unit: 'Gram', available: 0, status: 'missing' as const },
+              {
+                name: 'Sugar',
+                required: 100,
+                unit: 'Gram',
+                available: 0,
+                status: 'missing' as const,
+              },
             ],
             missingCount: 1,
           }),
@@ -437,7 +460,9 @@ test.describe('Recipe Units Format', () => {
     await loginAndGoToRecipes(page);
 
     await page.getByRole('button', { name: 'View Legacy Unit Recipe' }).click();
-    await expect(page.getByRole('heading', { name: 'Legacy Unit Recipe' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Legacy Unit Recipe' })).toBeVisible({
+      timeout: 5000,
+    });
 
     // Open the editor
     await page.getByTestId('edit-button').click();

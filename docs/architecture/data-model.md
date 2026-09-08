@@ -758,3 +758,29 @@ Operations accept at most 90 records per array and 98 changed meal rows (a date 
 uses two), reserving transaction slots for revision and receipt. Oversized changes fail
 before persistence. Legacy bulk servings now completes atomically and excludes batch-linked
 entries; those need individual allocation review. There is no offline mutation queue.
+
+## Recipe import drafts (issue #14)
+
+Authenticated `POST /recipe-import` returns a draft, never a recipe or inventory write.
+`{action:'recipe',url}` (action optional) fetches a public HTTPS page and interprets
+its text with Bedrock. Shared `RecipeImportDraft` has name, ingredients (name, nullable
+quantity, canonical-or-empty unit, original line), steps, optional yield/times/source/
+image URL, extracted text, warnings and method `bedrock|metadata|ocr`. Imported data
+must pass existing recipe POST validation after explicit confirmation.
+
+`{action:'photo',dataUrl}` accepts JPG/PNG/WebP base64 up to 1.4 MB encoded, prepared
+by the existing browser converter. Bedrock returns `{draft}`; model unavailability or
+unreadable output returns `{fallback:'ocr',message}` without saving. The browser offers
+on-device recognition. The source photo is not automatically retained in S3.
+
+`{action:'image',url}` returns `{dataUrl}` for an optional source image after a user
+permission choice; normal `/recipe-images` stores the private reference. HTML is
+bounded to 2 MB, images to 1 MB, URLs to 2048 characters, redirects to three and fetch
+time to 6.5 seconds. HTTPS requests reject userinfo/nonstandard ports/non-public DNS
+results and pin the validated address. Bedrock uses 17 seconds, one attempt, 35,000
+source characters and 4,000 output tokens. Incomplete output falls back explicitly.
+Model-returned URLs are never trusted or fetched.
+
+The Recipe Lambda has 28 seconds total execution and can invoke only the regional
+`amazon.nova-lite-v1:0` model. Missing model access does not disable manual creation
+or metadata/OCR fallback. No persisted schema migration is required.

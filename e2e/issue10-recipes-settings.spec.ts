@@ -231,11 +231,11 @@ test('expiration windows compose with search and recover from inventory failure'
   controls.inventoryFail = false;
   await page.getByRole('button', { name: 'Retry inventory' }).click();
   await expect(page.getByLabel('Ingredients expiring soon')).toBeEnabled();
-  await page.getByLabel('Ingredients expiring soon').selectOption('7');
+  await page.getByLabel('Ingredients expiring soon').check();
   await expect(page.getByRole('button', { name: 'View Herb pie' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'View Rice bowl' })).toHaveCount(0);
   await expect(page.getByText(/Use soon: Milk/)).toBeVisible();
-  await page.getByLabel('Ingredients expiring soon').selectOption('14');
+  await page.getByLabel('Expiration window').selectOption('14');
   await expect(page.getByRole('button', { name: 'View Rice bowl' })).toBeVisible();
   await page.getByPlaceholder('Search recipes…').fill('Rice');
   await expect(page.getByRole('button', { name: 'View Herb pie' })).toHaveCount(0);
@@ -257,6 +257,7 @@ test('Settings owns existing locations and renamed data refreshes in Inventory a
   await expect(remove).toHaveCSS('background-color', 'rgb(255, 229, 229)');
   await remove.click();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByText('Storage locations', { exact: true }).click();
   await page.getByRole('button', { name: 'Rename Pantry', exact: true }).click();
   await page.getByRole('textbox', { name: 'Rename Pantry', exact: true }).fill('Kitchen');
   await page.getByRole('button', { name: 'Save rename' }).click();
@@ -298,7 +299,7 @@ for (const [language, settings, recipes, filter, image] of [
     expect((await nav.boundingBox())!.height).toBeLessThanOrEqual(57);
     await page.getByRole('button', { name: recipes, exact: true }).click();
     await expect(page.getByLabel(filter)).toBeEnabled();
-    await page.getByLabel(filter).selectOption('7');
+    await page.getByLabel(filter).check();
     await expect(page.getByText('Herb pie', { exact: true })).toBeVisible();
     await expect(page.getByText('Rice bowl', { exact: true })).toHaveCount(0);
     await page.getByText('Herb pie', { exact: true }).click();

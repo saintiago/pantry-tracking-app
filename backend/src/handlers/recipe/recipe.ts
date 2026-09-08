@@ -1,4 +1,5 @@
 import { recipeTags } from './recipe-queries';
+import { recipeImportRequest } from './recipe-import';
 import { validKcal } from '@pantry/domain';
 import { readRecipePages } from './recipe-queries';
 import { autoCreateMissingIngredients } from './recipe-inventory';
@@ -437,6 +438,10 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
   try {
     if (event.resource?.startsWith('/recipe-images'))
       return await recipeImageRequest(userId, method, event.pathParameters?.imageId, event.body);
+    if (event.resource === '/recipe-import')
+      return method === 'POST'
+        ? await recipeImportRequest(event.body)
+        : response(405, { message: 'Method not allowed' });
     if (method === 'GET' && !recipeId) {
       return await listRecipes(userId);
     }

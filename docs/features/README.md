@@ -12,6 +12,8 @@ Key precedence notes:
 - `meal-planner/expanded-planner.md` supersedes their drag handles, overflow menus and
   deferred batches/templates/calories roadmap with issue #13.
 - `language/` owns multilingual acceptance details.
+- [Recipe imports and navigation](recipe-management/imports-and-navigation.md) replaces
+  the bottom Settings tab and all-planned-portions calorie display with issue #14.
 - `recipe-units-format/` describes the original duplicated modules; the shared domain
   package now supersedes that implementation decision while preserving stored values.
 - `offline-sync/`, `receipt-ocr/` and `optional-features/` contain future work.

@@ -115,6 +115,7 @@ describe('RecipesPage', () => {
 
     // Navigate to new recipe editor
     await user.click(screen.getByRole('button', { name: /new recipe/i }));
+    await user.click(screen.getByRole('button', { name: /add manually/i }));
 
     // Fill in required fields
     await user.type(screen.getByRole('textbox', { name: /^name$/i }), 'Vegan Pasta');
@@ -190,6 +191,7 @@ describe('RecipesPage', () => {
 
     // Navigate to editor then cancel
     await user.click(screen.getByRole('button', { name: /new recipe/i }));
+    await user.click(screen.getByRole('button', { name: /add manually/i }));
     await user.click(screen.getByRole('button', { name: /cancel/i }));
 
     // fetchRecipeTags should NOT have been called again

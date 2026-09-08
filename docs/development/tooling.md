@@ -58,3 +58,9 @@ and patched transitive dependencies. Quagga is pinned to 1.12.0: the published b
 bundle is identical to 1.12.1, which adds unused Node-only optional image dependencies
 with a vulnerable Sharp range. Revisit that pin when upstream updates the range; do not
 use a blanket forced audit update or omit optional dependencies to hide advisories.
+
+Recipe import uses the AWS Bedrock Runtime SDK and a scoped regional Nova Lite model.
+The Vite `ocr-assets` plugin serves/emits pinned Tesseract worker/core and English,
+Spanish and Italian language assets from npm dependencies. They download on demand,
+not during normal app startup; no third-party OCR CDN is required. Existing dev/build
+commands include this plugin automatically.

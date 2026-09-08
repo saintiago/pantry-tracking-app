@@ -30,7 +30,7 @@ describe('Layout', () => {
     expect(screen.getByText('Recipes')).toBeInTheDocument();
     expect(screen.getByText('Meal Plan')).toBeInTheDocument();
     expect(screen.getByText('Shopping List')).toBeInTheDocument();
-    expect(screen.getByText('Settings')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument();
   });
 
   it('renders children in the main content area', () => {

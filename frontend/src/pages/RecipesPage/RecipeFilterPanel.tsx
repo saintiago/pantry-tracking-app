@@ -64,22 +64,6 @@ const RecipeFilterPanel: React.FC<RecipeFilterPanelProps> = ({
         </button>
       </div>
 
-      <label style={styles.fieldGroup}>
-        {t('Ingredients expiring soon')}
-        <select
-          aria-label={t('Ingredients expiring soon')}
-          disabled={inventoryLoading || inventoryUnavailable}
-          value={value.expiringWithinDays ?? 0}
-          onChange={(event) =>
-            onChange({ ...value, expiringWithinDays: Number(event.target.value) })
-          }
-          style={{ minHeight: 44, maxWidth: '100%' }}
-        >
-          <option value={0}>{t('Any expiration')}</option>
-          <option value={7}>{t('Within 1 week')}</option>
-          <option value={14}>{t('Within 2 weeks')}</option>
-        </select>
-      </label>
       {/* Max prep time */}
       <div style={styles.fieldGroup}>
         <label htmlFor="filter-max-prep-time" style={styles.label}>
@@ -162,6 +146,32 @@ const RecipeFilterPanel: React.FC<RecipeFilterPanelProps> = ({
           />
           {t('Only recipes I can make now')}{' '}
         </label>
+        <label
+          htmlFor="filter-expiring"
+          style={value.expiringWithinDays ? styles.toggleLabelActive : styles.toggleLabel}
+        >
+          <input
+            id="filter-expiring"
+            type="checkbox"
+            style={styles.checkbox}
+            disabled={inventoryLoading || inventoryUnavailable}
+            checked={!!value.expiringWithinDays}
+            onChange={(e) => onChange({ ...value, expiringWithinDays: e.target.checked ? 7 : 0 })}
+          />
+          {t('Ingredients expiring soon')}
+        </label>
+        {!!value.expiringWithinDays && (
+          <select
+            aria-label={t('Expiration window')}
+            value={value.expiringWithinDays}
+            disabled={inventoryLoading || inventoryUnavailable}
+            onChange={(e) => onChange({ ...value, expiringWithinDays: Number(e.target.value) })}
+            style={{ minHeight: 44, maxWidth: '100%' }}
+          >
+            <option value={7}>{t('Within 1 week')}</option>
+            <option value={14}>{t('Within 2 weeks')}</option>
+          </select>
+        )}
         {inventoryLoading && <span style={styles.loadingHint}>{t('Loading inventory…')}</span>}
       </div>
     </section>

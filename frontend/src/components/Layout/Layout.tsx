@@ -27,7 +27,6 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'recipes', label: 'Recipes', icon: '📖' },
   { id: 'meal-plan', label: 'Meal Plan', icon: '📅' },
   { id: 'shopping-list', label: 'Shopping List', icon: '🛒' },
-  { id: 'settings', label: 'Settings', icon: '⚙️' },
 ];
 
 interface LayoutProps {
@@ -74,6 +73,22 @@ const Layout: React.FC<LayoutProps> = ({
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginLeft: 'auto' }}>
           <OnlineIndicator />
+          <button
+            type="button"
+            aria-label={t('Settings')}
+            aria-current={activePage === 'settings' ? 'page' : undefined}
+            onClick={() => onNavigate('settings')}
+            style={{
+              minWidth: 44,
+              minHeight: 44,
+              borderRadius: 8,
+              border: '1px solid var(--color-border)',
+              background: activePage === 'settings' ? 'var(--color-mint)' : 'var(--color-surface)',
+              fontSize: 22,
+            }}
+          >
+            <span aria-hidden="true">⚙️</span>
+          </button>
           <LanguageSwitcher />
         </div>
       </header>

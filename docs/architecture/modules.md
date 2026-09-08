@@ -102,3 +102,13 @@ Copy/template transformation is a pure frontend domain rule. Grocery ranking reu
 Shopping's existing calculator and remaining-stock map; it never mutates stock.
 `RecipeCalories` owns the nutrition input and header display; `recipeFormRules` owns
 the existing editor's time/yield validation. No new Lambda or infrastructure is needed.
+
+Issue #14 adds `/recipe-import` to the existing Recipe Lambda, with scoped Bedrock
+invocation permission and a 28-second timeout. `import-fetch` owns bounded public-HTTPS
+fetching and redirect/DNS checks; `import-page` owns schema.org/text extraction;
+`import-model` owns Bedrock prompts and output validation. Shared draft contracts and
+conservative printed-text parsing live in `@pantry/domain`. Imports never write records.
+`RecipeImporter` coordinates inputs/cancellation; `ImportReview` explains uncertainty
+and optional image import; the existing editor owns confirmation/saving. Tesseract is
+loaded only for fallback. The Vite OCR asset plugin serves/emits versioned self-hosted
+runtime/language assets without eager downloading.

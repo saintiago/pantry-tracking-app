@@ -37,9 +37,7 @@ const mockRecipes = [
     userId: 'test-user',
     name: 'Slow Roast',
     tags: ['meat'],
-    ingredients: [
-      { name: 'Beef', quantity: 500, unit: 'g' },
-    ],
+    ingredients: [{ name: 'Beef', quantity: 500, unit: 'g' }],
     instructions: 'Roast for 3 hours.',
     prepTime: 20,
     cookTime: 180,
@@ -53,9 +51,7 @@ const mockRecipes = [
     userId: 'test-user',
     name: 'No Time Recipe',
     tags: ['quick'],
-    ingredients: [
-      { name: 'Bread', quantity: 2, unit: 'Unit' },
-    ],
+    ingredients: [{ name: 'Bread', quantity: 2, unit: 'Unit' }],
     instructions: 'Just eat it.',
     // no prepTime or cookTime
     portions: 1,
@@ -84,10 +80,62 @@ const mockRecipes = [
 
 // Inventory: has Pasta, Eggs, Lettuce, Tomato — but NOT Beef or Bread
 const mockInventoryItems = [
-  { itemId: 'inv-1', name: 'Pasta', category: 'Dry Goods', quantity: 500, unit: 'g', location: 'pantry', expirationDate: '2025-12-31', isLowStock: false, userId: 'test-user', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z', syncVersion: 1 },
-  { itemId: 'inv-2', name: 'Eggs', category: 'Dairy', quantity: 6, unit: 'Unit', location: 'fridge', expirationDate: '2025-12-31', isLowStock: false, userId: 'test-user', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z', syncVersion: 1 },
-  { itemId: 'inv-3', name: 'Lettuce', category: 'Produce', quantity: 2, unit: 'Unit', location: 'fridge', expirationDate: '2025-12-31', isLowStock: false, userId: 'test-user', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z', syncVersion: 1 },
-  { itemId: 'inv-4', name: 'Tomato', category: 'Produce', quantity: 4, unit: 'Unit', location: 'fridge', expirationDate: '2025-12-31', isLowStock: false, userId: 'test-user', createdAt: '2024-01-01T00:00:00Z', updatedAt: '2024-01-01T00:00:00Z', syncVersion: 1 },
+  {
+    itemId: 'inv-1',
+    name: 'Pasta',
+    category: 'Dry Goods',
+    quantity: 500,
+    unit: 'g',
+    location: 'pantry',
+    expirationDate: '2025-12-31',
+    isLowStock: false,
+    userId: 'test-user',
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    syncVersion: 1,
+  },
+  {
+    itemId: 'inv-2',
+    name: 'Eggs',
+    category: 'Dairy',
+    quantity: 6,
+    unit: 'Unit',
+    location: 'fridge',
+    expirationDate: '2025-12-31',
+    isLowStock: false,
+    userId: 'test-user',
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    syncVersion: 1,
+  },
+  {
+    itemId: 'inv-3',
+    name: 'Lettuce',
+    category: 'Produce',
+    quantity: 2,
+    unit: 'Unit',
+    location: 'fridge',
+    expirationDate: '2025-12-31',
+    isLowStock: false,
+    userId: 'test-user',
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    syncVersion: 1,
+  },
+  {
+    itemId: 'inv-4',
+    name: 'Tomato',
+    category: 'Produce',
+    quantity: 4,
+    unit: 'Unit',
+    location: 'fridge',
+    expirationDate: '2025-12-31',
+    isLowStock: false,
+    userId: 'test-user',
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    syncVersion: 1,
+  },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -267,7 +315,9 @@ test.describe('Recipe Search & Filter', () => {
 
   // ── Validation errors ─────────────────────────────────────────────────────
 
-  test('negative number in prep time input shows inline validation error and does not filter', async ({ page }) => {
+  test('negative number in prep time input shows inline validation error and does not filter', async ({
+    page,
+  }) => {
     await page.getByLabel('Max prep time (min)').fill('-5');
 
     // Inline error appears
@@ -303,7 +353,9 @@ test.describe('Recipe Search & Filter', () => {
 
   // ── "Only recipes I can make now" toggle ─────────────────────────────────
 
-  test('"Only recipes I can make now" shows only recipes with all ingredients in inventory', async ({ page }) => {
+  test('"Only recipes I can make now" shows only recipes with all ingredients in inventory', async ({
+    page,
+  }) => {
     // Inventory has: Pasta, Eggs, Lettuce, Tomato
     // Quick Pasta needs Pasta + Eggs → available ✓
     // Pantry Salad needs Lettuce + Tomato → available ✓
@@ -397,7 +449,9 @@ test.describe('Recipe Search & Filter', () => {
 
   // ── Empty state messages ──────────────────────────────────────────────────
 
-  test('shows "No recipes match the selected filters." when filters produce empty result', async ({ page }) => {
+  test('shows "No recipes match the selected filters." when filters produce empty result', async ({
+    page,
+  }) => {
     // Set max prep time to 0 — no recipe has prepTime of 0 (Quick Pasta has 5)
     await page.getByLabel('Max prep time (min)').fill('0');
 

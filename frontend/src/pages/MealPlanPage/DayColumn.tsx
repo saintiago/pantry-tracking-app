@@ -47,13 +47,6 @@ const DayColumn: React.FC<DayColumnProps> = ({
           {t('kcal per person')}:{' '}
           {Math.round(assignments.reduce((sum, a) => sum + (a.kcalPerPortion ?? 0), 0))}
         </div>
-        <div>
-          {t('All planned portions')}:{' '}
-          {Math.round(
-            assignments.reduce((sum, a) => sum + (a.kcalPerPortion ?? 0) * (a.servings ?? 1), 0),
-          )}{' '}
-          kcal
-        </div>
         {assignments.some((a) => a.kcalPerPortion === undefined) && (
           <strong>
             {t(

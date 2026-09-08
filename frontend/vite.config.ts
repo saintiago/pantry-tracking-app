@@ -1,4 +1,5 @@
 import { defineConfig, Plugin } from 'vite';
+import { ocrAssets } from './plugins/ocr-assets';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import fs from 'fs';
@@ -37,7 +38,7 @@ export default defineConfig(({ command }) => {
     throw new Error('Mock authentication must never be included in a production build.');
   }
   return {
-    plugins: [mockAuthPlugin(), react()].filter(Boolean),
+    plugins: [mockAuthPlugin(), react(), ocrAssets()].filter(Boolean),
     optimizeDeps: { include: ['@pantry/domain'] },
     build: {
       outDir: 'build',

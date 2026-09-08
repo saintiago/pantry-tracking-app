@@ -1,3 +1,4 @@
+import MoveRowButtons, { moveRow } from './MoveRowButtons';
 import React from 'react';
 import { styles } from './styles';
 import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
@@ -66,6 +67,15 @@ export default function RecipeInstructionsEditor({
                 ×
               </button>
             </div>
+            <MoveRowButtons
+              index={index}
+              count={instructions.length}
+              label={t('instruction step {0}', index + 1)}
+              disabled={disabled}
+              onMove={(direction) =>
+                setInstructions((current) => moveRow(current, index, direction))
+              }
+            />
             <RecipePhotoField
               label={t('Image for step {0}', index + 1)}
               imageId={step.imageId}

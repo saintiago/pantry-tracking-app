@@ -160,7 +160,12 @@ export async function setupPlanner(page: Page, initial: PlannerEntry[] = [meal()
   return { writes, recipes, options, state: () => state };
 }
 export async function pointerDrag(page: Page, from: Locator, to: Locator) {
-  await from.scrollIntoViewIfNeeded();
+  await expect(page.locator('[data-recipe-library]')).not.toHaveAttribute(
+    'data-drop-disabled',
+    'true',
+  );
+  // Center cards away from the sticky header and fixed bottom navigation.
+  await from.evaluate((element) => element.scrollIntoView({ block: 'center', inline: 'nearest' }));
   const a = await from.boundingBox();
   if (!a) throw new Error('Drag source unavailable');
   await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);

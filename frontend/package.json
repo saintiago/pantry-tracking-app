@@ -1,6 +1,6 @@
 {
   "name": "frontend",
-  "version": "0.0.77",
+  "version": "0.0.78",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,9 +16,13 @@
   "dependencies": {
     "@ericblade/quagga2": "1.12.0",
     "@pantry/domain": "0.0.1",
+    "@tesseract.js-data/eng": "^1.0.0",
+    "@tesseract.js-data/ita": "^1.0.0",
+    "@tesseract.js-data/spa": "^1.0.0",
     "amazon-cognito-identity-js": "^6.3.16",
     "react": "^18.3.0",
-    "react-dom": "^18.3.0"
+    "react-dom": "^18.3.0",
+    "tesseract.js": "^6.0.1"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",

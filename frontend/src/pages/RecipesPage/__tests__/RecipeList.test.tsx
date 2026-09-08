@@ -87,7 +87,9 @@ describe('RecipeList', () => {
     render(<RecipeList {...defaultProps} />);
     await waitFor(() => screen.getByRole('button', { name: /new recipe/i }));
     await user.click(screen.getByRole('button', { name: /new recipe/i }));
-    expect(onNew).toHaveBeenCalledTimes(1);
+    expect(onNew).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Add manually' }));
+    expect(onNew).toHaveBeenCalledWith('manual');
   });
 
   it('calls onSelect with recipeId when a recipe row is clicked', async () => {

@@ -250,6 +250,7 @@ test.describe('Recipe Management', () => {
   test('creates a new recipe and verifies it appears in the list', async ({ page }) => {
     // Click New Recipe
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     // Fill in the form
@@ -445,6 +446,7 @@ test.describe('Recipe Management', () => {
 
   test('cancel button in recipe editor returns to list without saving', async ({ page }) => {
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Should Not Be Saved');
@@ -456,6 +458,7 @@ test.describe('Recipe Management', () => {
 
   test('recipe editor shows validation errors on empty submit', async ({ page }) => {
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     // Submit without filling anything
@@ -564,6 +567,7 @@ test.describe('Recipe Management', () => {
     });
 
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Timed Recipe');
@@ -654,6 +658,7 @@ test.describe('Recipe Management', () => {
     page,
   }) => {
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Test Recipe');
@@ -678,6 +683,7 @@ test.describe('Recipe Management', () => {
     page,
   }) => {
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     // Type 3+ chars to trigger autocomplete (matches by name)
@@ -726,6 +732,7 @@ test.describe('Recipe Management', () => {
     });
 
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     // Type a category name
@@ -829,6 +836,7 @@ test.describe('Recipe Management', () => {
 
     // Create the recipe
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Mystery Stew');
@@ -911,6 +919,7 @@ test.describe('Recipe Management', () => {
     });
 
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Portioned Recipe');
@@ -941,6 +950,7 @@ test.describe('Recipe Management', () => {
     page,
   }) => {
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     // Fill in all required fields except Portions
@@ -1203,6 +1213,7 @@ test.describe('Recipe Management', () => {
 
   test('submitting form with no tags shows "At least one tag is required."', async ({ page }) => {
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     // Fill required fields except tags
@@ -1220,6 +1231,7 @@ test.describe('Recipe Management', () => {
 
   test('typing a tag and pressing Enter commits it as a chip', async ({ page }) => {
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     const tagInput = page.getByPlaceholder('Add a tag…');
@@ -1232,6 +1244,7 @@ test.describe('Recipe Management', () => {
 
   test('typing a tag and pressing comma commits it as a chip', async ({ page }) => {
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     const tagInput = page.getByPlaceholder('Add a tag…');
@@ -1243,6 +1256,7 @@ test.describe('Recipe Management', () => {
 
   test('pressing remove button on a chip removes it', async ({ page }) => {
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     const tagInput = page.getByPlaceholder('Add a tag…');
@@ -1258,6 +1272,7 @@ test.describe('Recipe Management', () => {
 
   test('tag autocomplete shows suggestions on focus', async ({ page }) => {
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     await page.getByPlaceholder('Add a tag…').click();
@@ -1269,6 +1284,7 @@ test.describe('Recipe Management', () => {
 
   test('selecting a suggestion from autocomplete commits it as a chip', async ({ page }) => {
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     await page.getByPlaceholder('Add a tag…').click();
@@ -1297,6 +1313,7 @@ test.describe('Recipe Management', () => {
 
   test('Tab on focused empty tag input commits the first suggestion', async ({ page }) => {
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     const tagInput = page.getByPlaceholder('Add a tag…');
@@ -1312,6 +1329,7 @@ test.describe('Recipe Management', () => {
 
   test('ArrowDown then Enter commits the highlighted suggestion', async ({ page }) => {
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     const tagInput = page.getByPlaceholder('Add a tag…');
@@ -1337,6 +1355,7 @@ test.describe('Recipe Management', () => {
 
   test('ArrowDown then Tab commits the highlighted suggestion', async ({ page }) => {
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     const tagInput = page.getByPlaceholder('Add a tag…');
@@ -1359,6 +1378,7 @@ test.describe('Recipe Management', () => {
 
   test('ArrowUp from initial state wraps to the last suggestion', async ({ page }) => {
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     const tagInput = page.getByPlaceholder('Add a tag…');
@@ -1378,6 +1398,7 @@ test.describe('Recipe Management', () => {
 
   test('ArrowDown wraps from last suggestion back to first', async ({ page }) => {
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     const tagInput = page.getByPlaceholder('Add a tag…');
@@ -1398,6 +1419,7 @@ test.describe('Recipe Management', () => {
     page,
   }) => {
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     const tagInput = page.getByPlaceholder('Add a tag…');
@@ -1418,6 +1440,7 @@ test.describe('Recipe Management', () => {
     page,
   }) => {
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     const tagInput = page.getByPlaceholder('Add a tag…');
@@ -1446,6 +1469,7 @@ test.describe('Recipe Management', () => {
     page,
   }) => {
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     const tagInput = page.getByPlaceholder('Add a tag…');
@@ -1647,6 +1671,7 @@ test.describe('Recipe Management', () => {
     });
 
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'New Recipe' })).toBeVisible({ timeout: 5000 });
 
     await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Tag Test Recipe');
@@ -1689,6 +1714,7 @@ test.describe('Recipe Management', () => {
     });
 
     await page.getByRole('button', { name: '+ New Recipe' }).click();
+    await page.getByRole('button', { name: 'Add manually', exact: true }).click();
     const unitSelect = page.getByLabel('Ingredient 1 unit');
     const labels = await unitSelect.locator('option:not([value=""])').allTextContents();
     expect(labels).toEqual([...labels].sort((a, b) => a.localeCompare(b)));
