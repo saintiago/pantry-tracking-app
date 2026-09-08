@@ -1,3 +1,4 @@
+import Cookbooks from './Cookbooks';
 import RecipeCreateMenu from './RecipeCreateMenu';
 import { prioritizeExpiringRecipes, recipeExpiration } from '../../domain/recipes/expiration';
 import type { InventoryItem } from '../../domain/inventory/types';
@@ -40,6 +41,7 @@ const RecipeList: React.FC<RecipeListProps> = ({
   activeCookingSession,
 }) => {
   useLanguage();
+  const [cookbookIds, setCookbookIds] = useState<string[] | null | undefined>(null);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -82,12 +84,25 @@ const RecipeList: React.FC<RecipeListProps> = ({
       onlyAllAvailable: panel.onlyAllAvailable,
     };
     return prioritizeExpiringRecipes(
-      filterRecipes(recipes, resolvedFilters, inventoryIndex),
+      filterRecipes(
+        cookbookIds ? recipes.filter((r) => cookbookIds.includes(r.recipeId)) : recipes,
+        resolvedFilters,
+        inventoryIndex,
+      ),
       inventoryItems,
       today,
       panel.expiringWithinDays ?? 0,
     );
-  }, [recipes, search, activeTagFilters, panel, inventoryIndex, inventoryItems, today]);
+  }, [
+    recipes,
+    cookbookIds,
+    search,
+    activeTagFilters,
+    panel,
+    inventoryIndex,
+    inventoryItems,
+    today,
+  ]);
 
   const isAnyFilterActive =
     search.trim() !== '' ||
@@ -121,136 +136,154 @@ const RecipeList: React.FC<RecipeListProps> = ({
         <RecipeCreateMenu onSelect={onNew} />
       </div>
 
-      <input
-        type="search"
-        placeholder={t('Search recipes…')}
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        style={styles.searchInput}
-        aria-label={t('Search recipes')}
+      <Cookbooks
+        recipes={recipes}
+        onSelect={(ids) => {
+          setCookbookIds(ids);
+          setPanel(EMPTY_PANEL_VALUE);
+        }}
       />
+      <div hidden={cookbookIds === undefined}>
+        <input
+          type="search"
+          placeholder={t('Search recipes…')}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={styles.searchInput}
+          aria-label={t('Search recipes')}
+        />
 
-      {/* Tag cloud filter */}
-      {tagsLoading ? (
-        <div style={styles.tagCloudSpinner} role="status" aria-label={t('Loading tags…')}>
-          <span style={{ color: 'var(--color-secondary)', fontSize: '0.875rem' }}>
-            {t('Loading tags…')}{' '}
-          </span>
-        </div>
-      ) : allTags.length > 0 ? (
-        <div style={styles.tagCloud} role="group" aria-label={t('Filter by tag')}>
-          {allTags.map((tag) => {
-            const isActive = activeTagFilters.includes(tag);
-            return (
-              <button
-                key={tag}
-                type="button"
-                onClick={() =>
-                  setActiveTagFilters((prev) =>
-                    isActive ? prev.filter((t) => t !== tag) : [...prev, tag],
-                  )
-                }
-                style={isActive ? styles.tagCloudButtonActive : styles.tagCloudButtonInactive}
-                aria-pressed={isActive}
-              >
-                {tag}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
-
-      {/* Recipe filter panel */}
-      <RecipeFilterPanel
-        value={panel}
-        onChange={setPanel}
-        isAllInactive={isAllInactive(panel)}
-        onClear={() => setPanel(EMPTY_PANEL_VALUE)}
-        inventoryLoading={inventoryLoading}
-        inventoryUnavailable={inventoryError}
-      />
-
-      {inventoryError && (
-        <p role="alert">
-          {t('Inventory filters unavailable. Retry inventory.')}{' '}
-          <button onClick={onRetryInventory}>{t('Retry inventory')}</button>
-        </p>
-      )}
-      {filtered.length === 0 ? (
-        <div style={styles.emptyState} role="status">
-          {recipes.length === 0 ? (
-            <p style={styles.statusText}>{t('No recipes yet. Tap "New Recipe" to add one.')}</p>
-          ) : isAnyFilterActive ? (
-            <p style={styles.statusText}>{t('No recipes match the selected filters.')}</p>
-          ) : (
-            <p style={styles.statusText}>{t('No recipes match your search.')}</p>
-          )}
-        </div>
-      ) : (
-        <ul style={styles.list} role="list">
-          {filtered.map((recipe) => {
-            const missingCount = (recipe as Recipe & { missingCount?: number }).missingCount;
-            const totalTime = computeTotalTime(recipe.prepTime, recipe.cookTime);
-            const recipeTags = recipe.tags ?? [];
-            return (
-              <li key={recipe.recipeId} style={styles.listItem}>
+        {/* Tag cloud filter */}
+        {tagsLoading ? (
+          <div style={styles.tagCloudSpinner} role="status" aria-label={t('Loading tags…')}>
+            <span style={{ color: 'var(--color-secondary)', fontSize: '0.875rem' }}>
+              {t('Loading tags…')}{' '}
+            </span>
+          </div>
+        ) : allTags.length > 0 ? (
+          <div style={styles.tagCloud} role="group" aria-label={t('Filter by tag')}>
+            {allTags.map((tag) => {
+              const isActive = activeTagFilters.includes(tag);
+              return (
                 <button
-                  onClick={() => onSelect(recipe.recipeId)}
-                  style={styles.rowButton}
+                  key={tag}
                   type="button"
-                  aria-label={t('View {0}', recipe.name)}
+                  onClick={() =>
+                    setActiveTagFilters((prev) =>
+                      isActive ? prev.filter((t) => t !== tag) : [...prev, tag],
+                    )
+                  }
+                  style={isActive ? styles.tagCloudButtonActive : styles.tagCloudButtonInactive}
+                  aria-pressed={isActive}
                 >
-                  <div style={styles.rowContent}>
-                    <span style={styles.recipeName}>
-                      {recipe.name}
-                      {activeCookingSession?.recipeId === recipe.recipeId && (
-                        <span style={styles.cookingIndicator} aria-label={t('Currently cooking')}>
-                          {' '}
-                          🍳
+                  {tag}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+
+        {/* Recipe filter panel */}
+        <RecipeFilterPanel
+          recipes={cookbookIds ? recipes.filter((r) => cookbookIds.includes(r.recipeId)) : recipes}
+          value={panel}
+          onChange={setPanel}
+          isAllInactive={isAllInactive(panel)}
+          onClear={() => setPanel(EMPTY_PANEL_VALUE)}
+          inventoryLoading={inventoryLoading}
+          inventoryUnavailable={inventoryError}
+        />
+
+        {inventoryError && (
+          <p role="alert">
+            {t('Inventory filters unavailable. Retry inventory.')}{' '}
+            <button onClick={onRetryInventory}>{t('Retry inventory')}</button>
+          </p>
+        )}
+        {filtered.length === 0 ? (
+          <div style={styles.emptyState} role="status">
+            {recipes.length === 0 ? (
+              <p style={styles.statusText}>{t('No recipes yet. Tap "New Recipe" to add one.')}</p>
+            ) : isAnyFilterActive ? (
+              <p style={styles.statusText}>{t('No recipes match the selected filters.')}</p>
+            ) : (
+              <p style={styles.statusText}>{t('No recipes match your search.')}</p>
+            )}
+          </div>
+        ) : (
+          <ul style={styles.list} role="list">
+            {filtered.map((recipe) => {
+              const missingCount = (recipe as Recipe & { missingCount?: number }).missingCount;
+              const totalTime = computeTotalTime(recipe.prepTime, recipe.cookTime);
+              const recipeTags = recipe.tags ?? [];
+              return (
+                <li key={recipe.recipeId} style={styles.listItem}>
+                  <button
+                    onClick={() => onSelect(recipe.recipeId)}
+                    style={styles.rowButton}
+                    type="button"
+                    aria-label={t('View {0}', recipe.name)}
+                  >
+                    <div style={styles.rowContent}>
+                      <span style={styles.recipeName}>
+                        {recipe.name}
+                        {activeCookingSession?.recipeId === recipe.recipeId && (
+                          <span style={styles.cookingIndicator} aria-label={t('Currently cooking')}>
+                            {' '}
+                            🍳
+                          </span>
+                        )}
+                      </span>
+                      {!!panel.expiringWithinDays && (
+                        <span>
+                          {t(
+                            'Use soon: {0}',
+                            recipeExpiration(
+                              recipe,
+                              inventoryItems,
+                              today,
+                              panel.expiringWithinDays,
+                            )
+                              .map((item) => item.name + ' (' + item.expiration + ')')
+                              .join(', '),
+                          )}
+                        </span>
+                      )}
+                      {recipeTags.length > 0 && (
+                        <div style={styles.tagChipRow}>
+                          {recipeTags.map((tag) => (
+                            <span key={tag} style={styles.tagChip}>
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <span style={styles.badgeGroup}>
+                      {totalTime !== undefined && (
+                        <span
+                          style={styles.timeBadge}
+                          aria-label={t('{0} minutes total', totalTime)}
+                        >
+                          {totalTime} {t('min')}{' '}
+                        </span>
+                      )}
+                      {missingCount != null && missingCount > 0 && (
+                        <span
+                          style={styles.missingBadge}
+                          aria-label={t('{0} ingredient(s) missing', missingCount)}
+                        >
+                          {missingCount} {t('missing')}{' '}
                         </span>
                       )}
                     </span>
-                    {!!panel.expiringWithinDays && (
-                      <span>
-                        {t(
-                          'Use soon: {0}',
-                          recipeExpiration(recipe, inventoryItems, today, panel.expiringWithinDays)
-                            .map((item) => item.name + ' (' + item.expiration + ')')
-                            .join(', '),
-                        )}
-                      </span>
-                    )}
-                    {recipeTags.length > 0 && (
-                      <div style={styles.tagChipRow}>
-                        {recipeTags.map((tag) => (
-                          <span key={tag} style={styles.tagChip}>
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <span style={styles.badgeGroup}>
-                    {totalTime !== undefined && (
-                      <span style={styles.timeBadge} aria-label={t('{0} minutes total', totalTime)}>
-                        {totalTime} {t('min')}{' '}
-                      </span>
-                    )}
-                    {missingCount != null && missingCount > 0 && (
-                      <span
-                        style={styles.missingBadge}
-                        aria-label={t('{0} ingredient(s) missing', missingCount)}
-                      >
-                        {missingCount} {t('missing')}{' '}
-                      </span>
-                    )}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
     </div>
   );
 };

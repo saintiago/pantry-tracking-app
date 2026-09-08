@@ -55,14 +55,14 @@ test('copy week previews occupied meals, persists fresh IDs and reusable favorit
   page,
 }) => {
   const model = await setupPlanner(page, [meal('source', monday)]);
-  await page.getByText('Copy plans / Favorite weeks', { exact: true }).click();
+  await page.getByText('Favorite Weeks/Days', { exact: true }).click();
   await page.getByLabel('Destination start date').fill(monday);
   await page.getByRole('button', { name: 'Preview copy' }).click();
   await expect(page.getByLabel('Copy preview')).toContainText('Adds to occupied meal');
   await page.getByRole('button', { name: 'Apply copy' }).click();
   await expect(slot(page).locator('[data-plan-open]')).toHaveCount(2);
   expect(new Set(model.state().mealPlans.map((e) => e.planId)).size).toBe(2);
-  await page.getByLabel('Favorite week name').fill('Easy week');
+  await page.getByLabel('Favorite plan name').fill('Easy week');
   await page.getByRole('button', { name: 'Save favorite week' }).click();
   await expect.poll(() => model.state().favorites.length).toBe(1);
   await page.reload();
@@ -70,7 +70,7 @@ test('copy week previews occupied meals, persists fresh IDs and reusable favorit
   await page.locator('input[type=password]').fill('TestPassword123!');
   await page.locator('button[type=submit]').click();
   await page.getByRole('button', { name: 'Meal Plan', exact: true }).click();
-  await page.getByText('Copy plans / Favorite weeks', { exact: true }).click();
+  await page.getByText('Favorite Weeks/Days', { exact: true }).click();
   await page.getByLabel('Copy from').selectOption(model.state().favorites[0].favoriteId);
   await page.getByLabel('Destination start date').fill('2026-09-14');
   await page.getByRole('button', { name: 'Preview copy' }).click();
@@ -121,8 +121,8 @@ test('recipe calorie input derives one stored total, retains it on yield edits a
   await expect(page.getByText('Calories unknown', { exact: false })).toBeVisible();
 });
 for (const [language, plannerLabel, copyLabel, drawer] of [
-  ['Español', 'Planificador de comidas', 'Copiar planes / Semanas favoritas', 'Panel de recetas'],
-  ['Italiano', 'Pianificazione pasti', 'Copia piani / Settimane preferite', 'Pannello ricette'],
+  ['Español', 'Planificador de comidas', 'Semanas y días favoritos', 'Panel de recetas'],
+  ['Italiano', 'Pianificazione pasti', 'Settimane e giorni preferiti', 'Pannello ricette'],
 ])
   test(`${language} expanded planner controls remain usable at 320px`, async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 850 });
@@ -135,8 +135,8 @@ for (const [language, plannerLabel, copyLabel, drawer] of [
     );
     await page.locator('#language-options').press('Escape');
     await expect(page.getByRole('heading', { name: plannerLabel, exact: true })).toBeVisible();
-    await expect(page.getByText(copyLabel, { exact: true })).toBeVisible();
     await page.getByRole('button', { name: drawer, exact: true }).click();
+    await expect(page.getByText(copyLabel, { exact: true })).toBeVisible();
     await expect(page.locator('[data-recipe-open="pasta"]')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       320,

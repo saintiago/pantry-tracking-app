@@ -138,3 +138,16 @@ or offers on-device printed-text recognition in English/Spanish/Italian. Imports
 never automatically save recipes. Review explains uncertainty and supports editing
 and reordering. Source images require an explicit permission choice. See
 [imports and navigation](features/recipe-management/imports-and-navigation.md).
+
+## Cookbooks, sharing and shopping organization (issue #15)
+
+Recipes can be organized into cloud-saved cookbooks with descriptions and private cover
+photos. A recipe may belong to multiple books; removing a book keeps the recipes.
+Recorded-time sliders replace the free-number filters. Accounts with cookbooks open
+on their cookbook shelf; All recipes remains available.
+
+Shopping supports recipe/aisle/alphabetical/recent arrangement, food emojis, and confirmed
+period-scoped removal with restoration. Both Shopping and Meal Plan offer native sharing
+or a plain-text copy fallback. View and a servings slider share the planner toolbar;
+Undo stays visible but disabled when empty. Prepared batches and saved favorite days/weeks
+are beneath the recipe sidebar. See [issue #15](features/recipe-management/cookbooks-and-sharing.md).

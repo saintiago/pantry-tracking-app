@@ -1,5 +1,9 @@
 import { test, expect, Page } from '@playwright/test';
 
+test.beforeEach(async ({ page }) => {
+  await page.route('**/cookbooks', (route) => route.fulfill({ json: { cookbooks: [] } }));
+});
+
 /**
  * E2E Test Suite: Recipe Search & Filter
  *
@@ -140,6 +144,14 @@ const mockInventoryItems = [
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+async function setTime(page: Page, field: 'prep' | 'cook' | 'total', limit: number) {
+  const stops = field === 'prep' ? [5, 10, 20] : field === 'cook' ? [0, 10, 180] : [10, 15, 200];
+  const slider = page.getByRole('slider', { name: `Max ${field} time (min)` });
+  const index = stops.filter((n) => n <= limit).length - 1;
+  await slider.press('Home');
+  for (let i = 0; i < index; i++) await slider.press('ArrowRight');
+}
+
 async function setupMockAPI(page: Page) {
   await page.route('**/auth/verify', async (route) => {
     await route.fulfill({
@@ -261,7 +273,7 @@ test.describe('Recipe Search & Filter', () => {
 
     // Set max prep time to 10 — Quick Pasta (5) and Pantry Salad (10) pass;
     // Slow Roast (20) and No Time Recipe (undefined) are excluded
-    await page.getByLabel('Max prep time (min)').fill('10');
+    await setTime(page, 'prep', 10);
 
     await expect(page.getByText('Quick Pasta')).toBeVisible();
     await expect(page.getByText('Pantry Salad')).toBeVisible();
@@ -270,7 +282,7 @@ test.describe('Recipe Search & Filter', () => {
   });
 
   test('max prep time filter excludes recipes with no prepTime', async ({ page }) => {
-    await page.getByLabel('Max prep time (min)').fill('999');
+    await setTime(page, 'prep', 999);
 
     // No Time Recipe has no prepTime — excluded even with a very high limit
     await expect(page.getByText('No Time Recipe')).not.toBeVisible();
@@ -282,7 +294,7 @@ test.describe('Recipe Search & Filter', () => {
   test('max cook time filter shows only recipes within the limit', async ({ page }) => {
     // Set max cook time to 15 — Quick Pasta (10) and Pantry Salad (0) pass;
     // Slow Roast (180) and No Time Recipe (undefined) are excluded
-    await page.getByLabel('Max cook time (min)').fill('15');
+    await setTime(page, 'cook', 15);
 
     await expect(page.getByText('Quick Pasta')).toBeVisible();
     await expect(page.getByText('Pantry Salad')).toBeVisible();
@@ -297,7 +309,7 @@ test.describe('Recipe Search & Filter', () => {
     // Pantry Salad: 10 + 0 = 10 total
     // Slow Roast: 20 + 180 = 200 total
     // No Time Recipe: undefined total
-    await page.getByLabel('Max total time (min)').fill('20');
+    await setTime(page, 'total', 20);
 
     await expect(page.getByText('Quick Pasta')).toBeVisible();
     await expect(page.getByText('Pantry Salad')).toBeVisible();
@@ -306,49 +318,22 @@ test.describe('Recipe Search & Filter', () => {
   });
 
   test('max total time filter excludes recipes with no time fields', async ({ page }) => {
-    await page.getByLabel('Max total time (min)').fill('999');
+    await setTime(page, 'total', 999);
 
     // No Time Recipe has neither prepTime nor cookTime — excluded
     await expect(page.getByText('No Time Recipe')).not.toBeVisible();
     await expect(page.getByText('Quick Pasta')).toBeVisible();
   });
 
-  // ── Validation errors ─────────────────────────────────────────────────────
-
-  test('negative number in prep time input shows inline validation error and does not filter', async ({
-    page,
-  }) => {
-    await page.getByLabel('Max prep time (min)').fill('-5');
-
-    // Inline error appears
-    await expect(page.getByText('Enter a non-negative whole number.')).toBeVisible();
-
-    // Filter is NOT applied — all recipes still visible
-    await expect(page.getByText('Quick Pasta')).toBeVisible();
-    await expect(page.getByText('Slow Roast')).toBeVisible();
+  test('keyboard time sliders use recipe durations and an unrestricted stop', async ({ page }) => {
+    const slider = page.getByRole('slider', { name: 'Max prep time (min)' });
+    await slider.press('Home');
+    await expect(slider).toHaveAttribute('aria-valuetext', '5 min');
+    await slider.press('ArrowRight');
+    await expect(slider).toHaveAttribute('aria-valuetext', '10 min');
+    await slider.press('End');
+    await expect(slider).toHaveAttribute('aria-valuetext', 'Any time');
     await expect(page.getByText('No Time Recipe')).toBeVisible();
-    await expect(page.getByText('Pantry Salad')).toBeVisible();
-  });
-
-  test('decimal number in cook time input shows inline validation error', async ({ page }) => {
-    await page.getByLabel('Max cook time (min)').fill('1.5');
-
-    await expect(page.getByText('Enter a non-negative whole number.')).toBeVisible();
-
-    // Filter is NOT applied
-    await expect(page.getByText('Quick Pasta')).toBeVisible();
-    await expect(page.getByText('Slow Roast')).toBeVisible();
-  });
-
-  test('decimal number in total time input shows inline validation error', async ({ page }) => {
-    // Decimals are accepted by input[type=number] but rejected by validateMaxTimeInput
-    await page.getByLabel('Max total time (min)').fill('1.5');
-
-    await expect(page.getByText('Enter a non-negative whole number.')).toBeVisible();
-
-    // Filter is NOT applied
-    await expect(page.getByText('Quick Pasta')).toBeVisible();
-    await expect(page.getByText('Slow Roast')).toBeVisible();
   });
 
   // ── "Only recipes I can make now" toggle ─────────────────────────────────
@@ -390,7 +375,7 @@ test.describe('Recipe Search & Filter', () => {
 
   test('"Clear filters" resets all filter inputs and restores the full list', async ({ page }) => {
     // Activate multiple filters
-    await page.getByLabel('Max prep time (min)').fill('5');
+    await setTime(page, 'prep', 5);
     await page.getByLabel('Only recipes I can make now').click();
 
     // Verify filters are active
@@ -400,7 +385,10 @@ test.describe('Recipe Search & Filter', () => {
     await page.getByRole('button', { name: 'Clear filters' }).click();
 
     // All inputs reset
-    await expect(page.getByLabel('Max prep time (min)')).toHaveValue('');
+    await expect(page.getByLabel('Max prep time (min)')).toHaveAttribute(
+      'aria-valuetext',
+      'Any time',
+    );
     await expect(page.getByLabel('Only recipes I can make now')).not.toBeChecked();
 
     // Full list restored
@@ -413,7 +401,7 @@ test.describe('Recipe Search & Filter', () => {
   test('"Clear filters" button becomes enabled when a filter is active', async ({ page }) => {
     await expect(page.getByRole('button', { name: 'Clear filters' })).toBeDisabled();
 
-    await page.getByLabel('Max cook time (min)').fill('30');
+    await setTime(page, 'cook', 30);
 
     await expect(page.getByRole('button', { name: 'Clear filters' })).toBeEnabled();
   });
@@ -423,7 +411,7 @@ test.describe('Recipe Search & Filter', () => {
   test('name search and time filter combine with AND logic', async ({ page }) => {
     // Search for "pasta" — matches Quick Pasta only (among time-filtered results)
     await page.getByLabel('Search recipes').fill('pasta');
-    await page.getByLabel('Max prep time (min)').fill('10');
+    await setTime(page, 'prep', 10);
 
     // Quick Pasta: name matches, prepTime 5 ≤ 10 ✓
     await expect(page.getByText('Quick Pasta')).toBeVisible();
@@ -453,7 +441,7 @@ test.describe('Recipe Search & Filter', () => {
     page,
   }) => {
     // Set max prep time to 0 — no recipe has prepTime of 0 (Quick Pasta has 5)
-    await page.getByLabel('Max prep time (min)').fill('0');
+    await page.getByLabel('Search recipes').fill('No matching recipe');
 
     await expect(page.getByText('No recipes match the selected filters.')).toBeVisible();
     await expect(page.getByText('Quick Pasta')).not.toBeVisible();
@@ -490,8 +478,11 @@ test.describe('Recipe Search & Filter', () => {
 
   test('filter inputs reset when navigating to detail and back', async ({ page }) => {
     // Set a filter
-    await page.getByLabel('Max prep time (min)').fill('10');
-    await expect(page.getByLabel('Max prep time (min)')).toHaveValue('10');
+    await setTime(page, 'prep', 10);
+    await expect(page.getByLabel('Max prep time (min)')).toHaveAttribute(
+      'aria-valuetext',
+      '10 min',
+    );
 
     // Navigate to detail
     await page.getByRole('button', { name: 'View Quick Pasta' }).click();
@@ -502,7 +493,10 @@ test.describe('Recipe Search & Filter', () => {
     await page.waitForSelector('h2:has-text("Recipes")', { timeout: 5000 });
 
     // Filter inputs should be reset
-    await expect(page.getByLabel('Max prep time (min)')).toHaveValue('');
+    await expect(page.getByLabel('Max prep time (min)')).toHaveAttribute(
+      'aria-valuetext',
+      'Any time',
+    );
     await expect(page.getByLabel('Only recipes I can make now')).not.toBeChecked();
     await expect(page.getByRole('button', { name: 'Clear filters' })).toBeDisabled();
   });

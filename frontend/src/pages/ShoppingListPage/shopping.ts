@@ -206,6 +206,7 @@ export interface BasketEntry {
   unknown: boolean;
 }
 export interface ShoppingState {
+  removed?: string[];
   checked: Record<string, BasketEntry>;
   extras: Record<string, number>;
 }
@@ -239,6 +240,11 @@ export function readState(key: string): ShoppingState {
     )
   )
     throw new Error('Invalid saved quantities');
+  if (
+    parsed.removed !== undefined &&
+    (!Array.isArray(parsed.removed) || parsed.removed.some((id: unknown) => typeof id !== 'string'))
+  )
+    throw new Error('Invalid removed shopping items');
   return parsed;
 }
 export function needsReview(

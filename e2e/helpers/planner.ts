@@ -60,6 +60,7 @@ export async function setupPlanner(page: Page, initial: PlannerEntry[] = [meal()
     const req = route.request();
     const url = new URL(req.url());
     const json = (body: unknown, status = 200) => route.fulfill({ json: body, status });
+    if (url.pathname === '/cookbooks') return json({ cookbooks: [] });
     if (url.pathname === '/recipes') {
       if (options.recipeFail) return json({ message: 'Recipe load failed' }, 500);
       if (req.method() === 'POST') {

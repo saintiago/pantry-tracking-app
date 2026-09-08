@@ -108,6 +108,7 @@ export function validatePlanner(state: PlannerSnapshot): string | null {
   for (const favorite of state.favorites) {
     if (
       !validId(favorite.favoriteId) ||
+      (favorite.kind !== undefined && !['day', 'week'].includes(favorite.kind)) ||
       typeof favorite.name !== 'string' ||
       !favorite.name.trim() ||
       favorite.name.length > 200 ||
@@ -121,6 +122,7 @@ export function validatePlanner(state: PlannerSnapshot): string | null {
         !Number.isInteger(entry.dayOffset) ||
         entry.dayOffset < 0 ||
         entry.dayOffset > 6 ||
+        (favorite.kind === 'day' && entry.dayOffset !== 0) ||
         entry.consumed
       )
         return 'Invalid favorite weekday or consumption status';

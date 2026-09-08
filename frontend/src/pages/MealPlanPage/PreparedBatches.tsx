@@ -18,6 +18,7 @@ export default function PreparedBatches({
   return (
     <details>
       <summary>
+        <span aria-hidden="true">🍱 </span>
         {t('Prepared batches')} ({batches.length})
       </summary>
       {batches.length === 0 && (

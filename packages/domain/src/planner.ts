@@ -37,6 +37,7 @@ export interface CookingBatch {
   consumedAllocations?: Record<string, number>;
 }
 export interface FavoriteWeek {
+  kind?: 'day' | 'week';
   favoriteId: string;
   name: string;
   entries: (Omit<PlannerEntry, 'date'> & { dayOffset: number })[];

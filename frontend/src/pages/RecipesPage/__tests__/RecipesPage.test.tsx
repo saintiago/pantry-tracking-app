@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import RecipesPage from '../RecipesPage';
@@ -300,8 +300,8 @@ describe('RecipesPage', () => {
 
     // Type into the max prep time filter with a value that still shows the recipe (10 <= 15)
     const prepInput = screen.getByLabelText(/max prep time/i);
-    await user.type(prepInput, '15');
-    expect(prepInput).toHaveValue(15);
+    fireEvent.change(prepInput, { target: { value: '0' } });
+    expect(prepInput).toHaveAttribute('aria-valuetext', '10 min');
 
     // Recipe should still be visible (prepTime 10 <= maxPrepTime 15)
     expect(screen.getByText('Pasta Carbonara')).toBeInTheDocument();
@@ -317,6 +317,6 @@ describe('RecipesPage', () => {
     await waitFor(() => expect(screen.getByText('Pasta Carbonara')).toBeInTheDocument());
 
     // Filter inputs should be reset to empty (RecipeList unmounted and remounted)
-    expect(screen.getByLabelText(/max prep time/i)).toHaveValue(null);
+    expect(screen.getByLabelText(/max prep time/i)).toHaveAttribute('aria-valuetext', 'Any time');
   });
 });

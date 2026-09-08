@@ -88,11 +88,11 @@ const DayColumn: React.FC<DayColumnProps> = ({
               }}
               style={styles.mealButton}
             >
-              {{ breakfast: '☀️', lunch: '🍝', dinner: '🌙' }[mealType]} {t(mealType)}
+              {{ breakfast: '☀️', lunch: '🍴', dinner: '🌙' }[mealType]} {t(mealType)}
             </button>
           ) : (
             <div style={styles.mealLabel}>
-              {{ breakfast: '☀️', lunch: '🍝', dinner: '🌙' }[mealType]} {t(mealType)}
+              {{ breakfast: '☀️', lunch: '🍴', dinner: '🌙' }[mealType]} {t(mealType)}
             </div>
           )}
           <div style={styles.cards}>

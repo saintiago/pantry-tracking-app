@@ -1,3 +1,4 @@
+import { arrangeLines, shoppingIcon, type Arrangement } from './arrangement';
 import { getShoppingUnitLabel as getUnitLabel } from '../../types/units';
 import { number, getLanguage } from '../../i18n/i18n';
 import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
@@ -6,7 +7,7 @@ import { amount, needsReview } from './shopping';
 import type { ShoppingState } from './shopping';
 import { packageSuggestion, isDeferred } from './companion';
 import type { CompanionState, ShoppingLine } from './companion';
-import { DEPARTMENTS, departmentColor } from './departments';
+import { departmentColor } from './departments';
 import { addDays } from '../MealPlanPage/weekUtils';
 import { storeLabel } from './storeLabel';
 
@@ -43,6 +44,8 @@ export function lineChecked(line: ShoppingLine, basket: ShoppingState): boolean 
   );
 }
 interface Props {
+  arrangement?: Arrangement;
+  onRemove?: (line: ShoppingLine) => void;
   lines: ShoppingLine[];
   title: string;
   mode: 'meal' | 'low' | 'manual' | 'shopping' | 'pending';
@@ -88,6 +91,7 @@ export default function ShoppingRows(props: Props) {
               onChange={() => props.onCheck(line)}
               style={{ width: 22, height: 22, flexShrink: 0 }}
             />
+            <span aria-hidden="true">{shoppingIcon(line)}</span>
             <strong style={{ overflowWrap: 'anywhere' }}>{line.name}</strong>
           </label>
           <strong
@@ -105,6 +109,22 @@ export default function ShoppingRows(props: Props) {
                   ? t('Threshold reached')
                   : t('In stock')}
           </strong>
+          {props.onRemove && (
+            <button
+              type="button"
+              aria-label={t('Remove from shopping list: {0}', line.name)}
+              disabled={disabled}
+              onClick={() => props.onRemove?.(line)}
+              style={{
+                ...action,
+                background: 'var(--color-danger)',
+                color: 'var(--color-danger-text)',
+                padding: 8,
+              }}
+            >
+              ✕
+            </button>
+          )}
         </div>
         {line.meal && (
           <>
@@ -348,25 +368,28 @@ export default function ShoppingRows(props: Props) {
     );
   }
   function departments(items: ShoppingLine[]) {
-    return DEPARTMENTS.map((department) => {
-      const section = items.filter((line) => line.department === department);
-      return section.length ? (
-        <section key={t(department)} aria-label={`${t(title)}: ${t(department)}`}>
+    return arrangeLines(items, props.arrangement ?? 'aisle').map((group) => (
+      <section
+        key={group.title}
+        aria-label={group.title ? `${t(title)}: ${t(group.title)}` : undefined}
+      >
+        {group.title && (
           <h4
             style={{
               padding: '8px 12px',
               margin: '12px 0 0',
-              background: departmentColor(department),
+              background: departmentColor(group.title),
               borderRadius: 10,
             }}
           >
-            {t(department)}
+            {t(group.title)}
           </h4>
-          {section.map(render)}
-        </section>
-      ) : null;
-    });
+        )}
+        {group.lines.map(render)}
+      </section>
+    ));
   }
+
   const pending = lines.filter((line) => !lineChecked(line, basket));
   const checked = lines.filter((line) => lineChecked(line, basket));
   return (

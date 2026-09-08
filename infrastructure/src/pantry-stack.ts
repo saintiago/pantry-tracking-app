@@ -262,6 +262,13 @@ export class PantryStack extends cdk.Stack {
     recipesResource.addMethod('GET', recipeIntegration, authMethodOptions);
     recipesResource.addMethod('POST', recipeIntegration, authMethodOptions);
 
+    const cookbooks = this.api.root.addResource('cookbooks');
+    cookbooks.addMethod('GET', recipeIntegration, authMethodOptions);
+    cookbooks.addMethod('POST', recipeIntegration, authMethodOptions);
+    const cookbook = cookbooks.addResource('{cookbookId}');
+    cookbook.addMethod('PUT', recipeIntegration, authMethodOptions);
+    cookbook.addMethod('DELETE', recipeIntegration, authMethodOptions);
+
     const recipeIdResource = recipesResource.addResource('{recipeId}');
     recipeIdResource.addMethod('GET', recipeIntegration, authMethodOptions);
     recipeIdResource.addMethod('PUT', recipeIntegration, authMethodOptions);

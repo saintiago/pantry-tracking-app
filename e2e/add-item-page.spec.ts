@@ -1,5 +1,9 @@
 ﻿import { test, expect, Page } from '@playwright/test';
 
+test.beforeEach(async ({ page }) => {
+  await page.route('**/cookbooks', (route) => route.fulfill({ json: { cookbooks: [] } }));
+});
+
 /**
  * E2E Test Suite: AddItemPage
  *
@@ -132,7 +136,9 @@ test.describe('AddItemPage', () => {
     await expect(page.getByText('Quantity is required.')).toBeVisible();
   });
 
-  test('successful form submission shows success message then returns to InventoryPage', async ({ page }) => {
+  test('successful form submission shows success message then returns to InventoryPage', async ({
+    page,
+  }) => {
     await page.getByRole('button', { name: 'Add item' }).click();
     await page.getByRole('menuitem', { name: 'Manual Entry' }).click();
     await expect(page.getByRole('heading', { name: 'Add Item' })).toBeVisible({ timeout: 5000 });
@@ -163,7 +169,9 @@ test.describe('AddItemPage', () => {
     await expect(page.getByRole('heading', { name: 'Inventory' })).toBeVisible({ timeout: 3000 });
   });
 
-  test('Cancel button in action bar returns to InventoryPage without submitting', async ({ page }) => {
+  test('Cancel button in action bar returns to InventoryPage without submitting', async ({
+    page,
+  }) => {
     await page.getByRole('button', { name: 'Add item' }).click();
     await page.getByRole('menuitem', { name: 'Manual Entry' }).click();
     await expect(page.getByRole('heading', { name: 'Add Item' })).toBeVisible({ timeout: 5000 });
@@ -197,5 +205,4 @@ test.describe('AddItemPage', () => {
     await expect(actionBar.getByRole('button', { name: 'Add new item' })).toBeVisible();
     await expect(actionBar.getByRole('button', { name: 'Cancel' })).toBeVisible();
   });
-
 });

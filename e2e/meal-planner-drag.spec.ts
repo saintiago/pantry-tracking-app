@@ -59,7 +59,9 @@ test('scrolled library preserves recipe identity and edge scrolling remains acti
   await page.setViewportSize({ width: 1440, height: 900 });
   const model = await setupPlanner(page, [], 32);
   const source = page.locator('[data-recipe-open="recipe-25"]');
-  await source.scrollIntoViewIfNeeded();
+  await source.evaluate((element) =>
+    element.scrollIntoView({ block: 'center', inline: 'nearest' }),
+  );
   await pointerDrag(page, source, slot(page, '2026-09-14'));
   await expect(slot(page, '2026-09-14').locator('[data-plan-open]')).toHaveText('Recipe 25');
   expect(model.state().mealPlans[0].recipeId).toBe('recipe-25');
@@ -72,7 +74,9 @@ for (const width of [320, 390])
     const model = await setupPlanner(page, [], 18);
     await page.getByRole('button', { name: 'Recipe drawer' }).click();
     const source = page.locator('[data-recipe-open="apple"]');
-    await source.scrollIntoViewIfNeeded();
+    await source.evaluate((element) =>
+      element.scrollIntoView({ block: 'center', inline: 'nearest' }),
+    );
     const a = (await source.boundingBox())!;
     const session = await page.context().newCDPSession(page);
     await session.send('Input.dispatchTouchEvent', {
@@ -85,7 +89,9 @@ for (const width of [320, 390])
     });
     await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     expect(model.writes).toHaveLength(0);
-    await source.scrollIntoViewIfNeeded();
+    await source.evaluate((element) =>
+      element.scrollIntoView({ block: 'center', inline: 'nearest' }),
+    );
     const b = (await source.boundingBox())!;
     await session.send('Input.dispatchTouchEvent', {
       type: 'touchStart',
@@ -108,10 +114,12 @@ test('touch press-and-hold schedules a card and exposes a visible return target 
 }) => {
   await page.setViewportSize({ width: 390, height: 900 });
   const model = await setupPlanner(page, []);
-  await page.getByRole('button', { name: 'Day', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Calendar view', exact: true }).selectOption('day');
   await page.getByRole('button', { name: 'Recipe drawer' }).click();
   const source = page.locator('[data-recipe-open="pasta"]');
-  await source.scrollIntoViewIfNeeded();
+  await source.evaluate((element) =>
+    element.scrollIntoView({ block: 'center', inline: 'nearest' }),
+  );
   const a = (await source.boundingBox())!;
   const session = await page.context().newCDPSession(page);
   await session.send('Input.dispatchTouchEvent', {

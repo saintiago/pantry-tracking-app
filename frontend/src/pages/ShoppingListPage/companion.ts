@@ -4,6 +4,7 @@ import type { ShoppingData, ShoppingRow } from './shopping';
 import { departmentFor, type Department } from './departments';
 
 export interface ManualItem {
+  createdAt?: string;
   id: string;
   name: string;
   quantity: number;
@@ -28,6 +29,8 @@ export interface ProductPreference {
   replacement?: string;
 }
 export interface ShoppingLine {
+  addedAt?: string;
+  icon?: string;
   id: string;
   name: string;
   category: string;
@@ -276,6 +279,16 @@ export function buildLines(
     // Keep absence distinct from a user-written store literally named "Any store".
     line.store = pref?.store || line.store || lot?.whereToBuy || '';
     line.department = pref?.department ?? line.department;
+    line.icon = lot?.icon;
+    const dates = [
+      line.addedAt ?? '',
+      lot?.createdAt ?? '',
+      ...line.manualIds.map((id) => state.manual.find((m) => m.id === id)?.createdAt ?? ''),
+      ...(line.meal?.contributions.map(
+        (c) => data.plans.find((p) => p.planId === c.planId)?.createdAt ?? '',
+      ) ?? []),
+    ];
+    line.addedAt = dates.sort().at(-1) ?? '';
   }
   return [...lines.values()].sort((a, b) => a.name.localeCompare(b.name));
 }

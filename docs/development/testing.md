@@ -222,3 +222,16 @@ checks and DNS-pinned redirect rejection. Model invocation is mocked in the gate
 account access and live extraction methods require separate release verification.
 Manual recipe tests now choose Add manually from New Recipe; expiration tests toggle
 the filter before choosing its window. Planner tests retain only per-person kcal.
+
+## Issue #15 cookbooks, sharing and organization
+
+Cookbook handler tests cover account isolation, stale-version conflicts, validation,
+metadata/membership persistence and removal without recipe deletion. Arrangement tests
+cover aisle/recent/name order, shared recipe products and food icons. Slider tests cover
+actual distinct times, unknown values and reset. Share tests distinguish native
+cancellation from unsupported-browser text fallback.
+`issue15-cookbooks-sharing.spec.ts` covers real image preparation with mocked upload,
+cookbook save failure/retry, membership, reload, confirmed removal, shopping order/share/
+removal/restoration, and sidebar favorite-day creation/application at mobile/desktop
+widths. Existing API fixtures supply empty cookbooks. Recipe filter tests now operate
+sliders with keyboard input; arbitrary-number validation UI cases are superseded.

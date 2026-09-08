@@ -68,8 +68,34 @@ export default function PlannerCopies({
   return (
     <details className="planner-copies">
       <summary>
-        <span aria-hidden="true">♡</span> <span>{t('Copy plans / Favorite weeks')}</span>
+        <span aria-hidden="true">💗</span> <span>{t('Favorite Weeks/Days')}</span>
       </summary>
+      <p>
+        {t(
+          'Save the selected day or week, then choose a favorite below to preview it on another date.',
+        )}
+      </p>
+      {!state.favorites.length && <p>{t('No favorites yet. Save a day or week below.')}</p>}
+      <ul aria-label={t('Saved favorite plans')} style={{ padding: 0, listStyle: 'none' }}>
+        {state.favorites.map((f) => (
+          <li key={f.favoriteId} style={{ marginBottom: 8 }}>
+            <button
+              type="button"
+              aria-pressed={source === f.favoriteId}
+              disabled={disabled || busy}
+              onClick={() => {
+                setSource(f.favoriteId);
+                setName(f.name);
+                setPreview(null);
+                setSaved('');
+              }}
+            >
+              <span aria-hidden="true">{f.kind === 'day' ? '📅' : '🗓️'}</span> {f.name} ·{' '}
+              {t(f.kind === 'day' ? 'Day' : 'Week')}
+            </button>
+          </li>
+        ))}
+      </ul>
       <fieldset
         disabled={disabled || busy}
         style={{ display: 'flex', flexWrap: 'wrap', gap: 10, border: 0, padding: '10px 0' }}
@@ -77,9 +103,11 @@ export default function PlannerCopies({
         <label>
           {t('Copy from')}{' '}
           <select
+            aria-label={t('Copy from')}
             value={source}
             onChange={(e) => {
               setSource(e.target.value);
+              setName(state.favorites.find((f) => f.favoriteId === e.target.value)?.name ?? '');
               setPreview(null);
             }}
           >
@@ -119,11 +147,17 @@ export default function PlannerCopies({
           {t('Preview copy')}
         </button>
         <label>
-          {t('Favorite week name')}{' '}
+          {t('Favorite plan name')}{' '}
           <input maxLength={200} value={name} onChange={(e) => setName(e.target.value)} />
         </label>
         <button type="button" onClick={saveFavorite}>
-          {t(source === 'day' || source === 'week' ? 'Save favorite week' : 'Rename favorite week')}
+          {t(
+            source === 'day'
+              ? 'Save favorite day'
+              : source === 'week'
+                ? 'Save favorite week'
+                : 'Rename favorite plan',
+          )}
         </button>
         {source !== 'day' && source !== 'week' && (
           <>
@@ -133,8 +167,8 @@ export default function PlannerCopies({
                 const previous = state.favorites.find((f) => f.favoriteId === source)!;
                 const updated = favoriteFromRange(
                   state,
-                  week,
-                  addDays(week, 6),
+                  previous.kind === 'day' ? day : week,
+                  previous.kind === 'day' ? day : addDays(week, 6),
                   previous.name,
                   previous.favoriteId,
                 );
@@ -143,7 +177,7 @@ export default function PlannerCopies({
                 else void apply({ favorites: [updated] });
               }}
             >
-              {t('Update favorite from visible week')}
+              {t('Update favorite from current selection')}
             </button>
             <button
               type="button"

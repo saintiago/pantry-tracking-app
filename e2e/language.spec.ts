@@ -1,5 +1,9 @@
 import { test, expect, type Page, type BrowserContext } from '@playwright/test';
 
+test.beforeEach(async ({ page }) => {
+  await page.route('**/cookbooks', (route) => route.fulfill({ json: { cookbooks: [] } }));
+});
+
 const deviceKey = 'pantry-language-v1:test-user-id';
 const recipe = {
   recipeId: 'r1',

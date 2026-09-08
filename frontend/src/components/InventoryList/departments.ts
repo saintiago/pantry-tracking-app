@@ -2,8 +2,9 @@
 export const DEPARTMENTS = [
   'Fruit & vegetables',
   'Meat & fish',
-  'Dairy & eggs',
   'Bakery',
+  'Dairy & eggs',
+  'Herbs & spices',
   'Pantry',
   'Frozen',
   'Drinks',
@@ -15,6 +16,11 @@ export const DEPARTMENTS = [
 ] as const;
 export type Department = (typeof DEPARTMENTS)[number];
 const rules: [Department, RegExp][] = [
+  [
+    'Herbs & spices',
+    /fenugreek|alholva|fieno greco|cumin|comino|cumino|cinnamon|canela|cannella|nutmeg|paprika|pimienta|spice|especia|spezi|dried herb/,
+  ],
+  ['Fruit & vegetables', /ginger|jengibre|zenzero/],
   ['Household', /clean|detergent|washing|dish soap|spray|paper towel|limpieza|hogar/],
   ['Personal care', /shampoo|tooth|deodorant|hygiene|higiene|perfumer/],
   ['Baby', /baby|napp|diaper|bebé/],
@@ -51,6 +57,7 @@ const colors: Record<Department, string> = {
   'Meat & fish': '#F8DEDC',
   'Dairy & eggs': '#FFF2CE',
   Bakery: '#F3E3CA',
+  'Herbs & spices': '#E7EDD3',
   Pantry: '#EDDFCF',
   Frozen: '#E1F1FA',
   Drinks: '#E3E9FA',

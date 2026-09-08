@@ -1,5 +1,9 @@
 import { test, expect, Page } from '@playwright/test';
 
+test.beforeEach(async ({ page }) => {
+  await page.route('**/cookbooks', (route) => route.fulfill({ json: { cookbooks: [] } }));
+});
+
 /**
  * E2E Test Suite: Recipe Management
  *

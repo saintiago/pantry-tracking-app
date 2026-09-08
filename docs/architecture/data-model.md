@@ -784,3 +784,26 @@ Model-returned URLs are never trusted or fetched.
 The Recipe Lambda has 28 seconds total execution and can invoke only the regional
 `amazon.nova-lite-v1:0` model. Missing model access does not disable manual creation
 or metadata/OCR fallback. No persisted schema migration is required.
+
+## Cookbooks and shopping extensions (issue #15)
+
+`Cookbook` is defined in `@pantry/domain`. DynamoDB stores `USER#<userId>` /
+`COOKBOOK#<cookbookId>`, `entityType: Cookbook`, name (1–200 trimmed characters),
+description (up to 2000), optional private `imageId`, deduplicated `recipeIds` (up to
+500, each 1–100 characters), creation/update timestamps and integer `version`.
+The authenticated Recipe Lambda handles `GET /cookbooks` (all pages, `{cookbooks}`),
+`POST /cookbooks` (201 cookbook), `PUT /cookbooks/{cookbookId}` (200 cookbook), and
+`DELETE /cookbooks/{cookbookId}` (200 message). PUT replaces metadata/membership and
+requires the last version; DELETE also requires `{version}`. Writes are conditional,
+returning 409 for stale versions and 404 for missing account-owned books. Images reuse
+`/recipe-images`; deleting a cookbook never deletes recipes or image objects. Missing
+recipe references are tolerated and hidden by the client. No automatic write retries.
+
+FavoriteWeek gains optional `kind: 'day' | 'week'`; legacy absence means week. Day
+favorites require zero offsets. Both reuse planner revision-checked transactions.
+Shopping's existing per-account/device/period basket optionally stores `removed: string[]`
+(product IDs), separate from checked state. Removal has no cloud inventory/meal effect.
+Manual companion entries optionally store `createdAt`; computed/carry lines optionally
+carry `addedAt` and the inventory product `icon`. Old records remain readable. The
+session shopping view remembers arrangement. Existing canonical department values are
+preserved; `Herbs & spices` is added as an editable suggested department.

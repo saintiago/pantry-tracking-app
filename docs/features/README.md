@@ -14,6 +14,8 @@ Key precedence notes:
 - `language/` owns multilingual acceptance details.
 - [Recipe imports and navigation](recipe-management/imports-and-navigation.md) replaces
   the bottom Settings tab and all-planned-portions calorie display with issue #14.
+- [Cookbooks and sharing](recipe-management/cookbooks-and-sharing.md) extends issue #14
+  with account cookbooks, recorded-time sliders, shopping organization and sidebar favorites.
 - `recipe-units-format/` describes the original duplicated modules; the shared domain
   package now supersedes that implementation decision while preserving stored values.
 - `offline-sync/`, `receipt-ocr/` and `optional-features/` contain future work.

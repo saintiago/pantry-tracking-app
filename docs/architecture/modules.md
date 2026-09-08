@@ -112,3 +112,13 @@ conservative printed-text parsing live in `@pantry/domain`. Imports never write 
 and optional image import; the existing editor owns confirmation/saving. Tesseract is
 loaded only for fallback. The Vite OCR asset plugin serves/emits versioned self-hosted
 runtime/language assets without eager downloading.
+
+Issue #15 adds cookbook contracts to the shared domain, API wrappers under recipes,
+and a bounded cookbook handler alongside Recipe Lambda helpers. Existing recipe detail
+queries move into `recipe-queries`. `Cookbooks` owns shelf/editor/membership selection;
+`RecipeTimeSlider` owns discrete recorded-duration stops. `ShareButton` owns native
+sharing and copy fallback, while each page formats its own visible data. Shopping's
+`arrangement` owns grouping/order/icons, `ShoppingArrangement` owns removal confirmation
+and restore controls, and `ShoppingReminders` composes the existing reminder display.
+Planner servings and favorites remain separate feature controls; favorite day/week
+transforms preserve the existing transaction and preview boundaries.

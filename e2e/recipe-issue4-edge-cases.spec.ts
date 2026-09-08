@@ -1,5 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
 
+test.beforeEach(async ({ page }) => {
+  await page.route('**/cookbooks', (route) => route.fulfill({ json: { cookbooks: [] } }));
+});
+
 async function setup(page: Page) {
   let recipe = {
     recipeId: 'herb',

@@ -152,6 +152,7 @@ export default function ShoppingEditPage({
                 return;
               }
               const value = { ...manual, name: manual.name.trim(), store: manual.store.trim() };
+              value.createdAt = request.item?.createdAt ?? new Date().toISOString();
               state.manual = request.item
                 ? state.manual.map((m) => (m.id === value.id ? value : m))
                 : [...state.manual, value];

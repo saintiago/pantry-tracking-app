@@ -1,3 +1,5 @@
+import type { RecipeIngredient } from './recipe-rules';
+import { cookbookRequest } from './cookbooks';
 import { recipeTags } from './recipe-queries';
 import { recipeImportRequest } from './recipe-import';
 import { validKcal } from '@pantry/domain';
@@ -32,16 +34,11 @@ import {
   validateTags,
   validateInstructions,
   validateIngredients,
-  computeAvailability,
 } from './recipe-rules';
-import type { RecipeIngredient, InventoryItem } from './recipe-rules';
+import { getRecipeWithAvailability } from './recipe-queries';
 export * from './recipe-rules';
 
 // ─── Handlers ────────────────────────────────────────────────────────────────
-
-async function listRecipes(userId: string): Promise<APIGatewayProxyResult> {
-  return response(200, { recipes: await readRecipePages(docClient, TABLE_NAME, userId) });
-}
 
 async function createRecipe(userId: string, body: string | null): Promise<APIGatewayProxyResult> {
   if (!body) {
@@ -168,40 +165,6 @@ async function createRecipe(userId: string, body: string | null): Promise<APIGat
   );
 
   return response(201, { recipe });
-}
-
-async function getRecipeWithAvailability(
-  userId: string,
-  recipeId: string,
-): Promise<APIGatewayProxyResult> {
-  const recipeResult = await docClient.send(
-    new GetCommand({
-      TableName: TABLE_NAME,
-      Key: { PK: `USER#${userId}`, SK: `RECIPE#${recipeId}` },
-    }),
-  );
-
-  if (!recipeResult.Item) {
-    return response(404, { error: 'NOT_FOUND', message: 'Recipe not found' });
-  }
-
-  const recipe = recipeResult.Item;
-
-  // Fetch all inventory items for availability calculation
-  const inventoryResult = await queryAll(docClient, {
-    TableName: TABLE_NAME,
-    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
-    ExpressionAttributeValues: {
-      ':pk': `USER#${userId}`,
-      ':skPrefix': 'ITEM#',
-    },
-  });
-
-  const inventoryItems = (inventoryResult.Items ?? []) as InventoryItem[];
-  const ingredients = (recipe.ingredients ?? []) as RecipeIngredient[];
-  const { ingredientAvailability, missingCount } = computeAvailability(ingredients, inventoryItems);
-
-  return response(200, { recipe, ingredientAvailability, missingCount });
 }
 
 async function updateRecipe(
@@ -436,6 +399,15 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
   const recipeId = event.pathParameters?.recipeId ?? null;
 
   try {
+    if (event.resource === '/cookbooks' || event.resource === '/cookbooks/{cookbookId}')
+      return await cookbookRequest(
+        docClient,
+        TABLE_NAME,
+        userId,
+        method,
+        event.pathParameters?.cookbookId,
+        event.body,
+      );
     if (event.resource?.startsWith('/recipe-images'))
       return await recipeImageRequest(userId, method, event.pathParameters?.imageId, event.body);
     if (event.resource === '/recipe-import')
@@ -443,7 +415,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         ? await recipeImportRequest(event.body)
         : response(405, { message: 'Method not allowed' });
     if (method === 'GET' && !recipeId) {
-      return await listRecipes(userId);
+      return response(200, { recipes: await readRecipePages(docClient, TABLE_NAME, userId) });
     }
 
     if (method === 'POST' && !recipeId) {
@@ -456,7 +428,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     }
 
     if (method === 'GET' && recipeId) {
-      return await getRecipeWithAvailability(userId, recipeId);
+      return await getRecipeWithAvailability(docClient, TABLE_NAME, userId, recipeId);
     }
 
     if (method === 'PUT' && recipeId) {

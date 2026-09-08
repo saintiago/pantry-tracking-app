@@ -1,6 +1,7 @@
-import { message as translateMessage, t, useLanguage } from '../../i18n/i18n';
+import { t, useLanguage } from '../../i18n/i18n';
 import React from 'react';
-import { validateMaxTimeInput } from '../../api/recipes/filter';
+import RecipeTimeSlider from './RecipeTimeSlider';
+import { computeTotalTime, type Recipe } from '../../api/recipes/recipes';
 
 export interface RecipeFilterPanelValue {
   maxPrepTimeInput: string;
@@ -29,6 +30,7 @@ export function isAllInactive(value: RecipeFilterPanelValue): boolean {
 }
 
 export interface RecipeFilterPanelProps {
+  recipes?: Recipe[];
   value: RecipeFilterPanelValue;
   onChange: (next: RecipeFilterPanelValue) => void;
   isAllInactive: boolean;
@@ -39,6 +41,7 @@ export interface RecipeFilterPanelProps {
 
 const RecipeFilterPanel: React.FC<RecipeFilterPanelProps> = ({
   value,
+  recipes = [],
   onChange,
   isAllInactive,
   onClear,
@@ -46,9 +49,6 @@ const RecipeFilterPanel: React.FC<RecipeFilterPanelProps> = ({
   inventoryUnavailable,
 }) => {
   useLanguage();
-  const prepValidation = validateMaxTimeInput(value.maxPrepTimeInput);
-  const cookValidation = validateMaxTimeInput(value.maxCookTimeInput);
-  const totalValidation = validateMaxTimeInput(value.maxTotalTimeInput);
 
   return (
     <section role="region" aria-label={t('Recipe filters')} style={styles.section}>
@@ -64,71 +64,24 @@ const RecipeFilterPanel: React.FC<RecipeFilterPanelProps> = ({
         </button>
       </div>
 
-      {/* Max prep time */}
-      <div style={styles.fieldGroup}>
-        <label htmlFor="filter-max-prep-time" style={styles.label}>
-          {t('Max prep time (min)')}{' '}
-        </label>
-        <input
-          id="filter-max-prep-time"
-          type="number"
-          min="0"
-          step="1"
-          value={value.maxPrepTimeInput}
-          onChange={(e) => onChange({ ...value, maxPrepTimeInput: e.target.value })}
-          style={styles.numberInput}
-          aria-describedby={prepValidation.error ? 'filter-max-prep-time-error' : undefined}
-        />
-        {prepValidation.error && (
-          <p id="filter-max-prep-time-error" style={styles.fieldError}>
-            {translateMessage(prepValidation.error)}
-          </p>
-        )}
-      </div>
-
-      {/* Max cook time */}
-      <div style={styles.fieldGroup}>
-        <label htmlFor="filter-max-cook-time" style={styles.label}>
-          {t('Max cook time (min)')}{' '}
-        </label>
-        <input
-          id="filter-max-cook-time"
-          type="number"
-          min="0"
-          step="1"
-          value={value.maxCookTimeInput}
-          onChange={(e) => onChange({ ...value, maxCookTimeInput: e.target.value })}
-          style={styles.numberInput}
-          aria-describedby={cookValidation.error ? 'filter-max-cook-time-error' : undefined}
-        />
-        {cookValidation.error && (
-          <p id="filter-max-cook-time-error" style={styles.fieldError}>
-            {translateMessage(cookValidation.error)}
-          </p>
-        )}
-      </div>
-
-      {/* Max total time */}
-      <div style={styles.fieldGroup}>
-        <label htmlFor="filter-max-total-time" style={styles.label}>
-          {t('Max total time (min)')}{' '}
-        </label>
-        <input
-          id="filter-max-total-time"
-          type="number"
-          min="0"
-          step="1"
-          value={value.maxTotalTimeInput}
-          onChange={(e) => onChange({ ...value, maxTotalTimeInput: e.target.value })}
-          style={styles.numberInput}
-          aria-describedby={totalValidation.error ? 'filter-max-total-time-error' : undefined}
-        />
-        {totalValidation.error && (
-          <p id="filter-max-total-time-error" style={styles.fieldError}>
-            {translateMessage(totalValidation.error)}
-          </p>
-        )}
-      </div>
+      <RecipeTimeSlider
+        label="Max prep time (min)"
+        values={recipes.map((r) => r.prepTime)}
+        value={value.maxPrepTimeInput}
+        onChange={(v) => onChange({ ...value, maxPrepTimeInput: v })}
+      />
+      <RecipeTimeSlider
+        label="Max cook time (min)"
+        values={recipes.map((r) => r.cookTime)}
+        value={value.maxCookTimeInput}
+        onChange={(v) => onChange({ ...value, maxCookTimeInput: v })}
+      />
+      <RecipeTimeSlider
+        label="Max total time (min)"
+        values={recipes.map((r) => computeTotalTime(r.prepTime, r.cookTime))}
+        value={value.maxTotalTimeInput}
+        onChange={(v) => onChange({ ...value, maxTotalTimeInput: v })}
+      />
 
       {/* Only recipes I can make now toggle */}
       <div style={styles.toggleRow}>

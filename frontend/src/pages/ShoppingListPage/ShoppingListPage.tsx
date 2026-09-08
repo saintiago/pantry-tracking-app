@@ -1,6 +1,10 @@
+import { dateLabel, views } from './view';
+import ShoppingReminders from './ShoppingReminders';
+import ShoppingArrangement from './ShoppingArrangement';
+import ShoppingShare from './ShoppingShare';
+import { type Arrangement } from './arrangement';
 import { getShoppingUnitLabel as getUnitLabel } from '../../types/units';
-import { date, number, getLanguage } from '../../i18n/i18n';
-import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
+import { number, t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../auth/AuthContext/AuthContext';
 import { useShoppingSnapshot } from './useShoppingSnapshot';
@@ -22,7 +26,6 @@ import {
   emptyCompanion,
   isDeferred,
   packageSuggestion,
-  purchaseCadence,
   readCompanion,
   safeProductLink,
   shoppingInventory,
@@ -39,25 +42,6 @@ import type { ShoppingEditRequest } from './ShoppingEditPage';
 import type { PurchaseRequest } from '../PurchasePage/PurchasePage';
 import { storeLabel } from './storeLabel';
 import { input, filterStyle, weekNavigation } from './styles';
-const dateLabel = (date: string) =>
-  new Date(`${date}T12:00:00`).toLocaleDateString(getLanguage(), {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
-interface ShoppingView {
-  start: string;
-  weeks: number;
-  days: string[];
-  recipes: string[];
-  past: boolean;
-  showStock: boolean;
-  search: string;
-  mode: 'planning' | 'shopping' | 'order';
-  store: string;
-}
-// Preserve the trip while visiting purchase/preferences pages in this session.
-const views = new Map<string, ShoppingView>();
 export default function ShoppingListPage({
   onPurchase,
   onEdit,
@@ -84,9 +68,22 @@ export default function ShoppingListPage({
   const [search, setSearch] = useState(view?.search ?? '');
   const [mode, setMode] = useState<'planning' | 'shopping' | 'order'>(view?.mode ?? 'planning');
   const [store, setStore] = useState(view?.store ?? '');
+  const [arrangement, setArrangement] = useState<Arrangement>(view?.arrangement ?? 'aisle');
   useEffect(() => {
-    views.set(user!.userId, { start, weeks, days, recipes, past, showStock, search, mode, store });
-  }, [user, start, weeks, days, recipes, past, showStock, search, mode, store]);
+    views.set(user!.userId, {
+      start,
+      weeks,
+      days,
+      recipes,
+      past,
+      showStock,
+      search,
+      mode,
+      store,
+      arrangement,
+    });
+  }, [user, start, weeks, days, recipes, past, showStock, search, mode, store, arrangement]);
+  const [removeLine, setRemoveLine] = useState<ShoppingLine | null>(null);
   const [copyMessage, setCopyMessage] = useState('');
   const [removed, setRemoved] = useState<ManualItem | null>(null);
   const [initial] = useState(() => {
@@ -174,7 +171,10 @@ export default function ShoppingListPage({
   // Keep the unpurchased generated requirement, not a duplicate of manual entries.
   const carrySnapshot = JSON.stringify(
     lines
-      .filter((l) => !l.carried && (l.meal || l.sources.includes('Restock')))
+      .filter(
+        (l) =>
+          !state.removed?.includes(l.id) && !l.carried && (l.meal || l.sources.includes('Restock')),
+      )
       .map((line) => {
         const manualQuantity = companion.manual
           .filter((m) => line.manualIds.includes(m.id))
@@ -251,6 +251,8 @@ export default function ShoppingListPage({
     return (
       <ShoppingRows
         title={title}
+        arrangement={arrangement}
+        onRemove={setRemoveLine}
         lines={list}
         mode={listMode}
         companion={companion}
@@ -279,7 +281,7 @@ export default function ShoppingListPage({
   const matches = (line: ShoppingLine) =>
     normalize(line.name).includes(normalize(search)) &&
     (!store || JSON.stringify(line.store) === store);
-  const visible = lines.filter(matches);
+  const visible = lines.filter((l) => matches(l) && !state.removed?.includes(l.id));
   const active = visible.filter((l) => !isDeferred(companion, l.id, today, key));
   const deferred = visible.filter((l) => isDeferred(companion, l.id, today, key));
   const mealLines = active.filter(
@@ -301,6 +303,13 @@ export default function ShoppingListPage({
           <h2>{t('Shopping List')}</h2>
           <p style={muted}>{t('From meal plan to shopping basket.')}</p>
         </div>
+        <ShoppingShare
+          lines={shopLines}
+          arrangement={arrangement}
+          state={state}
+          period={`${dateLabel(start)} – ${dateLabel(end)}`}
+          disabled={loading || !!error || !data}
+        />
         <button style={button} disabled={loading} onClick={reload}>
           {t('Refresh')}{' '}
         </button>
@@ -494,6 +503,29 @@ export default function ShoppingListPage({
           ))}
         </select>
       </label>
+      <ShoppingArrangement
+        arrangement={arrangement}
+        onArrange={setArrangement}
+        removeLine={removeLine}
+        onCancel={() => setRemoveLine(null)}
+        state={state}
+        lines={lines}
+        onSave={save}
+        onRemove={() => {
+          if (!removeLine) return;
+          const checked = { ...state.checked };
+          delete checked[removeLine.id];
+          save({
+            ...state,
+            checked,
+            removed: [...new Set([...(state.removed ?? []), removeLine.id])],
+          });
+          const carry = { ...companion.carry };
+          delete carry[removeLine.id];
+          update({ ...companion, carry });
+          setRemoveLine(null);
+        }}
+      />
       {storageError && <p role="alert">{translateMessage(storageError)}</p>}
       {loading && <p role="status">{t('Updating shopping list…')}</p>}
       {error && (
@@ -732,56 +764,7 @@ export default function ShoppingListPage({
             </section>
           )}
           {deferred.length > 0 && renderList('Later and unavailable', deferred, 'pending')}
-          <details style={panel}>
-            <summary style={{ minHeight: 44, cursor: 'pointer' }}>
-              {t('Pantry reminders & purchase history')}{' '}
-            </summary>
-            {data.items
-              .filter(
-                (i) =>
-                  i.quantity > 0 &&
-                  i.expirationDate !== null &&
-                  i.expirationDate >= today &&
-                  i.expirationDate <= addDays(today, 3),
-              )
-              .map((i) => (
-                <p
-                  key={i.itemId}
-                  style={{ ...muted, padding: 8, background: 'var(--color-warning)' }}
-                >
-                  {t('Use')} {i.name} {t('soon · expires')} {date(i.expirationDate ?? '')}
-                  {i.locationDetails ? ` · ${i.locationDetails}` : ''}
-                </p>
-              ))}
-            {!data.items.some(
-              (i) =>
-                i.quantity > 0 &&
-                i.expirationDate !== null &&
-                i.expirationDate >= today &&
-                i.expirationDate <= addDays(today, 3),
-            ) && <p style={muted}>{t('No recorded stock expires in the next three days.')}</p>}
-            {purchaseCadence(companion.history).map((pattern) => (
-              <p key={pattern.id} style={muted}>
-                {pattern.name}
-                {t(': bought about every')} {pattern.interval} {t('days across')} {pattern.count}{' '}
-                {t(
-                  'purchase dates. This is a shopping-history reminder; check your current stock before adding more.',
-                )}{' '}
-              </p>
-            ))}
-            {companion.history
-              .slice(-10)
-              .reverse()
-              .map((h, i) => (
-                <p key={`${h.date}-${i}`} style={muted}>
-                  {h.name} · {amount(h.quantity)} {getUnitLabel(h.unit, h.quantity)} ·{' '}
-                  {new Date(h.date).toLocaleDateString(getLanguage())}
-                </p>
-              ))}
-            {!companion.history.length && (
-              <p style={muted}>{t('Purchases added through this tab will appear here.')}</p>
-            )}
-          </details>
+          <ShoppingReminders items={data.items} companion={companion} today={today} />
         </>
       )}
       <p style={{ ...muted, margin: '12px 0 24px' }}>

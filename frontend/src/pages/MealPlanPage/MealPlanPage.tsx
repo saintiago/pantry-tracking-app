@@ -1,3 +1,5 @@
+import ShareButton from '../../components/ShareButton/ShareButton';
+import PlannerServings from './PlannerServings';
 import './planner.css';
 import React, { useEffect, useRef, useState } from 'react';
 import { entryKcal, type PlannerEntry } from '@pantry/domain';
@@ -211,7 +213,10 @@ export default function ExpandedMealPlanner({
   };
   const library = (
     <>
-      <h2>{t('Recipes')}</h2>
+      <h2>
+        <span aria-hidden="true">📖 </span>
+        {t('Recipes')}
+      </h2>
       {recipesLoading && <p role="status">{t('Loading recipes…')}</p>}
       {recipeError && (
         <p role="alert">
@@ -371,6 +376,30 @@ export default function ExpandedMealPlanner({
             <h1>{t('Meal Planner')}</h1>
             <p className="planner-subtitle">{t('From recipes to your weekly plan')}</p>
           </div>
+          <ShareButton
+            title={t('Meal Plan')}
+            disabled={planner.loading || !!planner.error}
+            text={`${t('Meal Plan')}
+${dates
+  .map(
+    (date) => `${date}
+${
+  state.mealPlans
+    .filter((e) => e.date === date)
+    .sort(
+      (a, b) =>
+        ['breakfast', 'lunch', 'dinner'].indexOf(a.mealType) -
+        ['breakfast', 'lunch', 'dinner'].indexOf(b.mealType),
+    )
+    .map(
+      (e) =>
+        `${t(e.mealType)}: ${e.recipeName} · ${e.servings ?? recipes.find((r) => r.recipeId === e.recipeId)?.portions ?? 1} ${t('servings')}`,
+    )
+    .join('\n') || t('No meals planned')
+}`,
+  )
+  .join('\n\n')}`}
+          />
           {onShopping && (
             <button
               className="planner-shop"
@@ -386,15 +415,41 @@ export default function ExpandedMealPlanner({
             </button>
           )}
         </header>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+        <div className="planner-controls">
           <div role="group" aria-label={t('View')} className="planner-view">
             <span>{t('View')}:</span>
+            <select
+              className="planner-view-select"
+              aria-label={t('Calendar view')}
+              value={view}
+              onChange={(e) => setView(e.target.value as typeof view)}
+            >
+              <option value="day">{t('Day')}</option>
+              <option value="week">{t('Week')}</option>
+              <option value="two-weeks">{t('Two weeks')}</option>
+            </select>
             {(['day', 'week', 'two-weeks'] as const).map((mode) => (
               <button key={mode} aria-pressed={view === mode} onClick={() => setView(mode)}>
                 {t(mode === 'day' ? 'Day' : mode === 'week' ? 'Week' : 'Two weeks')}
               </button>
             ))}
           </div>
+          <PlannerServings
+            value={servings}
+            onChange={setServings}
+            disabled={locked}
+            onApply={() =>
+              run(async () => {
+                const today = new Date();
+                const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                const entries = state.mealPlans
+                  .filter((e) => e.date >= date && !e.batchId)
+                  .map((e) => ({ ...e, servings: Number(servings) }));
+                await planner.mutate({ entries });
+                setNotice(`Updated ${entries.length} planned meals to ${servings} servings.`);
+              })
+            }
+          />
           {view === 'day' && (
             <label>
               {t('Selected day')}
@@ -406,52 +461,6 @@ export default function ExpandedMealPlanner({
             </label>
           )}
         </div>
-        <details className="planner-servings">
-          <summary>
-            {t('Servings')}: {servings}
-          </summary>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              const today = new Date();
-              const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-              run(async () => {
-                const entries = state.mealPlans
-                  .filter((e) => e.date >= date && !e.batchId)
-                  .map((e) => ({ ...e, servings: Number(servings) }));
-                await planner.mutate({ entries });
-                setNotice(`Updated ${entries.length} planned meals to ${servings} servings.`);
-              });
-            }}
-            style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}
-          >
-            <label>
-              {t('Servings')}{' '}
-              <input
-                type="number"
-                required
-                min="0.01"
-                step="any"
-                value={servings}
-                onChange={(e) => setServings(e.target.value)}
-                style={{ width: 70 }}
-              />
-            </label>
-            <button disabled={locked}>{t('Update future meals')}</button>
-            <small>
-              {t('Applies to future meals without batch links. Edit batch portions individually.')}
-            </small>
-          </form>
-        </details>
-        <PlannerCopies
-          state={state}
-          recipes={recipes}
-          week={week}
-          day={day}
-          disabled={locked}
-          onSave={planner.mutate}
-        />
-        <PreparedBatches state={state} disabled={locked} onSave={planner.mutate} />
         <p>
           {t(
             'Kcal per person assumes one portion of every dish. Estimates use current recipes; prepared batches keep their cooking snapshot.',
@@ -503,19 +512,28 @@ export default function ExpandedMealPlanner({
             }}
           >
             {library}
+            <PreparedBatches state={state} disabled={locked} onSave={planner.mutate} />
+            <PlannerCopies
+              state={state}
+              recipes={recipes}
+              week={week}
+              day={day}
+              disabled={locked}
+              onSave={planner.mutate}
+            />
           </aside>
           <div className="planner-calendar">
-            {planner.undo && (
+            {
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
                 <button
                   className="planner-undo"
-                  disabled={locked}
+                  disabled={locked || !planner.undo}
                   onClick={() => run(planner.undoChange)}
                 >
-                  <span aria-hidden="true">↶</span> {t('Undo')}
+                  <span aria-hidden="true">↩️</span> {t('Undo')}
                 </button>
               </div>
-            )}
+            }
             <WeekCalendar
               weekDates={dates}
               assignments={state.mealPlans.map((e) => ({

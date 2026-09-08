@@ -13,6 +13,7 @@ export function favoriteFromRange(
   return {
     favoriteId,
     name,
+    kind: start === end ? 'day' : 'week',
     entries: entries.map((e) => {
       const { date, consumed: _consumed, ...rest } = e;
       void _consumed;

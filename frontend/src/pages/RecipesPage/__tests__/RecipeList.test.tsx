@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import userEvent from '@testing-library/user-event';
 import RecipeList from '../RecipeList';
@@ -196,20 +196,18 @@ describe('RecipeList', () => {
     expect(position(filterPanel)).toBeLessThan(position(recipeList));
   });
 
-  it('setting "Max prep time (min)" to "15" excludes recipes with prepTime > 15 and no prepTime (Requirements 2.1, 2.4)', async () => {
+  it('setting "Max prep time (min)" to "10" excludes recipes with prepTime > 10 and no prepTime (Requirements 2.1, 2.4)', async () => {
     const recipes = [
       makeRecipe({ recipeId: 'r1', name: 'Fast Prep', prepTime: 10 }),
       makeRecipe({ recipeId: 'r2', name: 'Slow Prep', prepTime: 20 }),
       makeRecipe({ recipeId: 'r3', name: 'No Prep Time' }), // no prepTime — excluded
     ];
     mockFetchRecipes.mockResolvedValue(recipes);
-    const user = userEvent.setup();
     render(<RecipeList {...defaultProps} />);
     await waitFor(() => screen.getByText('Fast Prep'));
 
     const prepInput = screen.getByLabelText(/max prep time/i);
-    await user.clear(prepInput);
-    await user.type(prepInput, '15');
+    fireEvent.change(prepInput, { target: { value: '0' } });
 
     expect(screen.getByText('Fast Prep')).toBeInTheDocument();
     expect(screen.queryByText('Slow Prep')).not.toBeInTheDocument();
@@ -223,13 +221,11 @@ describe('RecipeList', () => {
       makeRecipe({ recipeId: 'r3', name: 'No Cook Time' }), // no cookTime — excluded
     ];
     mockFetchRecipes.mockResolvedValue(recipes);
-    const user = userEvent.setup();
     render(<RecipeList {...defaultProps} />);
     await waitFor(() => screen.getByText('Quick Cook'));
 
     const cookInput = screen.getByLabelText(/max cook time/i);
-    await user.clear(cookInput);
-    await user.type(cookInput, '20');
+    fireEvent.change(cookInput, { target: { value: '0' } });
 
     expect(screen.getByText('Quick Cook')).toBeInTheDocument();
     expect(screen.queryByText('Long Cook')).not.toBeInTheDocument();
@@ -243,13 +239,11 @@ describe('RecipeList', () => {
       makeRecipe({ recipeId: 'r3', name: 'No Times' }), // undefined total — excluded
     ];
     mockFetchRecipes.mockResolvedValue(recipes);
-    const user = userEvent.setup();
     render(<RecipeList {...defaultProps} />);
     await waitFor(() => screen.getByText('Short Total'));
 
     const totalInput = screen.getByLabelText(/max total time/i);
-    await user.clear(totalInput);
-    await user.type(totalInput, '20');
+    fireEvent.change(totalInput, { target: { value: '0' } });
 
     expect(screen.getByText('Short Total')).toBeInTheDocument();
     expect(screen.queryByText('Long Total')).not.toBeInTheDocument();
@@ -314,10 +308,10 @@ describe('RecipeList', () => {
     render(<RecipeList {...defaultProps} />);
     await waitFor(() => screen.getByText('Pasta Carbonara'));
 
-    // Set a maxPrepTime of 0 — all recipes have no prepTime so all are excluded
-    const prepInput = screen.getByLabelText(/max prep time/i);
-    await user.clear(prepInput);
-    await user.type(prepInput, '0');
+    await user.type(
+      screen.getByRole('searchbox', { name: /search recipes/i }),
+      'No matching recipe',
+    );
 
     expect(screen.getByText(/no recipes match the selected filters/i)).toBeInTheDocument();
     expect(screen.queryByText(/no recipes yet/i)).not.toBeInTheDocument();
@@ -352,8 +346,7 @@ describe('RecipeList', () => {
 
     // 3. Set maxPrepTime to 15
     const prepInput = screen.getByLabelText(/max prep time/i);
-    await user.clear(prepInput);
-    await user.type(prepInput, '15');
+    fireEvent.change(prepInput, { target: { value: '1' } });
 
     // Only "Pasta Carbonara" (name matches "pasta", tag "italian", prepTime 10 <= 15)
     // and "Pasta Bake" (name matches "pasta", tag "italian", prepTime 5 <= 15) should remain
