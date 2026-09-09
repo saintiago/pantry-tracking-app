@@ -550,7 +550,7 @@ for (const width of [320, 390, 1440]) {
   test('compact shopping controls align at ' + width + 'px', async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await setup(page);
-    await expect(page.getByText('From meal plan to shopping basket.')).toBeVisible();
+    await expect(page.getByText('From meal plan to your shopping list')).toBeVisible();
     const controls = await Promise.all(
       ['Previous week', 'Week of', 'Next week'].map((name) =>
         page.getByLabel(name, { exact: true }).boundingBox(),

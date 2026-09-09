@@ -130,7 +130,7 @@ for (const width of [320, 390, 1440])
   test(`compact navigation and planner controls at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await setupPlanner(page, [meal('source', monday)]);
-    await expect(page.getByText('From recipes to your weekly plan')).toBeVisible();
+    await expect(page.getByText('From recipes to your meal plan')).toBeVisible();
     await expect(page.getByRole('group', { name: 'View', exact: true })).toBeVisible();
     await expect(
       page

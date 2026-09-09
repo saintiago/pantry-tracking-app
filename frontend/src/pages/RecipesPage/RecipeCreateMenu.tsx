@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { t, useLanguage } from '../../i18n/i18n';
-import { styles } from './styles';
 export default function RecipeCreateMenu({
   onSelect,
+  onNewCookbook,
 }: {
   onSelect: (mode: 'manual' | 'photo' | 'link') => void;
+  onNewCookbook?: () => void;
 }) {
   useLanguage();
   const [open, setOpen] = useState(false);
@@ -19,7 +20,7 @@ export default function RecipeCreateMenu({
   return (
     <div
       ref={root}
-      style={{ position: 'relative' }}
+      style={{ position: 'relative', flexShrink: 0 }}
       onKeyDown={(event) => {
         if (event.key === 'Escape') {
           setOpen(false);
@@ -29,7 +30,17 @@ export default function RecipeCreateMenu({
     >
       <button
         type="button"
-        style={styles.newButton}
+        style={{
+          minHeight: 44,
+          padding: '8px 10px',
+          whiteSpace: 'nowrap',
+          border: '1px solid var(--color-border)',
+          borderRadius: 10,
+          background: 'var(--color-mint)',
+          color: 'var(--color-text)',
+          fontSize: '.875rem',
+          cursor: 'pointer',
+        }}
         aria-expanded={open}
         aria-controls="recipe-create-options"
         onClick={() => setOpen(!open)}
@@ -82,6 +93,26 @@ export default function RecipeCreateMenu({
               )}
             </button>
           ))}
+          {onNewCookbook && (
+            <button
+              type="button"
+              style={{
+                display: 'block',
+                width: '100%',
+                minHeight: 44,
+                padding: 10,
+                textAlign: 'left',
+                background: 'transparent',
+                border: 0,
+              }}
+              onClick={() => {
+                setOpen(false);
+                onNewCookbook();
+              }}
+            >
+              {t('New cookbook')}
+            </button>
+          )}
         </div>
       )}
     </div>

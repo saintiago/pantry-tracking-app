@@ -576,8 +576,8 @@ test.describe('Recipe Management', () => {
 
     await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Timed Recipe');
     await page.getByRole('textbox', { name: 'Instructions' }).fill('Mix and bake.');
-    await page.getByLabel('Prep time (min)').fill('15');
-    await page.getByLabel('Cook time (min)').fill('25');
+    await page.getByLabel('Prep time (min)', { exact: true }).fill('15');
+    await page.getByLabel('Cook time (min)', { exact: true }).fill('25');
     await page.getByLabel('Ingredient 1 name').fill('Flour');
     await page.getByLabel('Ingredient 1 quantity').fill('300');
     await page.getByLabel('Ingredient 1 unit').selectOption('g');
@@ -641,11 +641,11 @@ test.describe('Recipe Management', () => {
     await expect(page.getByRole('heading', { name: 'Edit Recipe' })).toBeVisible({ timeout: 5000 });
 
     // Verify time fields are pre-populated
-    await expect(page.getByLabel('Prep time (min)')).toHaveValue('10');
-    await expect(page.getByLabel('Cook time (min)')).toHaveValue('20');
+    await expect(page.getByLabel('Prep time (min)', { exact: true })).toHaveValue('10');
+    await expect(page.getByLabel('Cook time (min)', { exact: true })).toHaveValue('20');
 
     // Clear prep time
-    await page.getByLabel('Prep time (min)').clear();
+    await page.getByLabel('Prep time (min)', { exact: true }).clear();
 
     await page.getByRole('button', { name: 'Save Changes' }).click();
 
@@ -667,7 +667,7 @@ test.describe('Recipe Management', () => {
 
     await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Test Recipe');
     await page.getByRole('textbox', { name: 'Instructions' }).fill('Do stuff');
-    await page.getByLabel('Prep time (min)').fill('-5');
+    await page.getByLabel('Prep time (min)', { exact: true }).fill('-5');
     await page.getByLabel('Ingredient 1 name').fill('Flour');
     await expect(page.getByRole('listbox')).toBeVisible();
     await page.getByLabel('Ingredient 1 name').press('Escape');

@@ -824,3 +824,9 @@ matching accept compatible dimensions. Existing keys/quantities are not migrated
 Preferences convert both display amounts and labels; editing a converted field inversely
 converts to its recorded unit, preserving untouched precision. Unit removal affects the
 picker only, never historical records. Count units remain distinct and unconverted.
+
+## Visual library (issue #17)
+
+No API or persisted entity changes. Cookbook image uploads use the existing image ID
+contract, with a browser cover profile (720px maximum side, JPEG under 203 KB). Existing
+images retain their references. Recipe view choices are component session state.

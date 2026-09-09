@@ -377,7 +377,7 @@ export default function ExpandedMealPlanner({
         <header className="planner-heading">
           <div>
             <h1>{t('Meal Planner')}</h1>
-            <p className="planner-subtitle">{t('From recipes to your weekly plan')}</p>
+            <p className="planner-subtitle">{t('From recipes to your meal plan')}</p>
           </div>
           <ShareButton
             title={t('Meal Plan')}

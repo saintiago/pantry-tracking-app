@@ -178,7 +178,7 @@ describe('RecipeList', () => {
 
   // ─── RecipeFilterPanel integration ───────────────────────────────────────────
 
-  it('filter panel renders below the tag cloud and above the recipe list (Requirement 1.1)', async () => {
+  it('filter panel renders above the tag cloud and recipe list (issue #17)', async () => {
     mockFetchRecipes.mockResolvedValue(sampleRecipes);
     render(<RecipeList {...defaultProps} allTags={['italian', 'soup']} />);
     await waitFor(() => screen.getByText('Pasta Carbonara'));
@@ -192,7 +192,7 @@ describe('RecipeList', () => {
     // Check DOM order: tagCloud < filterPanel < recipeList
     const position = (el: Element) => Array.from(container.querySelectorAll('*')).indexOf(el);
 
-    expect(position(tagCloud)).toBeLessThan(position(filterPanel));
+    expect(position(filterPanel)).toBeLessThan(position(tagCloud));
     expect(position(filterPanel)).toBeLessThan(position(recipeList));
   });
 

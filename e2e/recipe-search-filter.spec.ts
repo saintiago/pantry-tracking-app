@@ -474,9 +474,9 @@ test.describe('Recipe Search & Filter', () => {
     await expect(page.getByText('No recipes match the selected filters.')).not.toBeVisible();
   });
 
-  // ── Filter reset on navigation ────────────────────────────────────────────
+  // ── Filter preservation on navigation ────────────────────────────────────────────
 
-  test('filter inputs reset when navigating to detail and back', async ({ page }) => {
+  test('filter inputs persist when navigating to detail and back', async ({ page }) => {
     // Set a filter
     await setTime(page, 'prep', 10);
     await expect(page.getByLabel('Max prep time (min)')).toHaveAttribute(
@@ -492,12 +492,12 @@ test.describe('Recipe Search & Filter', () => {
     await page.getByRole('button', { name: 'Go back' }).click();
     await page.waitForSelector('h2:has-text("Recipes")', { timeout: 5000 });
 
-    // Filter inputs should be reset
+    // Filter inputs should be preserved
     await expect(page.getByLabel('Max prep time (min)')).toHaveAttribute(
       'aria-valuetext',
-      'Any time',
+      '10 min',
     );
     await expect(page.getByLabel('Only recipes I can make now')).not.toBeChecked();
-    await expect(page.getByRole('button', { name: 'Clear filters' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Clear filters' })).toBeEnabled();
   });
 });

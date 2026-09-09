@@ -25,8 +25,9 @@ export default function RecipeTimeSlider({
   const selected = index < 0 ? stops.length : index;
   const text = value === '' ? t('Any time') : t('{0} min', value);
   return (
-    <label htmlFor={id} style={{ display: 'block' }}>
-      {t(label)}: <strong>{text}</strong>
+    <label htmlFor={id} style={{ display: 'block', minWidth: 0, fontSize: '.8125rem' }}>
+      <span style={{ display: 'block' }}>{t(label)}</span>
+      <strong>{text}</strong>
       <input
         id={id}
         type="range"
@@ -40,7 +41,7 @@ export default function RecipeTimeSlider({
         style={{
           display: 'block',
           width: '100%',
-          minHeight: 36,
+          minHeight: 28,
           accentColor: 'var(--color-action)',
         }}
         onChange={(e) => onChange(stops[Number(e.target.value)]?.toString() ?? '')}

@@ -302,7 +302,7 @@ export default function ShoppingListPage({
       <div style={{ ...wrap, justifyContent: 'space-between', marginBottom: 18 }}>
         <div>
           <h2>{t('Shopping List')}</h2>
-          <p style={muted}>{t('From meal plan to shopping basket.')}</p>
+          <p style={muted}>{t('From meal plan to your shopping list')}</p>
         </div>
         <ShoppingShare
           lines={shopLines}

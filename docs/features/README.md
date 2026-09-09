@@ -7,6 +7,9 @@ first. Older designs and unchecked tasks are not an implementation inventory.
 
 Key precedence notes:
 
+- [Visual recipe library](recipe-management/visual-library.md) supersedes the original
+  cookbook shelf layout and detail-return filter reset with issue #17.
+
 - [Settings and help](settings/preferences-and-help.md) supersedes the header language
   selector and adds reversible measurement preferences, unit lists and appearance choices.
 

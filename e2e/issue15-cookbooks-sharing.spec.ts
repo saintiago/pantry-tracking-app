@@ -46,6 +46,7 @@ test('cookbooks save covers and membership, survive reload, handle save failure 
   );
   await page.route(`**/recipe-images/${cover}`, (route) => route.fulfill({ json: { url: png } }));
   await page.getByRole('button', { name: 'Recipes', exact: true }).click();
+  await page.getByRole('button', { name: '+ New Recipe', exact: true }).click();
   await page.getByRole('button', { name: 'New cookbook', exact: true }).click();
   await page.getByLabel('Cookbook name').fill('Weeknight favorites');
   await page.getByLabel('Description', { exact: true }).fill('Fast family meals');

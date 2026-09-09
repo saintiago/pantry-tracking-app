@@ -58,8 +58,8 @@ The service worker caches app assets; it does not make inventory CRUD offline-ca
 
 Shopping ingredient details collapse by default, retaining visible quantities, review
 notices and purchase actions. Equal-width week shortcuts and distinct
-department pastels improve mobile scanning; the subtitle is "From meal plan to shopping
-basket." See the shopping companion feature record. Scanning an existing barcode
+department pastels improve mobile scanning; the subtitle is "From meal plan to your shopping
+list." See the shopping companion feature record. Scanning an existing barcode
 prefers saved household details and focuses expiration for review, requesting the
 native date picker where the browser permits it.
 
@@ -129,7 +129,7 @@ missing ingredient lines rather than price.
 Settings is the gear beside the language selector; storage locations start collapsed.
 The planner has a dedicated View group, top-right Shopping action, calendar-adjacent
 Undo, expandable servings/favorite controls and the subtitle “From recipes to your
-weekly plan.” Household/all-planned-portions kcal are no longer shown.
+meal plan.” Household/all-planned-portions kcal are no longer shown.
 
 Recipe availability and expiration filters are adjacent matching toggles; expiration
 reveals its one-/two-week window. New Recipe offers manual, photo and link imports.
@@ -165,3 +165,12 @@ added, removed and reordered; saved units remain readable. Mass and volume never
 Appearance offers Pastel, black/white Minimalist without decorative emojis, and System
 mode following device light/dark preferences. Settings are per account on this device.
 See [preferences and help](features/settings/preferences-and-help.md).
+
+## Visual recipe library (issue #17)
+
+My cookbooks shows compact covers; All recipes shows only recipes. Cookbook contents
+and the full library support List, Icons and Larger images with recipe cover photos.
+Time filters sit above search/tags. Returning from details preserves the collection,
+filters and view. New cookbook is in New Recipe; icon actions appear on hover, focus
+or touch hold, and inside the cookbook. New covers are compressed to at most 720px;
+card images load near the viewport. See [visual library](features/recipe-management/visual-library.md).

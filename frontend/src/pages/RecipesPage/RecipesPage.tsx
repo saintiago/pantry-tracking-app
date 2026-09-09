@@ -26,6 +26,7 @@ type RecipeView =
 
 const RecipesPage: React.FC<RecipesPageProps> = ({ activeCookingSession, onStartCooking }) => {
   useLanguage();
+  const [revision, setRevision] = useState(0);
   const [view, setView] = useState<RecipeView>({ mode: 'list' });
   const [allTags, setAllTags] = useState<string[]>([]);
   const [tagsLoading, setTagsLoading] = useState(true);
@@ -75,9 +76,10 @@ const RecipesPage: React.FC<RecipesPageProps> = ({ activeCookingSession, onStart
     };
   }, [inventoryAttempt]);
 
-  if (view.mode === 'list') {
-    return (
+  const library = (
+    <div hidden={view.mode !== 'list'}>
       <RecipeList
+        refreshToken={revision}
         onSelect={(id) => setView({ mode: 'detail', recipeId: id })}
         onNew={(source) =>
           setView(source === 'manual' ? { mode: 'editor-new' } : { mode: 'import', source })
@@ -91,58 +93,71 @@ const RecipesPage: React.FC<RecipesPageProps> = ({ activeCookingSession, onStart
         onRetryInventory={() => setInventoryAttempt((n) => n + 1)}
         activeCookingSession={activeCookingSession}
       />
-    );
-  }
+    </div>
+  );
+  function content() {
+    if (view.mode === 'list') return null;
+    if (view.mode === 'import')
+      return (
+        <RecipeImporter
+          mode={view.source}
+          onReview={(draft) => setView({ mode: 'editor-new', draft })}
+          onCancel={() => setView({ mode: 'list' })}
+        />
+      );
 
-  if (view.mode === 'import')
-    return (
-      <RecipeImporter
-        mode={view.source}
-        onReview={(draft) => setView({ mode: 'editor-new', draft })}
-        onCancel={() => setView({ mode: 'list' })}
-      />
-    );
+    if (view.mode === 'detail') {
+      return (
+        <RecipeDetail
+          recipeId={view.recipeId}
+          onEdit={() => setView({ mode: 'editor-edit', recipeId: view.recipeId })}
+          onBack={() => setView({ mode: 'list' })}
+          onDeleted={() => {
+            setRevision((n) => n + 1);
+            setView({ mode: 'list' });
+          }}
+          activeCookingSession={activeCookingSession}
+          onStartCooking={onStartCooking}
+        />
+      );
+    }
 
-  if (view.mode === 'detail') {
-    return (
-      <RecipeDetail
-        recipeId={view.recipeId}
-        onEdit={() => setView({ mode: 'editor-edit', recipeId: view.recipeId })}
-        onBack={() => setView({ mode: 'list' })}
-        onDeleted={() => setView({ mode: 'list' })}
-        activeCookingSession={activeCookingSession}
-        onStartCooking={onStartCooking}
-      />
-    );
-  }
+    if (view.mode === 'editor-new') {
+      return (
+        <RecipeEditor
+          initialDraft={view.draft}
+          onSaved={(id) => {
+            setRevision((n) => n + 1);
+            refreshTags();
+            setView({ mode: 'detail', recipeId: id });
+          }}
+          onCancel={() => setView({ mode: 'list' })}
+          allTags={allTags}
+          tagsLoading={tagsLoading}
+        />
+      );
+    }
 
-  if (view.mode === 'editor-new') {
+    // editor-edit
     return (
       <RecipeEditor
-        initialDraft={view.draft}
+        recipeId={view.recipeId}
         onSaved={(id) => {
+          setRevision((n) => n + 1);
           refreshTags();
           setView({ mode: 'detail', recipeId: id });
         }}
-        onCancel={() => setView({ mode: 'list' })}
+        onCancel={() => setView({ mode: 'detail', recipeId: view.recipeId })}
         allTags={allTags}
         tagsLoading={tagsLoading}
       />
     );
   }
-
-  // editor-edit
   return (
-    <RecipeEditor
-      recipeId={view.recipeId}
-      onSaved={(id) => {
-        refreshTags();
-        setView({ mode: 'detail', recipeId: id });
-      }}
-      onCancel={() => setView({ mode: 'detail', recipeId: view.recipeId })}
-      allTags={allTags}
-      tagsLoading={tagsLoading}
-    />
+    <>
+      {library}
+      {content()}
+    </>
   );
 };
 

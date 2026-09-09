@@ -1,11 +1,11 @@
-import Emoji from '../../preferences/Emoji';
+import RecipeCards, { RecipeViewPicker, type LibraryView } from './RecipeCards';
 import Cookbooks from './Cookbooks';
 import RecipeCreateMenu from './RecipeCreateMenu';
-import { prioritizeExpiringRecipes, recipeExpiration } from '../../domain/recipes/expiration';
+import { prioritizeExpiringRecipes } from '../../domain/recipes/expiration';
 import type { InventoryItem } from '../../domain/inventory/types';
 import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useEffect, useMemo, useState } from 'react';
-import { fetchRecipes, computeTotalTime } from '../../api/recipes/recipes';
+import { fetchRecipes } from '../../api/recipes/recipes';
 import type { Recipe } from '../../api/recipes/recipes';
 import RecipeFilterPanel, {
   EMPTY_PANEL_VALUE,
@@ -17,6 +17,7 @@ import type { InventoryIndex } from '../../api/recipes/availability';
 import type { CookingSession } from '../CookingPage/CookingPage';
 
 interface RecipeListProps {
+  refreshToken?: number;
   onSelect: (recipeId: string) => void;
   onNew: (mode: 'manual' | 'photo' | 'link') => void;
   allTags: string[];
@@ -30,6 +31,7 @@ interface RecipeListProps {
 }
 
 const RecipeList: React.FC<RecipeListProps> = ({
+  refreshToken = 0,
   onSelect,
   onNew,
   allTags,
@@ -43,6 +45,9 @@ const RecipeList: React.FC<RecipeListProps> = ({
 }) => {
   useLanguage();
   const [cookbookIds, setCookbookIds] = useState<string[] | null | undefined>(null);
+  const [createRequest, setCreateRequest] = useState(0);
+  const [allView, setAllView] = useState<LibraryView>('list');
+  const [bookView, setBookView] = useState<LibraryView>('icons');
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,7 +72,7 @@ const RecipeList: React.FC<RecipeListProps> = ({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [refreshToken]);
 
   const now = new Date();
   const today = [
@@ -114,7 +119,7 @@ const RecipeList: React.FC<RecipeListProps> = ({
     panel.onlyAllAvailable ||
     !!panel.expiringWithinDays;
 
-  if (loading) {
+  if (loading && refreshToken === 0) {
     return (
       <div style={styles.centered} role="status" aria-label={t('Loading recipes')}>
         <p style={styles.statusText}>{t('Loading…')}</p>
@@ -133,18 +138,35 @@ const RecipeList: React.FC<RecipeListProps> = ({
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={styles.title}>{t('Recipes')}</h2>
-        <RecipeCreateMenu onSelect={onNew} />
+        <div style={{ minWidth: 0 }}>
+          <h2 style={styles.title}>{t('Recipes')}</h2>
+          <p style={{ margin: '4px 0 0', color: 'var(--color-secondary)', fontSize: '.875rem' }}>
+            {t('From inventory to your recipes')}
+          </p>
+        </div>
+        <RecipeCreateMenu onSelect={onNew} onNewCookbook={() => setCreateRequest((n) => n + 1)} />
       </div>
 
       <Cookbooks
         recipes={recipes}
+        createRequest={createRequest}
         onSelect={(ids) => {
           setCookbookIds(ids);
           setPanel(EMPTY_PANEL_VALUE);
         }}
       />
       <div hidden={cookbookIds === undefined}>
+        {/* Recipe filter panel */}
+        <RecipeFilterPanel
+          recipes={cookbookIds ? recipes.filter((r) => cookbookIds.includes(r.recipeId)) : recipes}
+          value={panel}
+          onChange={setPanel}
+          isAllInactive={isAllInactive(panel)}
+          onClear={() => setPanel(EMPTY_PANEL_VALUE)}
+          inventoryLoading={inventoryLoading}
+          inventoryUnavailable={inventoryError}
+        />
+
         <input
           type="search"
           placeholder={t('Search recipes…')}
@@ -184,23 +206,16 @@ const RecipeList: React.FC<RecipeListProps> = ({
           </div>
         ) : null}
 
-        {/* Recipe filter panel */}
-        <RecipeFilterPanel
-          recipes={cookbookIds ? recipes.filter((r) => cookbookIds.includes(r.recipeId)) : recipes}
-          value={panel}
-          onChange={setPanel}
-          isAllInactive={isAllInactive(panel)}
-          onClear={() => setPanel(EMPTY_PANEL_VALUE)}
-          inventoryLoading={inventoryLoading}
-          inventoryUnavailable={inventoryError}
-        />
-
         {inventoryError && (
           <p role="alert">
             {t('Inventory filters unavailable. Retry inventory.')}{' '}
             <button onClick={onRetryInventory}>{t('Retry inventory')}</button>
           </p>
         )}
+        <RecipeViewPicker
+          value={cookbookIds ? bookView : allView}
+          onChange={cookbookIds ? setBookView : setAllView}
+        />
         {filtered.length === 0 ? (
           <div style={styles.emptyState} role="status">
             {recipes.length === 0 ? (
@@ -212,76 +227,15 @@ const RecipeList: React.FC<RecipeListProps> = ({
             )}
           </div>
         ) : (
-          <ul style={styles.list} role="list">
-            {filtered.map((recipe) => {
-              const missingCount = (recipe as Recipe & { missingCount?: number }).missingCount;
-              const totalTime = computeTotalTime(recipe.prepTime, recipe.cookTime);
-              const recipeTags = recipe.tags ?? [];
-              return (
-                <li key={recipe.recipeId} style={styles.listItem}>
-                  <button
-                    onClick={() => onSelect(recipe.recipeId)}
-                    style={styles.rowButton}
-                    type="button"
-                    aria-label={t('View {0}', recipe.name)}
-                  >
-                    <div style={styles.rowContent}>
-                      <span style={styles.recipeName}>
-                        {recipe.name}
-                        {activeCookingSession?.recipeId === recipe.recipeId && (
-                          <span style={styles.cookingIndicator} aria-label={t('Currently cooking')}>
-                            <Emoji> 🍳</Emoji>
-                          </span>
-                        )}
-                      </span>
-                      {!!panel.expiringWithinDays && (
-                        <span>
-                          {t(
-                            'Use soon: {0}',
-                            recipeExpiration(
-                              recipe,
-                              inventoryItems,
-                              today,
-                              panel.expiringWithinDays,
-                            )
-                              .map((item) => item.name + ' (' + item.expiration + ')')
-                              .join(', '),
-                          )}
-                        </span>
-                      )}
-                      {recipeTags.length > 0 && (
-                        <div style={styles.tagChipRow}>
-                          {recipeTags.map((tag) => (
-                            <span key={tag} style={styles.tagChip}>
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <span style={styles.badgeGroup}>
-                      {totalTime !== undefined && (
-                        <span
-                          style={styles.timeBadge}
-                          aria-label={t('{0} minutes total', totalTime)}
-                        >
-                          {totalTime} {t('min')}{' '}
-                        </span>
-                      )}
-                      {missingCount != null && missingCount > 0 && (
-                        <span
-                          style={styles.missingBadge}
-                          aria-label={t('{0} ingredient(s) missing', missingCount)}
-                        >
-                          {missingCount} {t('missing')}{' '}
-                        </span>
-                      )}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+          <RecipeCards
+            recipes={filtered}
+            view={cookbookIds ? bookView : allView}
+            onSelect={onSelect}
+            cookingId={activeCookingSession?.recipeId}
+            inventoryItems={inventoryItems}
+            today={today}
+            expiringWithinDays={panel.expiringWithinDays}
+          />
         )}
       </div>
     </div>

@@ -283,7 +283,7 @@ describe('RecipesPage', () => {
     });
   });
 
-  it('resets filter inputs when navigating to detail then back to list (Requirement 1.7)', async () => {
+  it('preserves filter inputs when returning from recipe detail (issue #17)', async () => {
     const user = userEvent.setup();
     const recipe = makeRecipe({ recipeId: 'r1', prepTime: 10 });
     mockFetchRecipes.mockResolvedValue([recipe]);
@@ -316,7 +316,7 @@ describe('RecipesPage', () => {
     // Wait for list to re-render with the recipe visible
     await waitFor(() => expect(screen.getByText('Pasta Carbonara')).toBeInTheDocument());
 
-    // Filter inputs should be reset to empty (RecipeList unmounted and remounted)
-    expect(screen.getByLabelText(/max prep time/i)).toHaveAttribute('aria-valuetext', 'Any time');
+    // Returning to the collection preserves its filters and presentation.
+    expect(screen.getByLabelText(/max prep time/i)).toHaveAttribute('aria-valuetext', '10 min');
   });
 });

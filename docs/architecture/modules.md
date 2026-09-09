@@ -133,3 +133,9 @@ Settings composes DisplaySettings and the existing language/location controls. H
 owns translated searchable guidance. App preserves its underlying page while either
 utility is open. Barcode styles, inventory filters and add-item measurement fields are
 extracted into feature helpers to keep existing module size boundaries.
+
+Issue #17 adds feature-local LibraryCover (viewport-triggered private images),
+CookbookCard (accessible hover/focus/hold actions) and RecipeCards (three presentations).
+RecipesPage keeps the collection mounted during detail/editor navigation and refreshes
+recipe data after writes. The shared photo preparer accepts a smaller cover profile;
+existing recipe/import photo limits remain unchanged.

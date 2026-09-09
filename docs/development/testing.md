@@ -249,3 +249,11 @@ now open Settings and return to the underlying form; login language controls rem
 The helper in `e2e/helpers/settings.ts` owns that navigation. Updated catalog-size tests
 include the new canonical imperial units. Unit presentation never substitutes for testing
 stored quantities after saves.
+
+## Issue #17 visual library
+
+`issue17-library.spec.ts` covers opening cover images, compact multi-column books,
+collection isolation, three recipe views, retained detail-return context, compact time
+filters, touch-hold actions, 320px layouts and actual 2400px-to-720px cover compression.
+The issue #15 journey still checks cookbook save/retry/reload/membership and removal
+without deleting recipes. Earlier filter-position/reset assertions now follow issue #17.

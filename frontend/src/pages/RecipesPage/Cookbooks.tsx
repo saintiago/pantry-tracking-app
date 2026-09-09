@@ -1,10 +1,10 @@
-import Emoji from '../../preferences/Emoji';
+import CookbookCard, { CookbookActions } from './CookbookCard';
+import './library.css';
 import DialogShell from '../../components/DialogShell/DialogShell';
 import React, { useEffect, useState } from 'react';
 import type { Cookbook } from '@pantry/domain';
 import type { Recipe } from '../../api/recipes/recipes';
 import { fetchCookbooks, saveCookbook, deleteCookbook } from '../../api/recipes/cookbooks';
-import RecipePhoto from '../../components/RecipePhoto/RecipePhoto';
 import RecipePhotoField from '../../components/RecipePhoto/RecipePhotoField';
 import { t, message, useLanguage } from '../../i18n/i18n';
 const button: React.CSSProperties = {
@@ -17,8 +17,10 @@ const button: React.CSSProperties = {
 export default function Cookbooks({
   recipes,
   onSelect,
+  createRequest = 0,
 }: {
   recipes: Recipe[];
+  createRequest?: number;
   onSelect: (ids: string[] | null | undefined) => void;
 }) {
   useLanguage();
@@ -53,6 +55,18 @@ export default function Cookbooks({
       });
     return () => controller.abort();
   }, [attempt]);
+  useEffect(() => {
+    if (!createRequest) return;
+    setDraft((current) => current ?? { name: '', description: '', recipeIds: [] });
+    setError('');
+    onSelect(undefined);
+  }, [createRequest]);
+  const selectedBook = books.find((b) => b.cookbookId === selected);
+  function edit(book: Cookbook) {
+    setDraft(book);
+    setError('');
+    onSelect(undefined);
+  }
   function select(id: string, current = books) {
     setSelected(id);
     onSelect(
@@ -86,25 +100,27 @@ export default function Cookbooks({
   return (
     <section aria-label={t('Cookbooks')} style={{ marginBottom: 16 }}>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <h3>
-          <Emoji>📚 </Emoji>
-          {t('Cookbooks')}
-        </h3>
-        <button style={button} aria-pressed={selected === 'all'} onClick={() => select('all')}>
+        <button
+          disabled={!!draft}
+          style={{
+            ...button,
+            background: selected === 'all' ? 'var(--color-mint)' : 'var(--color-surface)',
+          }}
+          aria-pressed={selected === 'all'}
+          onClick={() => select('all')}
+        >
           {t('All recipes')}
         </button>
-        <button style={button} aria-pressed={selected === ''} onClick={() => select('')}>
-          {t('My cookbooks')}
-        </button>
         <button
-          style={button}
-          disabled={loading || !!error}
-          onClick={() => {
-            setDraft({ name: '', description: '', recipeIds: [] });
-            setError('');
+          disabled={!!draft}
+          style={{
+            ...button,
+            background: selected === '' ? 'var(--color-mint)' : 'var(--color-surface)',
           }}
+          aria-pressed={selected === ''}
+          onClick={() => select('')}
         >
-          {t('New cookbook')}
+          {t('My cookbooks')}
         </button>
       </div>
       {loading && <p role="status">{t('Loading cookbooks…')}</p>}
@@ -122,70 +138,51 @@ export default function Cookbooks({
           </button>
         </p>
       )}
-      {!draft && (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
-            gap: 12,
-            marginTop: 12,
-          }}
-        >
+      {!draft && selected === '' && (
+        <div className="cookbook-shelf">
           {books.map((book) => (
-            <article
+            <CookbookCard
               key={book.cookbookId}
-              style={{
-                border: '1px solid var(--color-border)',
-                borderRadius: 12,
-                padding: 12,
-                background:
-                  selected === book.cookbookId ? 'var(--color-mint)' : 'var(--color-surface)',
-                overflowWrap: 'anywhere',
-              }}
-            >
-              <button
-                style={{ ...button, width: '100%', textAlign: 'left' }}
-                aria-label={t('Open cookbook {0}', book.name)}
-                onClick={() => select(book.cookbookId)}
-              >
-                {book.imageId ? (
-                  <RecipePhoto imageId={book.imageId} alt={book.name} />
-                ) : (
-                  <span aria-hidden="true">
-                    <Emoji>📖 </Emoji>
-                  </span>
-                )}
-                <strong>{book.name}</strong>
-              </button>
-              <p>{book.description}</p>
-              <p>
-                {t(
-                  '{0} recipes',
-                  book.recipeIds.filter((id) => recipes.some((r) => r.recipeId === id)).length,
-                )}
-              </p>
-              <button
-                style={button}
-                aria-label={t('Edit cookbook {0}', book.name)}
-                onClick={() => {
-                  setDraft(book);
-                  setError('');
-                }}
-              >
-                {t('Edit cookbook')}
-              </button>
-              <button
-                style={{ ...button, background: 'var(--color-danger)' }}
-                aria-label={t('Remove cookbook {0}', book.name)}
-                onClick={() => setRemove(book)}
-              >
-                ✕
-              </button>
-            </article>
+              book={book}
+              count={book.recipeIds.filter((id) => recipes.some((r) => r.recipeId === id)).length}
+              onOpen={() => select(book.cookbookId)}
+              onEdit={() => edit(book)}
+              onRemove={() => setRemove(book)}
+            />
           ))}
         </div>
       )}
-      {!loading && !books.length && (
+      {!draft && selectedBook && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            marginTop: 12,
+            flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>
+            <h3 style={{ margin: 0 }}>{selectedBook.name}</h3>
+            <small>
+              {t(
+                '{0} recipes',
+                selectedBook.recipeIds.filter((id) => recipes.some((r) => r.recipeId === id))
+                  .length,
+              )}
+            </small>
+            {selectedBook.description && (
+              <p style={{ whiteSpace: 'pre-line' }}>{selectedBook.description}</p>
+            )}
+          </div>
+          <CookbookActions
+            book={selectedBook}
+            onEdit={() => edit(selectedBook)}
+            onRemove={() => setRemove(selectedBook)}
+          />
+        </div>
+      )}
+      {!loading && !books.length && selected === '' && !draft && (
         <p>
           {t(
             'Create a cookbook to organize your recipes. Recipes can belong to more than one cookbook.',
@@ -223,6 +220,7 @@ export default function Cookbooks({
             </label>
             <RecipePhotoField
               label={t('Cookbook cover')}
+              profile="cover"
               imageId={draft.imageId}
               onChange={(imageId) => setDraft({ ...draft, imageId: imageId ?? undefined })}
               onBusy={setUploading}
@@ -261,6 +259,7 @@ export default function Cookbooks({
               onClick={() => {
                 setDraft(null);
                 setError('');
+                select(selected);
               }}
             >
               {t('Cancel')}

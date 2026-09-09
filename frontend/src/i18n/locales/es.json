@@ -1037,7 +1037,14 @@
     "Pastel colors uses the familiar colors and emojis. Minimalist uses black and white and hides decorative emojis. System mode follows the device’s light or dark setting. Change language in Settings; saving an account default is optional.": "Colores pastel usa los colores y emojis habituales. Minimalista usa blanco y negro y oculta emojis decorativos. Modo del sistema sigue el tema claro u oscuro del dispositivo. Cambia el idioma en Ajustes; guardarlo como predeterminado de la cuenta es opcional.",
     "The app can cache its screens, but cloud reads and writes need a connection. Check the Online indicator and use the retry action after a connection failure. Changes are not queued for automatic offline upload.": "La aplicación puede almacenar sus pantallas, pero leer y guardar datos en la nube requiere conexión. Comprueba el indicador En línea y reintenta si falla la conexión. Los cambios sin conexión no se encolan para subirlos automáticamente.",
     "Allow camera access to scan barcodes or take photos. You can always enter a barcode manually or choose a photo file instead. Clear, well-lit printed recipes are easiest to import.": "Permite acceso a la cámara para escanear o tomar fotos. Siempre puedes introducir el código manualmente o elegir una imagen. Las recetas impresas claras y bien iluminadas son más fáciles de importar.",
-    "If another edit has changed a cookbook or plan, reload the latest data and review your changes before retrying. Unsaved recipe imports can be cancelled without creating a recipe.": "Si otra edición ha cambiado un recetario o plan, vuelve a cargar los datos y revisa tus cambios antes de reintentar. Puedes cancelar una importación sin guardar sin crear ninguna receta."
+    "If another edit has changed a cookbook or plan, reload the latest data and review your changes before retrying. Unsaved recipe imports can be cancelled without creating a recipe.": "Si otra edición ha cambiado un recetario o plan, vuelve a cargar los datos y revisa tus cambios antes de reintentar. Puedes cancelar una importación sin guardar sin crear ninguna receta.",
+    "From inventory to your recipes": "De tu inventario a tus recetas",
+    "From recipes to your meal plan": "De las recetas a tu plan de comidas",
+    "From meal plan to your shopping list": "Del plan de comidas a tu lista de la compra",
+    "Recipe view": "Vista de recetas",
+    "Icons": "Iconos",
+    "Larger images": "Imágenes grandes",
+    "List": "Lista"
   },
   "singular": {
     "{0} ingredient(s) missing or partial": "{0} ingrediente faltante o insuficiente",

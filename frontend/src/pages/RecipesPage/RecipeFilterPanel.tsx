@@ -1,3 +1,4 @@
+import './library.css';
 import { t, useLanguage } from '../../i18n/i18n';
 import React from 'react';
 import RecipeTimeSlider from './RecipeTimeSlider';
@@ -64,25 +65,26 @@ const RecipeFilterPanel: React.FC<RecipeFilterPanelProps> = ({
         </button>
       </div>
 
-      <RecipeTimeSlider
-        label="Max prep time (min)"
-        values={recipes.map((r) => r.prepTime)}
-        value={value.maxPrepTimeInput}
-        onChange={(v) => onChange({ ...value, maxPrepTimeInput: v })}
-      />
-      <RecipeTimeSlider
-        label="Max cook time (min)"
-        values={recipes.map((r) => r.cookTime)}
-        value={value.maxCookTimeInput}
-        onChange={(v) => onChange({ ...value, maxCookTimeInput: v })}
-      />
-      <RecipeTimeSlider
-        label="Max total time (min)"
-        values={recipes.map((r) => computeTotalTime(r.prepTime, r.cookTime))}
-        value={value.maxTotalTimeInput}
-        onChange={(v) => onChange({ ...value, maxTotalTimeInput: v })}
-      />
-
+      <div className="recipe-time-filters">
+        <RecipeTimeSlider
+          label="Max prep time (min)"
+          values={recipes.map((r) => r.prepTime)}
+          value={value.maxPrepTimeInput}
+          onChange={(v) => onChange({ ...value, maxPrepTimeInput: v })}
+        />
+        <RecipeTimeSlider
+          label="Max cook time (min)"
+          values={recipes.map((r) => r.cookTime)}
+          value={value.maxCookTimeInput}
+          onChange={(v) => onChange({ ...value, maxCookTimeInput: v })}
+        />
+        <RecipeTimeSlider
+          label="Max total time (min)"
+          values={recipes.map((r) => computeTotalTime(r.prepTime, r.cookTime))}
+          value={value.maxTotalTimeInput}
+          onChange={(v) => onChange({ ...value, maxTotalTimeInput: v })}
+        />
+      </div>
       {/* Only recipes I can make now toggle */}
       <div style={styles.toggleRow}>
         <label

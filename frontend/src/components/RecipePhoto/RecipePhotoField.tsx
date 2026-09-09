@@ -10,12 +10,14 @@ export default function RecipePhotoField({
   onChange,
   onBusy,
   disabled,
+  profile = 'photo',
 }: {
   label: string;
   imageId?: string | null;
   onChange: (value: string | null) => void;
   onBusy: (busy: boolean) => void;
   disabled: boolean;
+  profile?: 'photo' | 'cover';
 }) {
   useLanguage();
   const [busy, setBusy] = useState(false);
@@ -45,7 +47,7 @@ export default function RecipePhotoField({
             onBusy(true);
             setError('');
             try {
-              const data = await preparePhoto(file);
+              const data = await preparePhoto(file, profile);
               if (!mounted.current) return;
               const id = await uploadRecipeImage(data);
               if (mounted.current) onChange(id);
