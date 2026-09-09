@@ -368,7 +368,9 @@ test.describe('Recipe Cooking Mode', () => {
     await page.getByTestId('finish-cooking-button').click();
 
     // Should be back on recipe list
-    await expect(page.getByRole('heading', { name: 'Recipes' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Recipes', exact: true })).toBeVisible({
+      timeout: 5000,
+    });
   });
 
   test('"Finish Cooking" with unfinished steps shows confirmation dialog', async ({ page }) => {
@@ -425,7 +427,9 @@ test.describe('Recipe Cooking Mode', () => {
     await page.getByTestId('confirm-dialog-confirm').click();
 
     // Should be back on recipe list
-    await expect(page.getByRole('heading', { name: 'Recipes' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Recipes', exact: true })).toBeVisible({
+      timeout: 5000,
+    });
   });
 
   test('navigating away from cooking page shows "Return to Cooking" banner', async ({ page }) => {
@@ -508,7 +512,9 @@ test.describe('Recipe Cooking Mode', () => {
     await page.getByRole('button', { name: 'Leave cooking mode' }).click();
 
     // Should be on recipe list
-    await expect(page.getByRole('heading', { name: 'Recipes' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Recipes', exact: true })).toBeVisible({
+      timeout: 5000,
+    });
 
     // Re-open the same recipe
     await page.getByRole('button', { name: 'View Pasta Carbonara' }).click();
@@ -533,7 +539,9 @@ test.describe('Recipe Cooking Mode', () => {
 
     // Navigate back to recipe list
     await page.getByRole('button', { name: 'Leave cooking mode' }).click();
-    await expect(page.getByRole('heading', { name: 'Recipes' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Recipes', exact: true })).toBeVisible({
+      timeout: 5000,
+    });
 
     // Open a different recipe
     await page.getByRole('button', { name: 'View Tomato Soup' }).click();
@@ -579,7 +587,9 @@ test.describe('Recipe Cooking Mode', () => {
     await page.getByRole('button', { name: 'Leave cooking mode' }).click();
 
     // Should be back on recipe list (session still active)
-    await expect(page.getByRole('heading', { name: 'Recipes' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Recipes', exact: true })).toBeVisible({
+      timeout: 5000,
+    });
 
     // Return to Cooking banner should still be visible
     await expect(page.getByTestId('return-to-cooking-banner')).toBeVisible();
@@ -596,7 +606,9 @@ test.describe('Recipe Cooking Mode', () => {
 
     // Navigate back to recipe list
     await page.getByRole('button', { name: 'Leave cooking mode' }).click();
-    await expect(page.getByRole('heading', { name: 'Recipes' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Recipes', exact: true })).toBeVisible({
+      timeout: 5000,
+    });
 
     // The actively cooking recipe should show a cooking indicator
     const pastaRow = page.getByRole('button', { name: 'View Pasta Carbonara' });

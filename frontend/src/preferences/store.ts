@@ -7,7 +7,7 @@ export interface Preferences {
   appearance: Appearance;
   units: UnitType[] | null;
 }
-export const defaults: Preferences = { measurement: 'original', appearance: 'pastel', units: null };
+export const defaults: Preferences = { measurement: 'metric', appearance: 'pastel', units: null };
 let current = defaults;
 let owner = 'guest';
 let error = '';
@@ -18,9 +18,9 @@ export function parsePreferences(raw: string | null): Preferences {
     const value = JSON.parse(raw ?? 'null');
     if (!value || typeof value !== 'object') return defaults;
     return {
-      measurement: ['original', 'metric', 'imperial'].includes(value.measurement)
+      measurement: ['metric', 'imperial'].includes(value.measurement)
         ? value.measurement
-        : 'original',
+        : 'metric',
       appearance: ['pastel', 'minimal', 'system'].includes(value.appearance)
         ? value.appearance
         : 'pastel',

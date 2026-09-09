@@ -86,6 +86,29 @@ describe('createLocation', () => {
     expect(result).toEqual(location);
   });
 
+  it('sends a requested pastel color when creating a location', async () => {
+    const location = {
+      locationId: 'loc-2',
+      name: 'Fridge',
+      color: '#E1F1FA',
+      createdAt: '2024-01-02',
+    };
+    mockFetch().mockResolvedValue({
+      ok: true,
+      json: async () => ({ location }),
+    } as Response);
+
+    const result = await createLocation('Fridge', '#E1F1FA');
+
+    expect(mockFetch()).toHaveBeenCalledWith(
+      'https://api.example.com/locations',
+      expect.objectContaining({
+        body: JSON.stringify({ name: 'Fridge', color: '#E1F1FA' }),
+      }),
+    );
+    expect(result).toEqual(location);
+  });
+
   it('throws with duplicate name error from server', async () => {
     mockFetch().mockResolvedValue({
       ok: false,
@@ -119,6 +142,29 @@ describe('renameLocation', () => {
       },
       body: JSON.stringify({ name: 'Kitchen' }),
     });
+    expect(result).toEqual(location);
+  });
+
+  it('sends a requested pastel color when renaming a location', async () => {
+    const location = {
+      locationId: 'loc-1',
+      name: 'Kitchen',
+      color: '#FFF2CE',
+      createdAt: '2024-01-01',
+    };
+    mockFetch().mockResolvedValue({
+      ok: true,
+      json: async () => ({ location }),
+    } as Response);
+
+    const result = await renameLocation('loc-1', 'Kitchen', '#FFF2CE');
+
+    expect(mockFetch()).toHaveBeenCalledWith(
+      'https://api.example.com/locations/loc-1',
+      expect.objectContaining({
+        body: JSON.stringify({ name: 'Kitchen', color: '#FFF2CE' }),
+      }),
+    );
     expect(result).toEqual(location);
   });
 

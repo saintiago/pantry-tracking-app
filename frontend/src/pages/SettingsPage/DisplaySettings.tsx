@@ -32,6 +32,7 @@ export default function DisplaySettings() {
   const units = localizedUnits();
   const remaining = VALID_UNITS.filter((unit) => !units.includes(unit));
   const updateUnits = (next: UnitType[]) => savePreferences({ ...prefs, units: next });
+  const measurement = prefs.measurement === 'imperial' ? 'imperial' : 'metric';
   function move(index: number, by: number) {
     const next = [...units];
     [next[index], next[index + by]] = [next[index + by], next[index]];
@@ -39,33 +40,6 @@ export default function DisplaySettings() {
   }
   return (
     <>
-      <section style={section} aria-label={t('Measurements')}>
-        <h3>{t('Measurements')}</h3>
-        <label>
-          {t('Measurement system')}
-          <select
-            style={input}
-            value={prefs.measurement}
-            onChange={(e) =>
-              savePreferences({ ...prefs, measurement: e.target.value as MeasurementSystem })
-            }
-          >
-            <option value="original">{t('As recorded')}</option>
-            <option value="metric">{t('Metric')}</option>
-            <option value="imperial">{t('Imperial (US customary)')}</option>
-          </select>
-        </label>
-        <p>
-          {t(
-            'Switch at any time. Saved quantities stay unchanged; recipes, inventory and shopping show converted measurements.',
-          )}
-        </p>
-        <p>
-          {t(
-            'Imperial uses US cups, spoons and fluid measures. Pieces, pinches and other counts stay unchanged. Weight is never guessed from volume.',
-          )}
-        </p>
-      </section>
       <section style={section} aria-label={t('Appearance')}>
         <h3>{t('Appearance')}</h3>
         <label>
@@ -77,7 +51,7 @@ export default function DisplaySettings() {
               savePreferences({ ...prefs, appearance: e.target.value as Appearance })
             }
           >
-            <option value="pastel">{t('Pastel colors')}</option>
+            <option value="pastel">{t('Default')}</option>
             <option value="minimal">{t('Minimalist')}</option>
             <option value="system">{t('System mode')}</option>
           </select>
@@ -88,78 +62,89 @@ export default function DisplaySettings() {
           )}
         </p>
       </section>
-      <details style={section}>
-        <summary style={{ minHeight: 44, fontWeight: 700 }}>{t('Manage units')}</summary>
-        <p>
-          {t(
-            'Add units from the supported list, remove unused choices, or change their order. Removing a unit keeps existing quantities and makes it available to add again.',
-          )}
-        </p>
-        <ol aria-label={t('Unit order')}>
-          {units.map((unit, index) => (
-            <li
-              key={unit}
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: 4,
-                alignItems: 'center',
-                borderBottom: '1px solid var(--color-border)',
-              }}
-            >
-              <span style={{ flex: '1 1 100px' }}>{getUnitLabel(unit, 1)}</span>
-              <button
-                type="button"
-                disabled={!index}
-                aria-label={t('Move {0} up', getUnitLabel(unit, 1))}
-                onClick={() => move(index, -1)}
-              >
-                ↑
-              </button>
-              <button
-                type="button"
-                disabled={index === units.length - 1}
-                aria-label={t('Move {0} down', getUnitLabel(unit, 1))}
-                onClick={() => move(index, 1)}
-              >
-                ↓
-              </button>
-              <button
-                type="button"
-                disabled={units.length === 1}
-                aria-label={t('Remove unit {0}', getUnitLabel(unit, 1))}
-                onClick={() => updateUnits(units.filter((u) => u !== unit))}
-              >
-                ×
-              </button>
-            </li>
-          ))}
-        </ol>
+      <section style={section} aria-label={t('Measurements')}>
+        <h3>{t('Measurements')}</h3>
         <label>
-          {t('Available units')}
-          <select style={input} value={add} onChange={(e) => setAdd(e.target.value)}>
-            <option value="">{t('Select a unit')}</option>
-            {remaining.map((unit) => (
-              <option key={unit} value={unit}>
-                {getUnitLabel(unit, 1)}
-              </option>
-            ))}
+          {t('Measurement system')}
+          <select
+            style={input}
+            value={measurement}
+            onChange={(e) =>
+              savePreferences({ ...prefs, measurement: e.target.value as MeasurementSystem })
+            }
+          >
+            <option value="metric">{t('Metric')}</option>
+            <option value="imperial">{t('Imperial (US customary)')}</option>
           </select>
         </label>
-        <button
-          type="button"
-          disabled={!remaining.includes(add as UnitType)}
-          onClick={() => {
-            updateUnits([...units, add as UnitType]);
-            setAdd('');
-          }}
-        >
-          {t('Add unit')}
-        </button>
-        <button type="button" onClick={() => savePreferences({ ...prefs, units: null })}>
-          {t('Reset unit list')}
-        </button>
-      </details>
+        <details style={{ marginTop: 16 }}>
+          <summary style={{ minHeight: 44, fontWeight: 700 }}>{t('Manage units')}</summary>
+          <ol aria-label={t('Unit order')}>
+            {units.map((unit, index) => (
+              <li
+                key={unit}
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 4,
+                  alignItems: 'center',
+                  borderBottom: '1px solid var(--color-border)',
+                }}
+              >
+                <span style={{ flex: '1 1 100px' }}>{getUnitLabel(unit, 1)}</span>
+                <button
+                  type="button"
+                  disabled={!index}
+                  aria-label={t('Move {0} up', getUnitLabel(unit, 1))}
+                  onClick={() => move(index, -1)}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  disabled={index === units.length - 1}
+                  aria-label={t('Move {0} down', getUnitLabel(unit, 1))}
+                  onClick={() => move(index, 1)}
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  disabled={units.length === 1}
+                  aria-label={t('Remove unit {0}', getUnitLabel(unit, 1))}
+                  onClick={() => updateUnits(units.filter((u) => u !== unit))}
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ol>
+          <label>
+            {t('Available units')}
+            <select style={input} value={add} onChange={(e) => setAdd(e.target.value)}>
+              <option value="">{t('Select a unit')}</option>
+              {remaining.map((unit) => (
+                <option key={unit} value={unit}>
+                  {getUnitLabel(unit, 1)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            disabled={!remaining.includes(add as UnitType)}
+            onClick={() => {
+              updateUnits([...units, add as UnitType]);
+              setAdd('');
+            }}
+          >
+            {t('Add unit')}
+          </button>
+          <button type="button" onClick={() => savePreferences({ ...prefs, units: null })}>
+            {t('Reset unit list')}
+          </button>
+        </details>
+      </section>
       <p>{t('These settings are saved for your account on this device.')}</p>
       {preferenceError() && <p role="alert">{t(preferenceError())}</p>}
     </>

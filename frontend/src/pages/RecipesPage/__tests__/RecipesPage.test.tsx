@@ -87,7 +87,7 @@ describe('RecipesPage', () => {
 
     // Page should still render the RecipeList (with empty allTags)
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /recipes/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Recipes' })).toBeInTheDocument();
     });
 
     // No tag cloud should be rendered (allTags is empty)
@@ -269,7 +269,7 @@ describe('RecipesPage', () => {
 
     // Page should still render the RecipeList heading
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /recipes/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Recipes' })).toBeInTheDocument();
     });
 
     // The filter panel should still be present (RecipeList rendered with empty index)

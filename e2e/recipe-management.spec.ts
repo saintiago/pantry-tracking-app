@@ -246,7 +246,7 @@ test.describe('Recipe Management', () => {
   });
 
   test('navigates to Recipes page from bottom nav', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'Recipes' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Recipes', exact: true })).toBeVisible();
     await expect(page.getByText('Pasta Carbonara')).toBeVisible();
     await expect(page.getByText('Tomato Soup')).toBeVisible();
   });
@@ -391,7 +391,9 @@ test.describe('Recipe Management', () => {
     await page.getByTestId('delete-button').click();
 
     // Should navigate back to the list
-    await expect(page.getByRole('heading', { name: 'Recipes' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Recipes', exact: true })).toBeVisible({
+      timeout: 5000,
+    });
 
     // Pasta Carbonara should no longer be in the list
     await expect(page.getByText('Pasta Carbonara')).not.toBeVisible();
@@ -444,7 +446,9 @@ test.describe('Recipe Management', () => {
 
     await page.getByRole('button', { name: 'Go back' }).click();
 
-    await expect(page.getByRole('heading', { name: 'Recipes' })).toBeVisible({ timeout: 3000 });
+    await expect(page.getByRole('heading', { name: 'Recipes', exact: true })).toBeVisible({
+      timeout: 3000,
+    });
     await expect(page.getByText('Pasta Carbonara')).toBeVisible();
   });
 
@@ -457,7 +461,9 @@ test.describe('Recipe Management', () => {
 
     await page.getByRole('button', { name: 'Cancel' }).click();
 
-    await expect(page.getByRole('heading', { name: 'Recipes' })).toBeVisible({ timeout: 3000 });
+    await expect(page.getByRole('heading', { name: 'Recipes', exact: true })).toBeVisible({
+      timeout: 3000,
+    });
   });
 
   test('recipe editor shows validation errors on empty submit', async ({ page }) => {
@@ -1566,7 +1572,9 @@ test.describe('Recipe Management', () => {
 
     // Go back to the recipe list
     await page.getByRole('button', { name: 'Go back' }).click();
-    await expect(page.getByRole('heading', { name: 'Recipes' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Recipes', exact: true })).toBeVisible({
+      timeout: 5000,
+    });
 
     // The new tag must appear in the tag cloud filter
     const tagCloud = page.getByRole('group', { name: 'Filter by tag' });
@@ -1638,7 +1646,9 @@ test.describe('Recipe Management', () => {
 
     // Go back to list, then open the editor for Tomato Soup
     await page.getByRole('button', { name: 'Go back' }).click();
-    await expect(page.getByRole('heading', { name: 'Recipes' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('heading', { name: 'Recipes', exact: true })).toBeVisible({
+      timeout: 5000,
+    });
 
     await page.getByRole('button', { name: 'View Tomato Soup' }).click();
     await expect(page.getByRole('heading', { name: 'Tomato Soup' })).toBeVisible({

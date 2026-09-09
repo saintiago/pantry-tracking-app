@@ -1,8 +1,10 @@
 import { message as translateMessage, t, useLanguage } from '../../i18n/i18n';
 import React from 'react';
+import Emoji from '../../preferences/Emoji';
 import type { IngredientStatus, RecipeIngredient } from '../../api/recipes/recipes';
 import { measurementParts, formatMeasurement } from '../../types/units';
 import { getUnitLabel } from '../../types/units';
+import { suggestedProductIcon } from '../../components/InventoryList/icons';
 
 interface IngredientAvailabilityProps {
   ingredients?: RecipeIngredient[];
@@ -64,6 +66,9 @@ const IngredientAvailability: React.FC<IngredientAvailabilityProps> = ({
               {showSection && <h4 style={styles.sectionHeading}>{section}</h4>}
               <div style={styles.row}>
                 <span style={styles.ingredientText}>
+                  <span aria-hidden="true">
+                    <Emoji>{suggestedProductIcon(ingredient.name)}</Emoji>
+                  </span>
                   <span style={styles.quantity}>{quantityLabel}</span>
                   <span>{ingredient.name}</span>
                 </span>

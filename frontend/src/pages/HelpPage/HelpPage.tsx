@@ -11,10 +11,10 @@ const topics = [
   [
     'Inventory and storage',
     [
-      'Choose Add to enter a product or scan its barcode. Review the name, quantity, unit and location, then select an expiration date or Not applicable. A barcode suggestion is a starting point; check it before saving.',
+      'Choose Add to enter a product manually or scan its barcode. Review the name, quantity, unit and location, then select an expiration date or Not applicable. Receipt photo item entry is not available yet.',
       'Open a category, then a product to see its individual stock entries. Each entry keeps its own quantity, location and expiration. Open an entry to edit it; removal asks for confirmation.',
       'Use search and location filters to narrow the list. Set a product’s low-stock threshold to be reminded when stock reaches that amount. A blank threshold turns the warning off. Compatible weight or volume units are converted for comparison.',
-      'Storage locations can be added, renamed or removed in Settings. Move items out of a location before removing it. Product icons appear in the pastel theme.',
+      'Storage locations can be added, renamed, colored or removed in Settings. Move items out of a location before removing it. Product and category icons appear in the Default theme.',
     ],
   ],
   [
@@ -58,10 +58,10 @@ const topics = [
   [
     'Measurements and appearance',
     [
-      'Settings offers As recorded, Metric and Imperial (US customary). Switching changes displayed measurements without rewriting saved quantities. Cups, tablespoons and teaspoons use US customary volumes. Weight and volume are never converted into each other.',
+      'Settings offers Metric and Imperial (US customary). Switching changes displayed measurements without rewriting saved quantities. Cups, tablespoons and teaspoons use US customary volumes. Weight and volume are never converted into each other.',
       'Quantity fields show the selected measurement system. You can type decimals or supported fractions. Review the adjacent unit before saving. Pieces, handfuls and other counts have no assumed weight.',
       'Manage units lets you add supported units to the picker, remove choices and move them up or down. Existing entries keep their unit even when it is removed from the list. Reset unit list restores the default choices.',
-      'Pastel colors uses the familiar colors and emojis. Minimalist uses black and white and hides decorative emojis. System mode follows the device’s light or dark setting. Change language in Settings; saving an account default is optional.',
+      'Default uses the familiar colors and emojis. Minimalist uses black and white and hides decorative emojis. System mode follows the device’s light or dark setting. Change language in Settings; saving an account default is optional.',
     ],
   ],
   [

@@ -32,6 +32,9 @@ export const UNIT_METADATA = {
   stick: { key: 'stick', singular: 'stick', abbreviation: 'st', plural: 'sticks' },
   can: { key: 'can', singular: 'can', abbreviation: 'cn', plural: 'cans' },
   bottle: { key: 'bottle', singular: 'bottle', abbreviation: 'bt', plural: 'bottles' },
+  box: { key: 'box', singular: 'box', abbreviation: 'box', plural: 'boxes' },
+  pack: { key: 'pack', singular: 'pack', abbreviation: 'pk', plural: 'packs' },
+  roll: { key: 'roll', singular: 'roll', abbreviation: 'roll', plural: 'rolls' },
   zest: { key: 'zest', singular: 'zest', abbreviation: 'zst', plural: 'zests' },
   unit: { key: 'unit', singular: 'unit', abbreviation: 'unit', plural: 'units' },
 } satisfies Record<string, UnitMetadata>;

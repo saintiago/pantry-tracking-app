@@ -35,9 +35,9 @@ export default function SettingsPage() {
     void refresh();
   }, [refresh]);
   const handleAddLocation = useCallback(
-    async (name: string): Promise<{ error?: string }> => {
+    async (name: string, color: string): Promise<{ error?: string }> => {
       try {
-        await createLocation(name);
+        await createLocation(name, color);
         await refresh();
         return {};
       } catch (err) {
@@ -49,9 +49,9 @@ export default function SettingsPage() {
   );
 
   const handleRename = useCallback(
-    async (locationId: string, newName: string): Promise<{ error?: string }> => {
+    async (locationId: string, newName: string, color: string): Promise<{ error?: string }> => {
       try {
-        await renameLocation(locationId, newName);
+        await renameLocation(locationId, newName, color);
         await refresh();
         return {};
       } catch (err) {

@@ -79,9 +79,10 @@ test('cookbooks save covers and membership, survive reload, handle save failure 
   await expect(
     page.getByRole('button', { name: 'Open cookbook Weeknight favorites' }),
   ).toBeVisible();
-  await expect(page.getByRole('button', { name: 'View Pasta', exact: true })).toBeHidden();
+  await expect(page.getByRole('button', { name: 'View Pasta', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Open cookbook Weeknight favorites' }).click();
   await expect(page.getByRole('button', { name: 'View Pasta', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'View Apple bowl', exact: true })).toBeHidden();
   await page.getByRole('button', { name: 'Remove cookbook Weeknight favorites' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
   expect(books).toHaveLength(1);

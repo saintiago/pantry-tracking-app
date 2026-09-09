@@ -466,7 +466,7 @@ ${
         </div>
         <p>
           {t(
-            'Kcal per person assumes one portion of every dish. Estimates use current recipes; prepared batches keep their cooking snapshot.',
+            'Kcal per portion assumes one portion of every dish. Estimates use current recipes; prepared batches keep their cooking snapshot.',
           )}
         </p>
         <button

@@ -110,7 +110,13 @@ interface InventoryPageProps {
   onNavigateToAddItem: (
     locations: StorageLocation[],
     onSubmit: (item: AddItemData) => Promise<{ error?: string }>,
-    prefillData?: { name?: string; brand?: string; category?: string; barcode?: string },
+    prefillData?: {
+      name?: string;
+      brand?: string;
+      category?: string;
+      barcode?: string;
+      icon?: string;
+    },
   ) => void;
   onNavigateToItemDetail: (
     item: InventoryItem,
@@ -136,6 +142,7 @@ const InventoryPage: React.FC<InventoryPageProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [removeMode, setRemoveMode] = useState(false);
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [notification, setNotification] = useState<{ message: string; visible: boolean }>({
     message: '',
     visible: false,
@@ -188,14 +195,13 @@ const InventoryPage: React.FC<InventoryPageProps> = ({
   );
 
   const handleAddMenuSelect = useCallback(
-    (method: 'manual' | 'barcode' | 'receipt') => {
+    (method: 'manual' | 'barcode') => {
       setAddMenuOpen(false);
       if (method === 'manual') {
         onNavigateToAddItem(locations, handleAddItem);
       } else if (method === 'barcode') {
         setScannerOpen(true);
       }
-      // Future tasks will wire receipt
     },
     [locations, onNavigateToAddItem, handleAddItem],
   );
@@ -269,8 +275,48 @@ const InventoryPage: React.FC<InventoryPageProps> = ({
   );
 
   const toggleRemoveMode = useCallback(() => {
-    setRemoveMode((prev) => !prev);
+    setRemoveMode((prev) => {
+      const next = !prev;
+      if (!next) setSelectedItemIds(new Set());
+      return next;
+    });
   }, []);
+
+  const handleToggleSelected = useCallback((itemId: string) => {
+    setSelectedItemIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(itemId)) next.delete(itemId);
+      else next.add(itemId);
+      return next;
+    });
+  }, []);
+
+  const handleBulkRemove = useCallback(async () => {
+    if (removing.current || selectedItemIds.size === 0) return;
+    const selectedItems = inventoryItems.filter((item) => selectedItemIds.has(item.itemId));
+    const names = selectedItems.map((item) => `• ${item.name}`).join('\n');
+    if (
+      !window.confirm(t('Remove these {0} items from inventory?\n{1}', selectedItems.length, names))
+    ) {
+      return;
+    }
+    removing.current = true;
+    setRemovalError(null);
+    try {
+      for (const item of selectedItems) {
+        await deleteInventoryItem(item.itemId);
+      }
+      const data = await fetchInventory();
+      setInventoryItems(data.items);
+      setInventoryGroups(data.groups ?? []);
+      setSelectedItemIds(new Set());
+      setRemoveMode(false);
+    } catch {
+      setRemovalError('Could not remove every selected item. Refresh inventory and try again.');
+    } finally {
+      removing.current = false;
+    }
+  }, [inventoryItems, selectedItemIds]);
 
   const handleUpdateThreshold = useCallback(
     async (groupId: string, threshold: number | null, thresholdUnit?: string) => {
@@ -365,13 +411,6 @@ const InventoryPage: React.FC<InventoryPageProps> = ({
               >
                 {t('📷 Barcode Scan')}{' '}
               </button>
-              <button
-                role="menuitem"
-                style={styles.menuItem}
-                onClick={() => handleAddMenuSelect('receipt')}
-              >
-                {t('🧾 Receipt Photo')}{' '}
-              </button>
             </div>
           )}
         </div>
@@ -393,9 +432,19 @@ const InventoryPage: React.FC<InventoryPageProps> = ({
       </div>
 
       {removeMode && (
-        <p style={styles.removeModeHint} role="status">
-          {t('Tap an item to remove it. Press Remove again to exit.')}{' '}
-        </p>
+        <div style={styles.removeModePanel} role="status">
+          <p style={styles.removeModeHint}>
+            {t('Select items to remove, then confirm deletion. Press Remove again to exit.')}{' '}
+          </p>
+          <button
+            type="button"
+            onClick={handleBulkRemove}
+            disabled={selectedItemIds.size === 0}
+            style={styles.bulkRemoveButton}
+          >
+            {t('Delete selected')} ({selectedItemIds.size})
+          </button>
+        </div>
       )}
 
       <InventoryList
@@ -404,6 +453,8 @@ const InventoryPage: React.FC<InventoryPageProps> = ({
         locations={locations}
         removeMode={removeMode}
         onRemoveItem={handleRemoveItem}
+        selectedItemIds={selectedItemIds}
+        onToggleSelected={handleToggleSelected}
         onItemClick={handleItemClick}
         onUpdateThreshold={handleUpdateThreshold}
       />

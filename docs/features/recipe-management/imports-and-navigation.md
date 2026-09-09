@@ -7,7 +7,7 @@ Settings is reached by the gear beside the language selector; storage locations
 start collapsed. The planner groups Day/Week/Two weeks under View, places Shopping
 at the top right, and keeps icon-labelled Undo beside the calendar. Servings and
 heart-labelled copy/favorite controls expand on demand. Its subtitle is “From recipes
-to your weekly plan.” Only kcal per person and unknown-entry notices are displayed.
+to your weekly plan.” Only kcal per portion and unknown-entry notices are displayed.
 The existing calorie contract and batch snapshots remain unchanged.
 
 New Recipe offers manual entry, a camera/upload photo, or a public HTTPS recipe link.

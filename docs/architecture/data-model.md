@@ -64,7 +64,8 @@ keyed by a short unit key. Each entry carries `key`, `singular`, `abbreviation`,
 ```typescript
 type UnitType = keyof typeof UNIT_METADATA;
 // Keys: tsp, tbsp, cup, ml, l, g, kg, piece, slice, clove, pinch,
-//       handful, stick, can, bottle, zest, unit, oz, lb, floz, pint, quart, gallon
+//       handful, stick, can, bottle, box, pack, roll, zest, unit,
+//       oz, lb, floz, pint, quart, gallon
 
 // VALID_UNITS is sorted alphabetically by the visible singular label (locale compare).
 const VALID_UNITS: UnitType[] = (Object.keys(UNIT_METADATA) as UnitType[]).sort((a, b) =>
@@ -197,11 +198,23 @@ interface StorageLocation {
   locationId: string;
   userId: string;
   name: string; // User-facing display name, unique per user (case-insensitive)
+  color?:
+    | '#E3F0D5'
+    | '#E1F1FA'
+    | '#FFF2CE'
+    | '#F8DEDC'
+    | '#EDE3F3'
+    | '#DFF0EA'
+    | '#F3E3CA'
+    | '#E3E9FA';
   createdAt: string;
   updatedAt: string;
   syncVersion: number;
 }
 ```
+
+New and default locations receive one of the supported pastel colors above. Older
+location records without `color` remain valid and receive a deterministic UI fallback.
 
 ### Recipe
 

@@ -5,6 +5,7 @@ import { styles } from './styles';
 import ExpirationField from '../../components/ExpirationField/ExpirationField';
 import ItemIconField from '../../components/ItemIconField/ItemIconField';
 import LocationTag from '../../components/InventoryList/LocationTag';
+import { suggestedProductIcon } from '../../components/InventoryList/icons';
 import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import React, { useCallback, useState } from 'react';
 import type { InventoryItem } from '../../domain/inventory/types';
@@ -121,7 +122,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
         quantity: parseFractionalQuantity(editForm.quantity) ?? 0,
         unit: editForm.unit.trim(),
         expirationDate: editForm.expirationDate,
-        icon: editForm.icon,
+        icon: suggestedProductIcon(editForm.name, editForm.category, editForm.icon),
       };
       if (editForm.brand.trim()) data.brand = editForm.brand.trim();
       if (editForm.barcode.trim()) data.barcode = editForm.barcode.trim();
@@ -155,7 +156,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
     } finally {
       setSaving(false);
     }
-  }, [editForm, item.itemId, onItemUpdated, onBack]);
+  }, [editForm, item, onItemUpdated, onBack]);
 
   return (
     <div style={styles.page}>
@@ -171,7 +172,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
           {t('← Back')}{' '}
         </button>
         <h2 style={styles.pageTitle}>
-          <Emoji>{item.icon}</Emoji> {item.name}
+          <Emoji>{suggestedProductIcon(item.name, item.category, item.icon)}</Emoji> {item.name}
         </h2>
       </div>
 
@@ -188,6 +189,12 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
         <LocationTag
           ids={[item.location]}
           names={Object.fromEntries(locations.map((loc) => [loc.locationId, loc.name]))}
+          colors={Object.fromEntries(
+            locations.map((loc, index) => [
+              loc.locationId,
+              loc.color ?? ['#E3F0D5', '#E1F1FA', '#FFF2CE', '#F8DEDC'][index % 4],
+            ]),
+          )}
         />
       </div>
       {/* Picture */}
@@ -348,6 +355,7 @@ const ItemDetailPage: React.FC<ItemDetailPageProps> = ({
         <ItemIconField
           value={editForm.icon}
           onChange={(icon) => setEditForm((prev) => ({ ...prev, icon }))}
+          suggestion={suggestedProductIcon(editForm.name, editForm.category)}
         />
         {/* Expiration Date */}
         <div style={styles.fieldGroup}>

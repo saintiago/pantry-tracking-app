@@ -2,10 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { t, useLanguage } from '../../i18n/i18n';
 export default function RecipeCreateMenu({
   onSelect,
-  onNewCookbook,
 }: {
   onSelect: (mode: 'manual' | 'photo' | 'link') => void;
-  onNewCookbook?: () => void;
 }) {
   useLanguage();
   const [open, setOpen] = useState(false);
@@ -93,26 +91,6 @@ export default function RecipeCreateMenu({
               )}
             </button>
           ))}
-          {onNewCookbook && (
-            <button
-              type="button"
-              style={{
-                display: 'block',
-                width: '100%',
-                minHeight: 44,
-                padding: 10,
-                textAlign: 'left',
-                background: 'transparent',
-                border: 0,
-              }}
-              onClick={() => {
-                setOpen(false);
-                onNewCookbook();
-              }}
-            >
-              {t('New cookbook')}
-            </button>
-          )}
         </div>
       )}
     </div>

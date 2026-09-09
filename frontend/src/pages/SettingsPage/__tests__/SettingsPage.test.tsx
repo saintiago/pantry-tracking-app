@@ -47,7 +47,7 @@ describe('Settings location management', () => {
     await userEvent.type(input, 'Fridge');
     await userEvent.click(screen.getByLabelText('Add location'));
 
-    expect(mockCreateLocation).toHaveBeenCalledWith('Fridge');
+    expect(mockCreateLocation).toHaveBeenCalledWith('Fridge', '#E3F0D5');
 
     await waitFor(() => {
       expect(screen.getByLabelText('Delete Fridge')).toBeInTheDocument();
@@ -105,7 +105,7 @@ describe('Settings location management', () => {
     await userEvent.type(renameInput, 'Kitchen');
     await userEvent.click(screen.getByLabelText('Save rename'));
 
-    expect(mockRenameLocation).toHaveBeenCalledWith('loc-1', 'Kitchen');
+    expect(mockRenameLocation).toHaveBeenCalledWith('loc-1', 'Kitchen', '#E3F0D5');
 
     await waitFor(() => {
       expect(screen.getByLabelText('Rename Kitchen')).toBeInTheDocument();

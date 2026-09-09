@@ -78,7 +78,7 @@ unlinked/stale links match normalized names with compatible units. Expired, zero
 and invalid dates are excluded. Inventory read failures offer a retry.
 
 Settings now owns storage-location add/rename/remove using the existing IDs and API.
-Inventory keeps location filtering and uses pastel green Add and pastel red Remove.
+Inventory keeps left-aligned location filtering and uses pastel green Add and pastel red Remove.
 Calendar recipe names wrap at readable size, with servings and kcal on a secondary line.
 
 ## Inventory improvements (issues #11–#12)
@@ -86,10 +86,13 @@ Calendar recipe names wrap at readable size, with servings and kcal on a seconda
 Add/edit forms offer an explicit Not applicable expiration option and a product
 emoji selector. Reusing a saved product copies quantity, unit, expiration choice,
 icon and existing metadata while preserving entered values. Inventory categories
-share Shopping's department colors. Category and product groups show their location,
+share Shopping's department colors and deterministic emoji defaults. Category and product groups show their location,
 or Mixed locations; individual lots and details show the actual location. Tags
 reflect the currently filtered inventory. Low-stock badges and each lot's quick
 remove X use pastel red. Removal asks for confirmation and exposes failures for retry.
+The Add menu offers manual entry and barcode scan; receipt photo item entry is not shipped.
+The Remove action supports selecting multiple lots and confirms the selected products
+before deletion. Low Stock and Expiring Soon filters can be combined.
 
 ## Expanded meal planning (issue #13)
 
@@ -116,7 +119,7 @@ operations fail before saving. Favorite/batch metadata has a bounded account sto
 limit and reports an actionable error when full.
 
 Recipe kcal are optional manual estimates stored for the whole recipe. Yield changes
-keep total kcal fixed. Calendar figures show kcal per person for one portion of every
+keep total kcal fixed. Calendar figures show kcal per portion for one portion of every
 dish, clearly marking unknown entries. Ordinary meals use current recipe nutrition;
 prepared food retains its cooking snapshot. Shopping counts planned cooking yield once,
 including a source outside the selection with a notice; prepared portions and notes add
@@ -143,8 +146,9 @@ and reordering. Source images require an explicit permission choice. See
 
 Recipes can be organized into cloud-saved cookbooks with descriptions and private cover
 photos. A recipe may belong to multiple books; removing a book keeps the recipes.
-Recorded-time sliders replace the free-number filters. Accounts with cookbooks open
-on their cookbook shelf; All recipes remains available.
+Recorded-time sliders replace the free-number filters. Accounts open on a recipe
+library that shows the cookbook shelf and All recipes together; the All recipes and
+My cookbooks collection switches remain available.
 
 Shopping supports recipe/aisle/alphabetical/recent arrangement, food emojis, and confirmed
 period-scoped removal with restoration. Both Shopping and Meal Plan offer native sharing
@@ -158,19 +162,22 @@ Language selection is now in Settings; the login screen keeps its selector. Help
 beside Settings in the header and provides searchable instructions in all three languages.
 Both utilities preserve the page underneath, including unsaved form contents.
 
-Measurement preferences offer As recorded, Metric and explicitly US customary Imperial.
+Measurement preferences offer Metric and explicitly US customary Imperial.
 Quantities and units convert together across recipes/cooking, inventory, shopping and
 editors without rewriting saved data when switching. Supported unit choices can be
 added, removed and reordered; saved units remain readable. Mass and volume never mix.
-Appearance offers Pastel, black/white Minimalist without decorative emojis, and System
+Appearance offers Default, black/white Minimalist without decorative emojis, and System
 mode following device light/dark preferences. Settings are per account on this device.
+Storage locations support a pastel color used by product location tags.
 See [preferences and help](features/settings/preferences-and-help.md).
 
 ## Visual recipe library (issue #17)
 
-My cookbooks shows compact covers; All recipes shows only recipes. Cookbook contents
-and the full library support List, Icons and Larger images with recipe cover photos.
-Time filters sit above search/tags. Returning from details preserves the collection,
-filters and view. New cookbook is in New Recipe; icon actions appear on hover, focus
-or touch hold, and inside the cookbook. New covers are compressed to at most 720px;
-card images load near the viewport. See [visual library](features/recipe-management/visual-library.md).
+Recipes Library shows compact cookbook covers plus the All recipes list. My cookbooks
+shows compact covers; All recipes shows only recipes. Cookbook contents and the full
+library support List, Icons and Larger images with recipe cover photos. Time filters
+sit above search/tags. Returning from details preserves the collection, filters and
+view. New cookbook sits beside New Recipe; icon actions appear on hover, focus or touch
+hold, and inside the cookbook. Cookbooks can be reordered on the device. New covers are
+compressed to at most 720px; card images load near the viewport. See
+[visual library](features/recipe-management/visual-library.md).

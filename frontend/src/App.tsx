@@ -24,7 +24,13 @@ import type { InventoryItem } from './domain/inventory/types';
 import type { StorageLocation } from './api/locations/locations';
 
 interface AddItemPageState {
-  prefillData?: { name?: string; brand?: string; category?: string; barcode?: string };
+  prefillData?: {
+    name?: string;
+    brand?: string;
+    category?: string;
+    barcode?: string;
+    icon?: string;
+  };
   locations: StorageLocation[];
   onSubmit: (item: AddItemData) => Promise<{ error?: string }>;
 }

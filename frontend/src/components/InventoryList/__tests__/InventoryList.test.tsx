@@ -165,40 +165,44 @@ describe('InventoryList', () => {
     expect(screen.getByTestId('category-card-Grains')).toBeInTheDocument();
   });
 
-  it('shows remove button on cards in remove mode after drilling into category', async () => {
+  it('shows selection checkbox on cards in remove mode after drilling into category', async () => {
     const user = userEvent.setup();
     const onRemove = jest.fn();
+    const onToggleSelected = jest.fn();
     render(
       <InventoryList
         items={[sampleItems[0]]}
         locations={locations}
         removeMode={true}
         onRemoveItem={onRemove}
+        onToggleSelected={onToggleSelected}
       />,
     );
 
     await drillIntoCategory(user, 'Dairy');
     await expandGroup(user, 'Milk');
-    const removeBtn = screen.getByLabelText('Remove Milk');
-    expect(removeBtn).toBeInTheDocument();
+    expect(screen.getByLabelText('Select Milk for removal')).toBeInTheDocument();
   });
 
-  it('calls onRemoveItem when remove button is clicked', async () => {
+  it('calls onToggleSelected when remove-mode checkbox is clicked', async () => {
     const user = userEvent.setup();
     const onRemove = jest.fn();
+    const onToggleSelected = jest.fn();
     render(
       <InventoryList
         items={[sampleItems[0]]}
         locations={locations}
         removeMode={true}
         onRemoveItem={onRemove}
+        onToggleSelected={onToggleSelected}
       />,
     );
 
     await drillIntoCategory(user, 'Dairy');
     await expandGroup(user, 'Milk');
-    await user.click(screen.getByLabelText('Remove Milk'));
-    expect(onRemove).toHaveBeenCalledWith('1');
+    await user.click(screen.getByLabelText('Select Milk for removal'));
+    expect(onToggleSelected).toHaveBeenCalledWith('1');
+    expect(onRemove).not.toHaveBeenCalled();
   });
 
   it('does not show remove buttons when removeMode is false', async () => {
@@ -365,23 +369,25 @@ describe('InventoryList — category view interactions', () => {
     expect(backBtn).toHaveStyle({ minHeight: '44px' });
   });
 
-  it('remove mode + click category card drills into item list with remove buttons', async () => {
+  it('remove mode + click category card drills into item list with selection checkboxes', async () => {
     const user = userEvent.setup();
     const onRemove = jest.fn();
+    const onToggleSelected = jest.fn();
     render(
       <InventoryList
         items={sampleItems}
         locations={locations}
         removeMode={true}
         onRemoveItem={onRemove}
+        onToggleSelected={onToggleSelected}
       />,
     );
 
     await user.click(screen.getByTestId('category-card-Dairy'));
     await expandGroup(user, 'Milk');
     await expandGroup(user, 'Cheese');
-    expect(screen.getByLabelText('Remove Milk')).toBeInTheDocument();
-    expect(screen.getByLabelText('Remove Cheese')).toBeInTheDocument();
+    expect(screen.getByLabelText('Select Milk for removal')).toBeInTheDocument();
+    expect(screen.getByLabelText('Select Cheese for removal')).toBeInTheDocument();
   });
 
   it('filters are preserved when navigating back from item-list to category-summary', async () => {

@@ -8,8 +8,8 @@ import {
 } from '../units';
 
 describe('VALID_UNITS', () => {
-  it('contains 23 supported entries including imperial units', () => {
-    expect(VALID_UNITS).toHaveLength(23);
+  it('contains 26 supported entries including imperial units', () => {
+    expect(VALID_UNITS).toHaveLength(26);
   });
 
   it('contains all expected unit keys', () => {
@@ -29,6 +29,9 @@ describe('VALID_UNITS', () => {
       'stick',
       'can',
       'bottle',
+      'box',
+      'pack',
+      'roll',
       'zest',
       'unit',
     ];

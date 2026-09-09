@@ -144,3 +144,12 @@ its detail view show the actual location alongside quantity/unit. Low-stock tags
 and quick removal X controls are pastel red. The X is available without switching
 Remove mode and confirms deletion of only that lot. Cancel leaves stock unchanged;
 failures remain visible and retryable. Existing group IDs/thresholds are preserved.
+
+## Issue #18 follow-up (September 2026)
+
+Box, pack and roll are supported count units and appear in the editable unit list.
+Inventory uses the same deterministic emoji suggestions as Shopping when a product or
+category has no saved icon. Remove mode is a bulk-selection flow with a confirmation
+that lists selected products; the per-lot quick X remains available outside bulk mode.
+Low Stock and Expiring Soon filters sit together and can compose. Receipt photo entry
+is removed from the Add menu because receipt OCR remains unshipped.

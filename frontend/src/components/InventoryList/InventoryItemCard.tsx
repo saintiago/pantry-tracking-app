@@ -8,19 +8,26 @@ import { useHoverState, useInteractionFeedback } from '../../hooks/useInventoryA
 import type { InventoryItem } from '../../domain/inventory/types';
 import Tooltip from '../Tooltip/Tooltip';
 import { LowStockBadge } from './LowStockBadge';
+import { suggestedProductIcon } from './icons';
 interface InventoryItemCardProps {
   item: InventoryItem;
   locationName: string;
+  locationColor?: string;
   removeMode: boolean;
   onRemove?: (itemId: string) => void;
+  selected?: boolean;
+  onToggleSelected?: (itemId: string) => void;
   onClick?: () => void;
 }
 
 export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
   item,
   locationName,
+  locationColor,
   removeMode,
   onRemove,
+  selected = false,
+  onToggleSelected,
   onClick,
 }) => {
   useLanguage();
@@ -41,7 +48,8 @@ export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
       style={{
         ...styles.card,
         display: 'grid',
-        gridTemplateColumns: onRemove ? '40px minmax(0, 1fr) 44px' : '40px minmax(0, 1fr)',
+        gridTemplateColumns:
+          onRemove || onToggleSelected ? '40px minmax(0, 1fr) 44px' : '40px minmax(0, 1fr)',
         ...(removeMode ? styles.cardRemoveMode : {}),
         ...(isClickable ? { cursor: 'pointer' } : {}),
         boxShadow: isCardHovered && isClickable ? 'var(--inv-shadow-md)' : 'var(--inv-shadow-sm)',
@@ -82,7 +90,7 @@ export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
           <img src={item.pictureUrl} alt={item.name} style={styles.thumbnailImg} />
         ) : (
           <span style={styles.thumbnailPlaceholder} aria-hidden="true">
-            <Emoji>{item.icon || '📦'}</Emoji>
+            <Emoji>{suggestedProductIcon(item.name, item.category, item.icon)}</Emoji>
           </span>
         )}
       </div>
@@ -107,7 +115,14 @@ export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
         </div>
 
         <div style={{ ...styles.cardDetails, gridColumn: '1 / -1', gap: '0.5rem' }}>
-          <span style={styles.locationBadge}>{locationName}</span>
+          <span
+            style={{
+              ...styles.locationBadge,
+              ...(locationColor ? { backgroundColor: locationColor } : {}),
+            }}
+          >
+            {locationName}
+          </span>
           <span>{formatMeasurement(item.quantity, item.unit)}</span>
           <span style={styles.expiration}>
             {t('Exp:')}{' '}
@@ -116,7 +131,20 @@ export const InventoryItemCard: React.FC<InventoryItemCardProps> = ({
         </div>
       </div>
 
-      {onRemove && (
+      {removeMode && onToggleSelected && (
+        <div style={{ gridColumn: 3, gridRow: 1 }}>
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={() => onToggleSelected(item.itemId)}
+            onClick={(event) => event.stopPropagation()}
+            aria-label={t('Select {0} for removal', item.name)}
+            style={styles.selectionCheckbox}
+          />
+        </div>
+      )}
+
+      {!removeMode && onRemove && (
         <div style={{ gridColumn: 3, gridRow: 1 }}>
           <Tooltip content={`Remove ${item.name}`}>
             <button

@@ -229,7 +229,7 @@ test('concurrent threshold rejection preserves the draft, supports retry, and pe
   await page.getByTestId('category-card-Grains').click();
   await expect(
     page.getByRole('button', { name: 'Edit low-stock threshold for Rice' }),
-  ).toContainText('1/2 kilograms');
+  ).toContainText('0.5 kilograms');
   expect(group.threshold).toBe(0.5);
   expect(group.thresholdUnit).toBe('kg');
 });

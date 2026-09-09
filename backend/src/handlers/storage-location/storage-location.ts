@@ -11,11 +11,29 @@ import {
 import { randomUUID } from 'crypto';
 
 const TABLE_NAME = process.env.TABLE_NAME ?? 'PantryApp';
+const LOCATION_COLORS = [
+  '#E3F0D5',
+  '#E1F1FA',
+  '#FFF2CE',
+  '#F8DEDC',
+  '#EDE3F3',
+  '#DFF0EA',
+  '#F3E3CA',
+  '#E3E9FA',
+] as const;
+const LOCATION_COLOR_SET = new Set<string>(LOCATION_COLORS);
 
 const ddbClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(ddbClient);
 
 import { getUserId, response } from '../../http/response';
+
+function locationColor(value: unknown, index: number): string | null {
+  if (value === undefined || value === null || value === '')
+    return LOCATION_COLORS[index % LOCATION_COLORS.length];
+  if (typeof value !== 'string' || !LOCATION_COLOR_SET.has(value)) return null;
+  return value;
+}
 
 async function listLocations(userId: string): Promise<APIGatewayProxyResult> {
   const result = await queryAll(docClient, {
@@ -43,6 +61,7 @@ async function listLocations(userId: string): Promise<APIGatewayProxyResult> {
       locationId,
       userId,
       name: 'Pantry',
+      color: LOCATION_COLORS[0],
       createdAt: now,
       updatedAt: now,
       syncVersion: 1,
@@ -97,6 +116,10 @@ async function createLocation(userId: string, body: string | null): Promise<APIG
 
   const now = new Date().toISOString();
   const locationId = randomUUID();
+  const color = locationColor(parsed.color, existing.Items?.length ?? 0);
+  if (!color) {
+    return response(400, { error: 'VALIDATION_ERROR', message: 'Choose a supported pastel color' });
+  }
   const location = {
     PK: `USER#${userId}`,
     SK: `LOCATION#${locationId}`,
@@ -104,6 +127,7 @@ async function createLocation(userId: string, body: string | null): Promise<APIG
     locationId,
     userId,
     name,
+    color,
     createdAt: now,
     updatedAt: now,
     syncVersion: 1,
@@ -134,7 +158,6 @@ async function renameLocation(
   if (!name) {
     return response(400, { error: 'VALIDATION_ERROR', message: 'Name is required' });
   }
-
   // Check for duplicate name (case-insensitive), excluding the current location
   const existing = await queryAll(docClient, {
     TableName: TABLE_NAME,
@@ -145,6 +168,15 @@ async function renameLocation(
       ':skPrefix': 'LOCATION#',
     },
   });
+
+  const current = (existing.Items ?? []).find((item) => item.locationId === locationId);
+  const color =
+    parsed.color === undefined
+      ? (current?.color as string | undefined)
+      : locationColor(parsed.color, 0);
+  if (parsed.color !== undefined && !color) {
+    return response(400, { error: 'VALIDATION_ERROR', message: 'Choose a supported pastel color' });
+  }
 
   const duplicate = (existing.Items ?? []).some(
     (item) =>
@@ -165,10 +197,16 @@ async function renameLocation(
       new UpdateCommand({
         TableName: TABLE_NAME,
         Key: { PK: `USER#${userId}`, SK: `LOCATION#${locationId}` },
-        UpdateExpression: 'SET #n = :name, updatedAt = :now, syncVersion = syncVersion + :inc',
+        UpdateExpression:
+          'SET #n = :name, color = :color, updatedAt = :now, syncVersion = syncVersion + :inc',
         ConditionExpression: 'attribute_exists(PK)',
         ExpressionAttributeNames: { '#n': 'name' },
-        ExpressionAttributeValues: { ':name': name, ':now': now, ':inc': 1 },
+        ExpressionAttributeValues: {
+          ':name': name,
+          ':color': color ?? LOCATION_COLORS[0],
+          ':now': now,
+          ':inc': 1,
+        },
         ReturnValues: 'ALL_NEW',
       }),
     );

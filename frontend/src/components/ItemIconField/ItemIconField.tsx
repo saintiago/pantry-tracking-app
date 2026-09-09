@@ -34,9 +34,11 @@ const icons = [
 export default function ItemIconField({
   value,
   onChange,
+  suggestion = '📦',
 }: {
   value: string;
   onChange: (value: string) => void;
+  suggestion?: string;
 }) {
   useLanguage();
   const id = React.useId();
@@ -51,7 +53,9 @@ export default function ItemIconField({
         onChange={(event) => onChange(event.target.value)}
         style={{ minHeight: 44, padding: 8, fontSize: '1rem', borderRadius: 6 }}
       >
-        <option value="">📦 {t('Default')}</option>
+        <option value="">
+          {suggestion} {t('Default')}
+        </option>
         {icons.map((icon) => (
           <option key={icon} value={icon}>
             {icon}

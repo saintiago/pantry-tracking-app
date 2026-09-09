@@ -110,8 +110,32 @@ export const styles: Record<string, React.CSSProperties> = {
   removeModeHint: {
     fontSize: '0.875rem',
     color: 'var(--inv-amber)',
-    marginBottom: '0.75rem',
+    margin: 0,
     fontStyle: 'italic',
+  },
+  removeModePanel: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '0.75rem',
+    padding: '0.75rem',
+    marginBottom: '0.75rem',
+    border: '1px solid var(--color-danger)',
+    borderRadius: 8,
+    backgroundColor: 'var(--color-canvas)',
+  },
+  bulkRemoveButton: {
+    minHeight: 44,
+    minWidth: 44,
+    padding: '0.5rem 1rem',
+    fontSize: '0.9375rem',
+    fontWeight: 700,
+    color: 'var(--color-danger-text)',
+    backgroundColor: 'var(--color-danger)',
+    border: '1px solid var(--color-danger-text)',
+    borderRadius: 6,
+    cursor: 'pointer',
   },
   // BarcodeScannerLoadingFallback styles
   scannerLoadingOverlay: {

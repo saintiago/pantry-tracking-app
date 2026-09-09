@@ -132,6 +132,7 @@ describe('Storage Location Lambda handler', () => {
       expect(body.locations).toHaveLength(1);
       expect(body.locations[0].name).toBe('Pantry');
       expect(body.locations[0].locationId).toBe('test-uuid-1234');
+      expect(body.locations[0].color).toBe('#E3F0D5');
       expect(mockSend).toHaveBeenCalledTimes(2);
     });
   });
@@ -152,6 +153,37 @@ describe('Storage Location Lambda handler', () => {
       expect(result.statusCode).toBe(201);
       expect(body.location.name).toBe('Freezer');
       expect(body.location.locationId).toBe('test-uuid-1234');
+      expect(body.location.color).toBe('#E3F0D5');
+    });
+
+    it('creates a new location with a supported pastel color', async () => {
+      mockSend.mockResolvedValueOnce({ Items: [] });
+      mockSend.mockResolvedValueOnce({});
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'POST',
+          body: JSON.stringify({ name: 'Fridge', color: '#E1F1FA' }),
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(201);
+      expect(body.location.color).toBe('#E1F1FA');
+    });
+
+    it('rejects unsupported colors', async () => {
+      mockSend.mockResolvedValueOnce({ Items: [] });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'POST',
+          body: JSON.stringify({ name: 'Fridge', color: '#000000' }),
+        }),
+      );
+
+      expect(result.statusCode).toBe(400);
+      expect(JSON.parse(result.body).message).toContain('pastel color');
     });
 
     it('rejects duplicate name (case-insensitive)', async () => {
@@ -209,6 +241,32 @@ describe('Storage Location Lambda handler', () => {
 
       expect(result.statusCode).toBe(200);
       expect(body.location.name).toBe('New Name');
+    });
+
+    it('renames and recolors a location successfully', async () => {
+      mockSend.mockResolvedValueOnce({
+        Items: [{ locationId: 'loc-1', name: 'Pantry', color: '#E3F0D5' }],
+      });
+      mockSend.mockResolvedValueOnce({
+        Attributes: {
+          locationId: 'loc-1',
+          name: 'Fridge',
+          color: '#E1F1FA',
+          updatedAt: '2024-01-02T00:00:00Z',
+        },
+      });
+
+      const result = await handler(
+        makeEvent({
+          httpMethod: 'PUT',
+          pathParameters: { locationId: 'loc-1' },
+          body: JSON.stringify({ name: 'Fridge', color: '#E1F1FA' }),
+        }),
+      );
+      const body = JSON.parse(result.body);
+
+      expect(result.statusCode).toBe(200);
+      expect(body.location.color).toBe('#E1F1FA');
     });
 
     it('rejects rename to duplicate name', async () => {

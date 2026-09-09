@@ -63,7 +63,7 @@ describe('StorageLocationManager', () => {
       await user.type(screen.getByLabelText('New location name'), '  Freezer  ');
       await user.click(screen.getByLabelText('Add location'));
 
-      expect(props.onAdd).toHaveBeenCalledWith('Freezer');
+      expect(props.onAdd).toHaveBeenCalledWith('Freezer', '#E3F0D5');
     });
 
     it('clears the input after successful add', async () => {
@@ -82,7 +82,7 @@ describe('StorageLocationManager', () => {
       const { props } = renderManager();
 
       await user.type(screen.getByLabelText('New location name'), 'Freezer{Enter}');
-      expect(props.onAdd).toHaveBeenCalledWith('Freezer');
+      expect(props.onAdd).toHaveBeenCalledWith('Freezer', '#E3F0D5');
     });
 
     it('shows error for empty name', async () => {
@@ -149,7 +149,7 @@ describe('StorageLocationManager', () => {
       await user.type(input, 'Kitchen');
       await user.click(screen.getByLabelText('Save rename'));
 
-      expect(props.onRename).toHaveBeenCalledWith('loc-1', 'Kitchen');
+      expect(props.onRename).toHaveBeenCalledWith('loc-1', 'Kitchen', '#E3F0D5');
     });
 
     it('calls onRename when pressing Enter', async () => {
@@ -161,7 +161,7 @@ describe('StorageLocationManager', () => {
       await user.clear(input);
       await user.type(input, 'Kitchen{Enter}');
 
-      expect(props.onRename).toHaveBeenCalledWith('loc-1', 'Kitchen');
+      expect(props.onRename).toHaveBeenCalledWith('loc-1', 'Kitchen', '#E3F0D5');
     });
 
     it('cancels editing on Cancel click', async () => {

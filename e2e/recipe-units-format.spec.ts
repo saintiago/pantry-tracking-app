@@ -19,7 +19,7 @@ const mockRecipeWithFractionalQty = {
   recipeId: 'recipe-frac',
   userId: 'test-user',
   name: 'Fractional Recipe',
-  ingredients: [{ name: 'Flour', quantity: 0.5, unit: 'cup' }],
+  ingredients: [{ name: 'Flour', quantity: 0.5, unit: 'g' }],
   instructions: 'Mix well.',
   portions: 2,
   createdAt: '2024-01-01T00:00:00Z',
@@ -31,7 +31,7 @@ const mockRecipeWithMixedNumber = {
   recipeId: 'recipe-mixed',
   userId: 'test-user',
   name: 'Mixed Number Recipe',
-  ingredients: [{ name: 'Milk', quantity: 1.5, unit: 'cup' }],
+  ingredients: [{ name: 'Milk', quantity: 1.5, unit: 'g' }],
   instructions: 'Pour and stir.',
   portions: 2,
   createdAt: '2024-01-01T00:00:00Z',
@@ -43,7 +43,7 @@ const mockRecipeWithSingularQty = {
   recipeId: 'recipe-singular',
   userId: 'test-user',
   name: 'Singular Recipe',
-  ingredients: [{ name: 'Butter', quantity: 1, unit: 'cup' }],
+  ingredients: [{ name: 'Butter', quantity: 1, unit: 'g' }],
   instructions: 'Melt it.',
   portions: 2,
   createdAt: '2024-01-01T00:00:00Z',
@@ -162,12 +162,13 @@ test.describe('Recipe Units Format', () => {
 
     const unitSelect = page.getByLabel('Ingredient 1 unit');
 
-    // New units should be present (singular labels)
-    await expect(unitSelect.locator('option', { hasText: 'teaspoon' })).toBeAttached();
-    await expect(unitSelect.locator('option', { hasText: 'cup' })).toBeAttached();
+    // Metric defaults should be present, along with new stock units.
     await expect(unitSelect.locator('option:text-is("gram")')).toBeAttached();
     await expect(unitSelect.locator('option', { hasText: 'kilogram' })).toBeAttached();
     await expect(unitSelect.locator('option', { hasText: 'piece' })).toBeAttached();
+    await expect(unitSelect.locator('option:text-is("box")')).toBeAttached();
+    await expect(unitSelect.locator('option:text-is("pack")')).toBeAttached();
+    await expect(unitSelect.locator('option:text-is("roll")')).toBeAttached();
 
     // Old legacy labels should NOT be present as option text (exact match to avoid substring hits)
     await expect(unitSelect.locator('option:text-is("Gram")')).not.toBeAttached();
@@ -202,7 +203,7 @@ test.describe('Recipe Units Format', () => {
         body: JSON.stringify({
           recipe: mockRecipeWithFractionalQty,
           ingredientAvailability: [
-            { name: 'Flour', required: 0.5, unit: 'cup', available: 0, status: 'missing' as const },
+            { name: 'Flour', required: 0.5, unit: 'g', available: 0, status: 'missing' as const },
           ],
           missingCount: 1,
         }),
@@ -220,7 +221,7 @@ test.describe('Recipe Units Format', () => {
     await page.getByLabel('Ingredient 1 name').fill('Flour');
     // Enter fractional quantity as text
     await page.getByLabel('Ingredient 1 quantity').fill('1/2');
-    await page.getByLabel('Ingredient 1 unit').selectOption('cup');
+    await page.getByLabel('Ingredient 1 unit').selectOption('g');
     await page.getByLabel('Portions').fill('2');
 
     // Add a tag (required since recipe-categories feature)
@@ -234,9 +235,9 @@ test.describe('Recipe Units Format', () => {
       timeout: 5000,
     });
 
-    // Ingredient should display "1/2 cups" (plural because 0.5 ≠ 1)
+    // Ingredient should display a decimal metric quantity (plural because 0.5 != 1)
     const ingredientsSection = page.getByRole('region', { name: 'Ingredients' });
-    await expect(ingredientsSection.getByText('1/2 cups')).toBeVisible();
+    await expect(ingredientsSection.getByText('0.5 grams')).toBeVisible();
   });
 
   // ── Test 3: Mixed number quantity input accepted and displayed ───────────────
@@ -265,7 +266,7 @@ test.describe('Recipe Units Format', () => {
         body: JSON.stringify({
           recipe: mockRecipeWithMixedNumber,
           ingredientAvailability: [
-            { name: 'Milk', required: 1.5, unit: 'cup', available: 0, status: 'missing' as const },
+            { name: 'Milk', required: 1.5, unit: 'g', available: 0, status: 'missing' as const },
           ],
           missingCount: 1,
         }),
@@ -282,7 +283,7 @@ test.describe('Recipe Units Format', () => {
     await page.getByRole('textbox', { name: 'Instructions' }).fill('Pour and stir.');
     await page.getByLabel('Ingredient 1 name').fill('Milk');
     await page.getByLabel('Ingredient 1 quantity').fill('1 1/2');
-    await page.getByLabel('Ingredient 1 unit').selectOption('cup');
+    await page.getByLabel('Ingredient 1 unit').selectOption('g');
     await page.getByLabel('Portions').fill('2');
 
     // Add a tag (required since recipe-categories feature)
@@ -295,9 +296,9 @@ test.describe('Recipe Units Format', () => {
       timeout: 5000,
     });
 
-    // Ingredient should display "1 1/2 cups"
+    // Ingredient should display a decimal metric quantity
     const ingredientsSection = page.getByRole('region', { name: 'Ingredients' });
-    await expect(ingredientsSection.getByText('1 1/2 cups')).toBeVisible();
+    await expect(ingredientsSection.getByText('1.5 grams')).toBeVisible();
   });
 
   // ── Test 4: Singular unit label when quantity is 1 ───────────────────────────
@@ -326,7 +327,7 @@ test.describe('Recipe Units Format', () => {
         body: JSON.stringify({
           recipe: mockRecipeWithSingularQty,
           ingredientAvailability: [
-            { name: 'Butter', required: 1, unit: 'cup', available: 0, status: 'missing' as const },
+            { name: 'Butter', required: 1, unit: 'g', available: 0, status: 'missing' as const },
           ],
           missingCount: 1,
         }),
@@ -343,7 +344,7 @@ test.describe('Recipe Units Format', () => {
     await page.getByRole('textbox', { name: 'Instructions' }).fill('Melt it.');
     await page.getByLabel('Ingredient 1 name').fill('Butter');
     await page.getByLabel('Ingredient 1 quantity').fill('1');
-    await page.getByLabel('Ingredient 1 unit').selectOption('cup');
+    await page.getByLabel('Ingredient 1 unit').selectOption('g');
     await page.getByLabel('Portions').fill('2');
 
     // Add a tag (required since recipe-categories feature)
@@ -356,11 +357,10 @@ test.describe('Recipe Units Format', () => {
       timeout: 5000,
     });
 
-    // Ingredient should display "1 cup" (singular because quantity === 1)
+    // Ingredient should display "1 gram" (singular because quantity === 1)
     const ingredientsSection = page.getByRole('region', { name: 'Ingredients' });
-    await expect(ingredientsSection.getByText('1 cup')).toBeVisible();
-    // Should NOT show "1 cups"
-    await expect(ingredientsSection.getByText('1 cups')).not.toBeVisible();
+    await expect(ingredientsSection.getByText('1 gram')).toBeVisible();
+    await expect(ingredientsSection.getByText('1 grams')).not.toBeVisible();
   });
 
   // ── Test 5: Invalid fractional quantity shows validation error ───────────────
@@ -377,7 +377,7 @@ test.describe('Recipe Units Format', () => {
     await page.getByLabel('Ingredient 1 name').fill('Flour');
     // Enter invalid quantity
     await page.getByLabel('Ingredient 1 quantity').fill('abc');
-    await page.getByLabel('Ingredient 1 unit').selectOption('cup');
+    await page.getByLabel('Ingredient 1 unit').selectOption('g');
     await page.getByLabel('Portions').fill('2');
 
     await page.getByRole('button', { name: 'Create Recipe' }).click();
@@ -489,10 +489,11 @@ test.describe('Recipe Units Format', () => {
 
     const unitSelect = page.getByLabel('Unit');
 
-    // New units should be present (singular labels)
-    await expect(unitSelect.locator('option', { hasText: 'teaspoon' })).toBeAttached();
-    await expect(unitSelect.locator('option', { hasText: 'cup' })).toBeAttached();
+    // Metric defaults should be present, along with new stock units.
     await expect(unitSelect.locator('option:text-is("gram")')).toBeAttached();
+    await expect(unitSelect.locator('option:text-is("box")')).toBeAttached();
+    await expect(unitSelect.locator('option:text-is("pack")')).toBeAttached();
+    await expect(unitSelect.locator('option:text-is("roll")')).toBeAttached();
 
     // Old legacy labels should NOT be present as option text (exact match to avoid substring hits)
     await expect(unitSelect.locator('option:text-is("Gram")')).not.toBeAttached();

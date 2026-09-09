@@ -69,7 +69,7 @@ test('loads cloud state and derives calorie totals from recipe yield', async () 
   render(<MealPlanPage />);
   await screen.findByLabelText(`Remove Rice from ${date} dinner`);
   expect(fetchPlannerWorkspace).toHaveBeenCalled();
-  expect(screen.getByText('kcal per person: 400')).toBeInTheDocument();
+  expect(screen.getByText('kcal per portion: 400')).toBeInTheDocument();
   expect(screen.queryByText('All planned portions: 800 kcal')).not.toBeInTheDocument();
 });
 test('X removes only the saved assignment and Undo restores its identity', async () => {

@@ -22,6 +22,19 @@ interface BarcodeScannerProps {
 }
 
 const SCAN_TIMEOUT_SECONDS = 30;
+const REQUIRED_MATCHING_DETECTIONS = 2;
+const DETECTION_WINDOW_MS = 1500;
+
+function validBarcodeChecksum(code: string): boolean {
+  if (!/^\d{8}$|^\d{12}$|^\d{13}$/.test(code)) return false;
+  const digits = [...code].map(Number);
+  const check = digits.pop();
+  if (check === undefined) return false;
+  const sum = digits
+    .reverse()
+    .reduce((total, digit, index) => total + digit * (index % 2 === 0 ? 3 : 1), 0);
+  return (10 - (sum % 10)) % 10 === check;
+}
 
 const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarcodeDetected }) => {
   useLanguage();
@@ -37,6 +50,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarc
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const quaggaRunningRef = useRef(false);
   const detectedRef = useRef(false);
+  const candidatesRef = useRef<Map<string, { count: number; firstSeen: number }>>(new Map());
   const sessionRef = useRef(0);
   const onDetectedRef = useRef(onBarcodeDetected);
   onDetectedRef.current = onBarcodeDetected;
@@ -66,6 +80,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarc
     setTimeLeft(SCAN_TIMEOUT_SECONDS);
     setError(null);
     detectedRef.current = false;
+    candidatesRef.current.clear();
 
     let deviceId: string | undefined;
     try {
@@ -100,6 +115,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarc
 
     Quagga.init(
       {
+        frequency: 10,
         inputStream: {
           type: 'LiveStream',
           target: videoContainerRef.current,
@@ -151,7 +167,16 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarc
       if (session !== sessionRef.current) return;
       if (detectedRef.current) return;
       const code = result?.codeResult?.code;
-      if (!code) return;
+      if (!code || !validBarcodeChecksum(code)) return;
+
+      const now = Date.now();
+      const current = candidatesRef.current.get(code);
+      const next =
+        current && now - current.firstSeen <= DETECTION_WINDOW_MS
+          ? { count: current.count + 1, firstSeen: current.firstSeen }
+          : { count: 1, firstSeen: now };
+      candidatesRef.current.set(code, next);
+      if (next.count < REQUIRED_MATCHING_DETECTIONS) return;
 
       detectedRef.current = true;
       stopQuagga();
@@ -187,6 +212,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ isOpen, onClose, onBarc
       setManualBarcode('');
       setLookingUp(false);
       detectedRef.current = false;
+      candidatesRef.current.clear();
       // Delay to allow the DOM to render the video container
       const timeout = setTimeout(() => startScanning(), 100);
       return () => {

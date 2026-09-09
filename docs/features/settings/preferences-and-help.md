@@ -8,7 +8,7 @@ to it; returning to Inventory after Settings reloads locations and stock.
 
 ## Measurements
 
-Choose As recorded (the compatibility default), Metric, or Imperial (US customary).
+Choose Metric or Imperial (US customary).
 The convention is explicit: ounces/pounds and US fluid ounces, pints, quarts and gallons;
 existing cups, teaspoons and tablespoons use US customary volumes. These are not UK
 imperial fluid measures. Shared factors govern stock arithmetic and display. Mass and
@@ -29,18 +29,21 @@ Manage units adds choices from the supported catalog, removes them from pickers,
 moves them up/down. This configures a unit list, not arbitrary custom conversion formulas.
 At least one choice remains. Existing saved/editing units remain readable and selectable
 even when removed; they can be added again. Reset restores system-aware default choices.
-A customized ordering remains explicit when changing measurement systems.
+A customized ordering remains explicit when changing measurement systems. Legacy
+device settings that used As recorded are treated as Metric the next time preferences
+are read.
 
 ## Appearance and persistence
 
-Pastel is the default. Minimalist uses neutral black/white surfaces and hides decorative
+Default is the pastel appearance. Minimalist uses neutral black/white surfaces and hides decorative
 app/product emojis, retaining text labels, warnings and user-written content. Product
 icon editing is hidden there and existing icons return with Pastel. Photographs remain
 photographs. System mode follows prefers-color-scheme, including live OS changes, with
 a contrasting dark palette. These settings are per account on this device, with storage
 failure messages and safe defaults for invalid data. They create no server preferences
 or automatic changes to another device. Language retains its separate existing device/
-account-default rules. See the [data model](../../architecture/data-model.md).
+account-default rules. Storage locations also keep a supported pastel color used by
+inventory location tags. See the [data model](../../architecture/data-model.md).
 
 ## Help
 

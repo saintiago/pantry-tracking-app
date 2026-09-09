@@ -106,8 +106,11 @@ function renderGroupedRow(overrides: Partial<Omit<GroupedRowProps, 'group'>> = {
       expanded={overrides.expanded ?? false}
       onToggle={overrides.onToggle ?? jest.fn()}
       locationMap={locationMap}
+      locationColorMap={overrides.locationColorMap}
       removeMode={overrides.removeMode ?? false}
       onRemoveItem={overrides.onRemoveItem}
+      selectedItemIds={overrides.selectedItemIds}
+      onToggleSelected={overrides.onToggleSelected}
       onItemClick={overrides.onItemClick}
     />,
   );
@@ -305,18 +308,17 @@ describe('GroupedRowView — child visual hierarchy (Req 10.1–10.4)', () => {
   });
 
   it('renders child interactive controls with a minimum 44×44 touch target (Req 10.4)', () => {
-    const onRemoveItem = jest.fn();
+    const onToggleSelected = jest.fn();
     renderGroupedRow({
       expanded: true,
       removeMode: true,
-      onRemoveItem,
+      onToggleSelected,
     });
 
-    // One remove control per child item; each must meet the touch-target minimum.
-    const removeButtons = screen.getAllByRole('button', { name: 'Remove Milk' });
-    expect(removeButtons.length).toBeGreaterThan(0);
-    removeButtons.forEach((btn) => {
-      expect(btn).toHaveStyle({ minWidth: '44px', minHeight: '44px' });
+    const selectionControls = screen.getAllByRole('checkbox', { name: 'Select Milk for removal' });
+    expect(selectionControls.length).toBeGreaterThan(0);
+    selectionControls.forEach((control) => {
+      expect(control).toHaveStyle({ minWidth: '44px', minHeight: '44px' });
     });
   });
 });

@@ -14,6 +14,7 @@ import { searchInventory, lookupBarcode } from '../../api/inventory/inventory';
 import type { InventoryItem } from '../../api/inventory/inventory';
 import AutocompleteDropdown from '../../components/AutocompleteDropdown/AutocompleteDropdown';
 import { parseFractionalQuantity } from '../../utils/quantity';
+import { suggestedProductIcon } from '../../components/InventoryList/icons';
 
 export interface AddItemPageProps {
   onBack: () => void;
@@ -446,7 +447,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
         name: form.name.trim(),
         category: form.category.trim(),
         expirationDate: form.expirationDate,
-        ...(form.icon ? { icon: form.icon } : {}),
+        icon: suggestedProductIcon(form.name, form.category, form.icon),
         locationId: form.locationId,
         ...(form.locationDetails.trim() ? { locationDetails: form.locationDetails.trim() } : {}),
         ...(form.pictureUrl ? { pictureUrl: form.pictureUrl } : {}),
@@ -588,6 +589,7 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
         <ItemIconField
           value={form.icon}
           onChange={(icon) => setForm((prev) => ({ ...prev, icon }))}
+          suggestion={suggestedProductIcon(form.name, form.category)}
         />
         {/* Expiration Date */}
         <div style={styles.fieldGroup}>
@@ -786,7 +788,6 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
           </div>
         </div>
 
-        {/* Picture (optional) */}
         <div style={styles.fieldGroup}>
           <label htmlFor="add-item-picture" style={styles.label}>
             {t('Picture')}{' '}
@@ -807,11 +808,9 @@ const AddItemPage: React.FC<AddItemPageProps> = ({
           />
         </div>
 
-        {/* Spacer so content isn't hidden behind fixed action bar */}
         <div style={{ height: 80 }} />
       </form>
 
-      {/* Fixed action bar at bottom */}
       <div style={styles.actionBar} data-testid="action-bar">
         <button type="button" onClick={onBack} style={styles.cancelButton} disabled={submitting}>
           {t('Cancel')}{' '}

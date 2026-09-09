@@ -88,6 +88,7 @@ test('mobile cookbook hold reveals icon actions without opening; view layouts fi
 }) => {
   await page.setViewportSize({ width: 320, height: 850 });
   await library(page);
+  await page.getByRole('button', { name: 'My cookbooks', exact: true }).click();
   const first = page.getByRole('button', { name: 'Open cookbook Favorites 0' });
   await page.mouse.move(0, 0);
   const edit = page.getByRole('button', { name: 'Edit cookbook Favorites 0' });

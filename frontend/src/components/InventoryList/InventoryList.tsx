@@ -1,28 +1,26 @@
 import { QuickFilterInput, LocationFilter, CategorySelector } from './InventoryFilters';
 export { QuickFilterInput, LocationFilter, CategorySelector } from './InventoryFilters';
-import MeasurementInput, { changeMeasureUnit } from '../../preferences/MeasurementInput';
-import { displayUnit } from '../../preferences/measurements';
 import Emoji from '../../preferences/Emoji';
 import Tooltip from '../Tooltip/Tooltip';
-import { InventoryItemCard } from './InventoryItemCard';
 export { InventoryItemCard } from './InventoryItemCard';
-import { LowStockBadge } from './LowStockBadge';
 export { LowStockBadge } from './LowStockBadge';
+import { GroupedRowView } from './GroupedRowView';
+export { GroupedRowView } from './GroupedRowView';
+export type { GroupedRowProps } from './GroupedRowView';
 import LocationTag from './LocationTag';
 import { styles } from './styles';
 import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
 import { departmentFor, departmentColor } from './departments';
 import React, { useMemo, useState } from 'react';
 import type { StorageLocation } from '../../api/locations/locations';
-import { formatMeasurement, getUnitLabel, resolveUnit } from '../../types/units';
+import { formatMeasurement } from '../../types/units';
 import { useHoverState, useInteractionFeedback } from '../../hooks/useInventoryAnimations';
-import { thresholdUnits } from '../../types/thresholdUnits';
+import { suggestedCategoryIcon } from './icons';
 
 import type { InventoryItem, InventoryGroup } from '../../domain/inventory/types';
 import {
   groupItemsByCategory,
   groupItemsByGroupingKey,
-  type GroupedRow,
   type CategorySummary,
 } from '../../domain/inventory/grouping';
 export type { InventoryItem, InventoryGroup } from '../../domain/inventory/types';
@@ -78,6 +76,7 @@ interface CategoryCardProps {
   onClick: () => void;
   locationIds?: string[];
   locationMap?: Record<string, string>;
+  locationColorMap?: Record<string, string>;
 }
 
 export const CategoryCard: React.FC<CategoryCardProps> = ({
@@ -85,6 +84,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
   onClick,
   locationIds = [],
   locationMap = {},
+  locationColorMap = {},
 }) => {
   useLanguage();
   const itemCount = t(summary.itemCount === 1 ? '{0} item' : '{0} items', summary.itemCount);
@@ -125,6 +125,9 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
     >
       <div style={styles.categoryCardHeader}>
         <span style={styles.categoryCardName}>{summary.category}</span>
+        <span aria-hidden="true">
+          <Emoji>{suggestedCategoryIcon(summary.category)}</Emoji>
+        </span>
         {summary.lowStockCount > 0 && (
           <span
             style={styles.categoryLowStockBadge}
@@ -135,7 +138,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
         )}
       </div>
       <div style={styles.categoryCardStats}>
-        <LocationTag ids={locationIds} names={locationMap} />
+        <LocationTag ids={locationIds} names={locationMap} colors={locationColorMap} />
         <span>{itemCount}</span>
         <span style={styles.categoryCardDot}>·</span>
         <span>{formatQuantityByUnit(summary.quantityByUnit)}</span>
@@ -188,226 +191,6 @@ export const BackButton: React.FC<BackButtonProps> = ({ onClick }) => {
   );
 };
 
-/* ── InventoryItemCard ──────────────────────────────────────────── */
-
-/* ── GroupedRowView ─────────────────────────────────────────────── */
-
-export interface GroupedRowProps {
-  group: GroupedRow;
-  expanded: boolean;
-  onToggle: () => void;
-  locationMap: Record<string, string>;
-  removeMode: boolean;
-  onRemoveItem?: (itemId: string) => void;
-  onItemClick?: (item: InventoryItem) => void;
-  onUpdateThreshold?: (
-    groupId: string,
-    threshold: number | null,
-    thresholdUnit?: string,
-  ) => Promise<void>;
-}
-
-/**
- * Renders a single Grouped_Row: a collapsible parent row summarizing all child
- * items that share a Grouping_Key. The parent row behaves as a toggle button
- * (pointer + Enter/Space keyboard activation) and exposes its expanded state
- * and child association to assistive technologies via aria-expanded /
- * aria-controls. Child items are rendered (reusing InventoryItemCard) only
- * while expanded, inside the aria-controls region, with indentation, connector
- * lines, and a distinct background to set them apart from top-level rows.
- *
- */
-export const GroupedRowView: React.FC<GroupedRowProps> = ({
-  group,
-  expanded,
-  onToggle,
-  locationMap,
-  removeMode,
-  onRemoveItem,
-  onItemClick,
-  onUpdateThreshold,
-}) => {
-  useLanguage();
-  const [editingThreshold, setEditingThreshold] = useState(false);
-  const [thresholdValue, setThresholdValue] = useState(
-    group.threshold === undefined ? '' : String(group.threshold),
-  );
-  const [thresholdUnit, setThresholdUnit] = useState(
-    resolveUnit(group.thresholdUnit ?? group.unit),
-  );
-  const [thresholdError, setThresholdError] = useState('');
-  const [thresholdSaving, setThresholdSaving] = useState(false);
-  const reactId = React.useId();
-  const childRegionId = `grouped-row-children-${reactId}`;
-  const { isHovered, hoverProps } = useHoverState();
-  const { feedbackClass, triggerSuccess } = useInteractionFeedback();
-
-  const handleToggle = () => {
-    triggerSuccess();
-    onToggle();
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    // Enter/Space toggle identically to pointer activation; preventDefault on
-    // Space suppresses the default page-scroll behavior.
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      handleToggle();
-    }
-  };
-
-  const quantityText = group.hasIncompatibleUnits
-    ? t('mixed units')
-    : formatMeasurement(group.totalQuantity, group.unit);
-  const countText = `${group.childCount} ${group.childCount === 1 ? 'item' : 'items'}`;
-
-  return (
-    <div style={styles.groupedRowWrapper} data-testid={`grouped-row-wrapper-${group.groupingKey}`}>
-      <div
-        role="button"
-        tabIndex={0}
-        aria-expanded={expanded}
-        aria-controls={childRegionId}
-        onClick={handleToggle}
-        onKeyDown={handleKeyDown}
-        aria-label={`${group.name}, ${translateMessage(countText)}, ${quantityText}${
-          group.hasLowStock ? ', contains low stock' : ''
-        }, ${expanded ? 'expanded' : 'collapsed'}`}
-        className={feedbackClass}
-        style={{
-          ...styles.groupedRow,
-          boxShadow: isHovered ? 'var(--inv-shadow-md)' : 'var(--inv-shadow-sm)',
-          transform: isHovered ? 'scale(1.01)' : 'scale(1)',
-          transition:
-            'transform 0.2s var(--inv-spring, cubic-bezier(0.34,1.56,0.64,1)), box-shadow 0.2s ease',
-        }}
-        data-testid={`grouped-row-${group.groupingKey}`}
-        {...hoverProps}
-      >
-        <span style={styles.groupedRowChevron} aria-hidden="true">
-          {expanded ? '▾' : '▸'}
-        </span>
-        <div style={styles.groupedRowBody}>
-          <div style={styles.groupedRowHeader}>
-            <span style={styles.groupedRowName}>
-              <Emoji>{group.childItems.find((item) => item.icon)?.icon}</Emoji> {group.name}
-            </span>
-            {group.hasLowStock && <LowStockBadge />}
-            {onUpdateThreshold && (
-              <button
-                type="button"
-                aria-label={t('Edit low-stock threshold for {0}', group.name)}
-                style={styles.thresholdButton}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setThresholdValue(group.threshold === undefined ? '' : String(group.threshold));
-                  setThresholdUnit(resolveUnit(group.thresholdUnit ?? group.unit));
-                  setThresholdError('');
-                  setEditingThreshold((value) => !value);
-                }}
-              >
-                {t('⚙ Threshold')}{' '}
-                {group.threshold === undefined
-                  ? ''
-                  : `: ${formatMeasurement(group.threshold, group.thresholdUnit ?? group.unit)}`}
-              </button>
-            )}
-          </div>
-          <div style={styles.groupedRowStats}>
-            <span>{quantityText}</span>
-            <LocationTag ids={group.childItems.map((item) => item.location)} names={locationMap} />
-            <span style={styles.categoryCardDot}>·</span>
-            <span>{translateMessage(countText)}</span>
-          </div>
-        </div>
-      </div>
-
-      {editingThreshold && (
-        <form
-          style={styles.thresholdEditor}
-          onSubmit={async (event) => {
-            event.preventDefault();
-            const threshold = thresholdValue === '' ? null : Number(thresholdValue);
-            if (thresholdSaving) return;
-            setThresholdSaving(true);
-            setThresholdError('');
-            try {
-              await onUpdateThreshold?.(group.groupId, threshold, thresholdUnit);
-              setEditingThreshold(false);
-            } catch (err) {
-              setThresholdError(err instanceof Error ? err.message : 'Could not save threshold');
-            } finally {
-              setThresholdSaving(false);
-            }
-          }}
-        >
-          <label htmlFor={`threshold-${group.groupId}`}>{t('Low-stock threshold')}</label>
-          <MeasurementInput
-            unit={thresholdUnit}
-            id={`threshold-${group.groupId}`}
-            type="number"
-            min="0"
-            step="any"
-            value={thresholdValue}
-            onValue={setThresholdValue}
-            style={styles.thresholdInput}
-          />
-          <label htmlFor={`threshold-unit-${group.groupId}`}>{t('Threshold unit')}</label>
-          <select
-            id={`threshold-unit-${group.groupId}`}
-            value={displayUnit(thresholdUnit)}
-            onChange={(event) => {
-              const unit = resolveUnit(event.target.value);
-              setThresholdValue(changeMeasureUnit(thresholdValue, thresholdUnit, unit));
-              setThresholdUnit(unit);
-            }}
-          >
-            {thresholdUnits(group.unit, displayUnit(thresholdUnit)).map((unit) => (
-              <option key={unit} value={unit}>
-                {getUnitLabel(unit, 1)}
-              </option>
-            ))}
-          </select>
-          {thresholdError && <span role="alert">{translateMessage(thresholdError)}</span>}
-          <button type="submit" disabled={thresholdSaving} style={styles.thresholdSaveButton}>
-            {t('Save')}{' '}
-          </button>
-          <button
-            type="button"
-            onClick={() => setEditingThreshold(false)}
-            style={styles.thresholdCancelButton}
-          >
-            {t('Cancel')}{' '}
-          </button>
-        </form>
-      )}
-
-      {/* Child region referenced by aria-controls. Rendered (empty) even when
-          collapsed so the aria-controls target id always resolves. */}
-      <div id={childRegionId} role="region" aria-label={t('{0} items', group.name)}>
-        {expanded && (
-          <div style={styles.groupedChildren}>
-            {group.childItems.map((item) => (
-              <div key={item.itemId} style={styles.groupedChildRow}>
-                <span style={styles.groupedChildConnector} aria-hidden="true" />
-                <div style={styles.groupedChildCard}>
-                  <InventoryItemCard
-                    item={item}
-                    locationName={locationMap[item.location] ?? item.location}
-                    removeMode={removeMode}
-                    onRemove={onRemoveItem}
-                    onClick={() => onItemClick?.(item)}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
 /* ── InventoryList (main component) ─────────────────────────────── */
 
 export interface InventoryListProps {
@@ -416,6 +199,8 @@ export interface InventoryListProps {
   locations: StorageLocation[];
   removeMode: boolean;
   onRemoveItem?: (itemId: string) => void;
+  selectedItemIds?: Set<string>;
+  onToggleSelected?: (itemId: string) => void;
   onItemClick?: (item: InventoryItem) => void;
   onUpdateThreshold?: (
     groupId: string,
@@ -430,6 +215,8 @@ const InventoryList: React.FC<InventoryListProps> = ({
   locations,
   removeMode,
   onRemoveItem,
+  selectedItemIds,
+  onToggleSelected,
   onItemClick,
   onUpdateThreshold,
 }) => {
@@ -438,6 +225,7 @@ const InventoryList: React.FC<InventoryListProps> = ({
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [locationFilter, setLocationFilter] = useState('All');
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
+  const [showExpiringSoonOnly, setShowExpiringSoonOnly] = useState(false);
   const [viewMode, setViewMode] = useState<'category-summary' | 'item-list'>('category-summary');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   // Expand/collapse state for grouped rows, keyed by groupingKey. A key present
@@ -459,6 +247,15 @@ const InventoryList: React.FC<InventoryListProps> = ({
     const map: Record<string, string> = {};
     locations.forEach((l) => {
       map[l.locationId] = l.name;
+    });
+    return map;
+  }, [locations]);
+
+  const locationColorMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    locations.forEach((location, index) => {
+      map[location.locationId] =
+        location.color ?? ['#E3F0D5', '#E1F1FA', '#FFF2CE', '#F8DEDC'][index % 4];
     });
     return map;
   }, [locations]);
@@ -486,6 +283,17 @@ const InventoryList: React.FC<InventoryListProps> = ({
       result = result.filter((i) => i.isLowStock);
     }
 
+    if (showExpiringSoonOnly) {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      const limit = today + 14 * 24 * 60 * 60 * 1000;
+      result = result.filter((item) => {
+        if (!item.expirationDate) return false;
+        const expiry = new Date(`${item.expirationDate}T00:00:00`).getTime();
+        return Number.isFinite(expiry) && expiry >= today && expiry <= limit;
+      });
+    }
+
     if (textFilter.trim()) {
       const lower = textFilter.toLowerCase();
       result = result.filter((i) => i.name.toLowerCase().includes(lower));
@@ -496,7 +304,7 @@ const InventoryList: React.FC<InventoryListProps> = ({
     }
 
     return result;
-  }, [effectiveItems, textFilter, locationFilter, showLowStockOnly]);
+  }, [effectiveItems, textFilter, locationFilter, showLowStockOnly, showExpiringSoonOnly]);
 
   // Auto-reset to category-summary if selectedCategory no longer exists in filtered items
   React.useEffect(() => {
@@ -537,11 +345,13 @@ const InventoryList: React.FC<InventoryListProps> = ({
 
   const handleCategoryCardClick = (category: string) => {
     setSelectedCategory(category);
+    setCategoryFilter(category);
     setViewMode('item-list');
   };
 
   const handleBackClick = () => {
     setSelectedCategory(null);
+    setCategoryFilter('All');
     setViewMode('category-summary');
   };
 
@@ -554,7 +364,10 @@ const InventoryList: React.FC<InventoryListProps> = ({
           <CategorySelector
             categories={categories}
             value={categoryFilter}
-            onChange={setCategoryFilter}
+            onChange={(value) => {
+              setCategoryFilter(value);
+              setSelectedCategory(value === 'All' ? null : value);
+            }}
           />
         )}
         <LocationFilter locations={locations} value={locationFilter} onChange={setLocationFilter} />
@@ -579,6 +392,23 @@ const InventoryList: React.FC<InventoryListProps> = ({
             {t('⚠️ Low Stock')}{' '}
           </button>
         </Tooltip>
+        <Tooltip content="Show items expiring in the next two weeks">
+          <button
+            onClick={() => {
+              setShowExpiringSoonOnly((prev) => !prev);
+              triggerToggleSuccess();
+            }}
+            className={toggleFeedbackClass}
+            style={{
+              ...styles.expiringToggle,
+              ...(showExpiringSoonOnly ? styles.expiringToggleActive : {}),
+            }}
+            aria-pressed={showExpiringSoonOnly}
+            aria-label={t('Show expiring soon items only')}
+          >
+            {t('Expiring Soon')}{' '}
+          </button>
+        </Tooltip>
       </div>
 
       {/* Category summary view */}
@@ -596,6 +426,7 @@ const InventoryList: React.FC<InventoryListProps> = ({
                     .filter((item) => item.category === summary.category)
                     .map((item) => item.location)}
                   locationMap={locationMap}
+                  locationColorMap={locationColorMap}
                   onClick={() => handleCategoryCardClick(summary.category)}
                 />
               ))}
@@ -619,8 +450,11 @@ const InventoryList: React.FC<InventoryListProps> = ({
                   expanded={expandedGroups.has(group.groupingKey)}
                   onToggle={() => handleToggleGroup(group.groupingKey)}
                   locationMap={locationMap}
+                  locationColorMap={locationColorMap}
                   removeMode={removeMode}
                   onRemoveItem={onRemoveItem}
+                  selectedItemIds={selectedItemIds}
+                  onToggleSelected={onToggleSelected}
                   onItemClick={onItemClick}
                   onUpdateThreshold={onUpdateThreshold}
                 />

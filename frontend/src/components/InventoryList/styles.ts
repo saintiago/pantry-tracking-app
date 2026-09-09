@@ -34,9 +34,14 @@ export const styles: Record<string, CSSProperties> = {
     backgroundColor: 'var(--inv-warm-white)',
     color: 'var(--inv-text)',
     appearance: 'none' as const,
+    textAlign: 'left' as const,
+    textAlignLast: 'left' as const,
     cursor: 'pointer',
   },
   toggleRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '0.5rem',
     marginBottom: '0.75rem',
   },
   lowStockToggle: {
@@ -57,6 +62,25 @@ export const styles: Record<string, CSSProperties> = {
     backgroundColor: 'var(--inv-amber)',
     color: 'var(--color-text)',
     borderColor: 'var(--color-warning-text)',
+  },
+  expiringToggle: {
+    minHeight: 44,
+    minWidth: 44,
+    padding: '0.5rem 1rem',
+    fontSize: '0.875rem',
+    fontWeight: 600,
+    color: 'var(--color-action)',
+    backgroundColor: 'var(--color-sky)',
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: 'var(--color-border)',
+    borderRadius: 'var(--inv-radius-full)' as unknown as number,
+    cursor: 'pointer',
+  },
+  expiringToggleActive: {
+    backgroundColor: 'var(--color-mint)',
+    color: 'var(--color-text)',
+    borderColor: 'var(--color-action)',
   },
   emptyText: {
     textAlign: 'center' as const,
@@ -169,6 +193,11 @@ export const styles: Record<string, CSSProperties> = {
     border: '1px solid var(--color-danger-text)',
     borderRadius: 'var(--inv-radius-xs)' as unknown as number,
     cursor: 'pointer',
+  },
+  selectionCheckbox: {
+    minWidth: 44,
+    minHeight: 44,
+    accentColor: 'var(--color-danger)',
   },
   notification: {
     display: 'flex',

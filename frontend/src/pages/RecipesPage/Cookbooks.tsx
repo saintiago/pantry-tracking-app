@@ -14,6 +14,32 @@ const button: React.CSSProperties = {
   borderRadius: 10,
   background: 'var(--color-surface)',
 };
+const ORDER_KEY = 'pantry-cookbook-order-v1';
+
+function orderedBooks(books: Cookbook[]): Cookbook[] {
+  try {
+    const order = JSON.parse(localStorage.getItem(ORDER_KEY) ?? '[]');
+    if (!Array.isArray(order)) return books;
+    const rank = new Map(order.map((id, index) => [id, index]));
+    return [...books].sort((a, b) => {
+      const aRank = rank.get(a.cookbookId) as number | undefined;
+      const bRank = rank.get(b.cookbookId) as number | undefined;
+      if (aRank !== undefined || bRank !== undefined)
+        return (aRank ?? Infinity) - (bRank ?? Infinity);
+      return a.createdAt.localeCompare(b.createdAt);
+    });
+  } catch {
+    return books;
+  }
+}
+
+function saveOrder(books: Cookbook[]) {
+  try {
+    localStorage.setItem(ORDER_KEY, JSON.stringify(books.map((book) => book.cookbookId)));
+  } catch {
+    /* Ordering is a device convenience; failed storage leaves cloud data unchanged. */
+  }
+}
 export default function Cookbooks({
   recipes,
   onSelect,
@@ -25,7 +51,7 @@ export default function Cookbooks({
 }) {
   useLanguage();
   const [books, setBooks] = useState<Cookbook[]>([]);
-  const [selected, setSelected] = useState('all');
+  const [selected, setSelected] = useState('library');
   const [draft, setDraft] = useState<Partial<Cookbook> | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -39,12 +65,10 @@ export default function Cookbooks({
     fetchCookbooks(controller.signal)
       .then((result) => {
         if (controller.signal.aborted) return;
-        setBooks(result);
+        const next = orderedBooks(result);
+        setBooks(next);
         setError('');
-        if (result.length) {
-          setSelected('');
-          onSelect(undefined);
-        }
+        onSelect(null);
       })
       .catch((e) => {
         if (!controller.signal.aborted)
@@ -54,11 +78,12 @@ export default function Cookbooks({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [attempt]);
+  }, [attempt, onSelect]);
   useEffect(() => {
     if (!createRequest) return;
     setDraft((current) => current ?? { name: '', description: '', recipeIds: [] });
     setError('');
+    setSelected('');
     onSelect(undefined);
   }, [createRequest]);
   const selectedBook = books.find((b) => b.cookbookId === selected);
@@ -70,8 +95,23 @@ export default function Cookbooks({
   function select(id: string, current = books) {
     setSelected(id);
     onSelect(
-      id === 'all' ? null : id ? current.find((b) => b.cookbookId === id)?.recipeIds : undefined,
+      id === 'library'
+        ? null
+        : id === 'all'
+          ? null
+          : id
+            ? current.find((b) => b.cookbookId === id)?.recipeIds
+            : undefined,
     );
+  }
+  function moveBook(book: Cookbook, by: number) {
+    const index = books.findIndex((entry) => entry.cookbookId === book.cookbookId);
+    const target = index + by;
+    if (index < 0 || target < 0 || target >= books.length) return;
+    const next = [...books];
+    [next[index], next[target]] = [next[target], next[index]];
+    setBooks(next);
+    saveOrder(next);
   }
   async function save() {
     if (!draft?.name?.trim()) {
@@ -88,6 +128,7 @@ export default function Cookbooks({
         recipeIds: draft.recipeIds ?? [],
       });
       const next = [...books.filter((b) => b.cookbookId !== book.cookbookId), book];
+      saveOrder(next);
       setBooks(next);
       setDraft(null);
       select(book.cookbookId, next);
@@ -123,6 +164,7 @@ export default function Cookbooks({
           {t('My cookbooks')}
         </button>
       </div>
+      {selected === 'library' && <h3 style={{ margin: '12px 0 0' }}>{t('Recipes Library')}</h3>}
       {loading && <p role="status">{t('Loading cookbooks…')}</p>}
       {error && (
         <p role="alert">
@@ -138,8 +180,8 @@ export default function Cookbooks({
           </button>
         </p>
       )}
-      {!draft && selected === '' && (
-        <div className="cookbook-shelf">
+      {!draft && (selected === '' || selected === 'library') && (
+        <div className="cookbook-shelf" aria-label={t('Cookbook shelf')}>
           {books.map((book) => (
             <CookbookCard
               key={book.cookbookId}
@@ -148,6 +190,10 @@ export default function Cookbooks({
               onOpen={() => select(book.cookbookId)}
               onEdit={() => edit(book)}
               onRemove={() => setRemove(book)}
+              onMoveUp={() => moveBook(book, -1)}
+              onMoveDown={() => moveBook(book, 1)}
+              canMoveUp={books[0]?.cookbookId !== book.cookbookId}
+              canMoveDown={books[books.length - 1]?.cookbookId !== book.cookbookId}
             />
           ))}
         </div>
@@ -182,7 +228,7 @@ export default function Cookbooks({
           />
         </div>
       )}
-      {!loading && !books.length && selected === '' && !draft && (
+      {!loading && !books.length && (selected === '' || selected === 'library') && !draft && (
         <p>
           {t(
             'Create a cookbook to organize your recipes. Recipes can belong to more than one cookbook.',

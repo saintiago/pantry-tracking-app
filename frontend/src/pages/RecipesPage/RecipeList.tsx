@@ -4,7 +4,7 @@ import RecipeCreateMenu from './RecipeCreateMenu';
 import { prioritizeExpiringRecipes } from '../../domain/recipes/expiration';
 import type { InventoryItem } from '../../domain/inventory/types';
 import { t, useLanguage, message as translateMessage } from '../../i18n/i18n';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchRecipes } from '../../api/recipes/recipes';
 import type { Recipe } from '../../api/recipes/recipes';
 import RecipeFilterPanel, {
@@ -54,6 +54,10 @@ const RecipeList: React.FC<RecipeListProps> = ({
   const [search, setSearch] = useState('');
   const [activeTagFilters, setActiveTagFilters] = useState<string[]>([]);
   const [panel, setPanel] = useState<RecipeFilterPanelValue>(EMPTY_PANEL_VALUE);
+  const handleCookbookSelect = useCallback((ids: string[] | null | undefined) => {
+    setCookbookIds(ids);
+    setPanel(EMPTY_PANEL_VALUE);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -144,17 +148,19 @@ const RecipeList: React.FC<RecipeListProps> = ({
             {t('From inventory to your recipes')}
           </p>
         </div>
-        <RecipeCreateMenu onSelect={onNew} onNewCookbook={() => setCreateRequest((n) => n + 1)} />
+        <div style={styles.headerActions}>
+          <RecipeCreateMenu onSelect={onNew} />
+          <button
+            type="button"
+            style={styles.newButton}
+            onClick={() => setCreateRequest((n) => n + 1)}
+          >
+            {t('New cookbook')}
+          </button>
+        </div>
       </div>
 
-      <Cookbooks
-        recipes={recipes}
-        createRequest={createRequest}
-        onSelect={(ids) => {
-          setCookbookIds(ids);
-          setPanel(EMPTY_PANEL_VALUE);
-        }}
-      />
+      <Cookbooks recipes={recipes} createRequest={createRequest} onSelect={handleCookbookSelect} />
       <div hidden={cookbookIds === undefined}>
         {/* Recipe filter panel */}
         <RecipeFilterPanel
@@ -184,26 +190,29 @@ const RecipeList: React.FC<RecipeListProps> = ({
             </span>
           </div>
         ) : allTags.length > 0 ? (
-          <div style={styles.tagCloud} role="group" aria-label={t('Filter by tag')}>
-            {allTags.map((tag) => {
-              const isActive = activeTagFilters.includes(tag);
-              return (
-                <button
-                  key={tag}
-                  type="button"
-                  onClick={() =>
-                    setActiveTagFilters((prev) =>
-                      isActive ? prev.filter((t) => t !== tag) : [...prev, tag],
-                    )
-                  }
-                  style={isActive ? styles.tagCloudButtonActive : styles.tagCloudButtonInactive}
-                  aria-pressed={isActive}
-                >
-                  {tag}
-                </button>
-              );
-            })}
-          </div>
+          <section aria-label={t('Recipe tags')}>
+            <h3 style={styles.tagsTitle}>{t('Tags')}</h3>
+            <div style={styles.tagCloud} role="group" aria-label={t('Filter by tag')}>
+              {allTags.map((tag) => {
+                const isActive = activeTagFilters.includes(tag);
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() =>
+                      setActiveTagFilters((prev) =>
+                        isActive ? prev.filter((t) => t !== tag) : [...prev, tag],
+                      )
+                    }
+                    style={isActive ? styles.tagCloudButtonActive : styles.tagCloudButtonInactive}
+                    aria-pressed={isActive}
+                  >
+                    {tag}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
         ) : null}
 
         {inventoryError && (
@@ -274,6 +283,12 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     whiteSpace: 'nowrap',
   },
+  headerActions: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
   searchInput: {
     minHeight: 44,
     padding: '0.5rem 0.75rem',
@@ -288,6 +303,11 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexWrap: 'wrap',
     gap: '0.4rem',
+  },
+  tagsTitle: {
+    margin: '0 0 0.4rem',
+    fontSize: '0.9375rem',
+    fontWeight: 700,
   },
   tagCloudButtonInactive: {
     backgroundColor: 'var(--color-sky)',

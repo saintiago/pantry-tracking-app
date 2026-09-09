@@ -221,7 +221,7 @@ authentication and explicit model fallbacks. `import-fetch.test.ts` covers publi
 checks and DNS-pinned redirect rejection. Model invocation is mocked in the gate;
 account access and live extraction methods require separate release verification.
 Manual recipe tests now choose Add manually from New Recipe; expiration tests toggle
-the filter before choosing its window. Planner tests retain only per-person kcal.
+the filter before choosing its window. Planner tests retain only per-portion kcal.
 
 ## Issue #15 cookbooks, sharing and organization
 

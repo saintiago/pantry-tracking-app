@@ -1,6 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
 import type { InventoryItem } from '../frontend/src/domain/inventory/types';
 
+test.describe.configure({ mode: 'serial' });
+
 async function openScanner(page: Page, saved?: InventoryItem) {
   await page.route('https://mock-api.test/**', (route) => {
     const path = new URL(route.request().url()).pathname;

@@ -6,14 +6,44 @@ export function CookbookActions({
   book,
   onEdit,
   onRemove,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp = false,
+  canMoveDown = false,
 }: {
   book: Cookbook;
   onEdit: () => void;
   onRemove: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
 }) {
   useLanguage();
   return (
     <div className="cookbook-actions">
+      {onMoveUp && (
+        <button
+          type="button"
+          aria-label={t('Move cookbook {0} up', book.name)}
+          title={t('Move cookbook up')}
+          disabled={!canMoveUp}
+          onClick={onMoveUp}
+        >
+          ↑
+        </button>
+      )}
+      {onMoveDown && (
+        <button
+          type="button"
+          aria-label={t('Move cookbook {0} down', book.name)}
+          title={t('Move cookbook down')}
+          disabled={!canMoveDown}
+          onClick={onMoveDown}
+        >
+          ↓
+        </button>
+      )}
       <button
         type="button"
         aria-label={t('Edit cookbook {0}', book.name)}
@@ -39,12 +69,20 @@ export default function CookbookCard({
   onOpen,
   onEdit,
   onRemove,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp,
+  canMoveDown,
 }: {
   book: Cookbook;
   count: number;
   onOpen: () => void;
   onEdit: () => void;
   onRemove: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
 }) {
   useLanguage();
   const [held, setHeld] = useState(false);
@@ -100,7 +138,15 @@ export default function CookbookCard({
         <LibraryCover imageId={book.imageId} name={book.name} />
       </button>
       {book.description && <p className="cookbook-description">{book.description}</p>}
-      <CookbookActions book={book} onEdit={onEdit} onRemove={onRemove} />
+      <CookbookActions
+        book={book}
+        onEdit={onEdit}
+        onRemove={onRemove}
+        onMoveUp={onMoveUp}
+        onMoveDown={onMoveDown}
+        canMoveUp={canMoveUp}
+        canMoveDown={canMoveDown}
+      />
     </article>
   );
 }

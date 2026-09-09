@@ -174,7 +174,7 @@ describe('MainScreen Add/Remove buttons', () => {
     expect(screen.getByRole('menu', { name: 'Add item methods' })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: /Manual Entry/i })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: /Barcode Scan/i })).toBeInTheDocument();
-    expect(screen.getByRole('menuitem', { name: /Receipt Photo/i })).toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: /Receipt Photo/i })).not.toBeInTheDocument();
   });
 
   it('closes add menu when a method is selected', async () => {
@@ -223,11 +223,11 @@ describe('MainScreen Add/Remove buttons', () => {
 
     await user.click(removeBtn);
     expect(removeBtn).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText(/Tap an item to remove it/i)).toBeInTheDocument();
+    expect(screen.getByText(/Select items to remove/i)).toBeInTheDocument();
 
     await user.click(removeBtn);
     expect(removeBtn).toHaveAttribute('aria-pressed', 'false');
-    expect(screen.queryByText(/Tap an item to remove it/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Select items to remove/i)).not.toBeInTheDocument();
   });
 
   it('Add button has aria-expanded and aria-haspopup attributes', async () => {
@@ -364,15 +364,15 @@ describe('Inventory integration', () => {
     await user.click(screen.getByLabelText('Remove item'));
     expect(screen.getByLabelText('Remove item')).toHaveAttribute('aria-pressed', 'true');
 
-    // Drill into Dairy to see items with remove buttons
+    // Drill into Dairy to see items with selection checkboxes
     await user.click(screen.getByTestId('category-card-Dairy'));
 
     // Items now render inside collapsed grouped rows; expand the Milk group so
-    // its child item (and its remove control) becomes visible.
+    // its child item (and its selection control) becomes visible.
     await user.click(screen.getByRole('button', { name: /^Milk,/ }));
 
-    // Click remove on the item
-    await user.click(screen.getByLabelText('Remove Milk'));
+    await user.click(screen.getByLabelText('Select Milk for removal'));
+    await user.click(screen.getByRole('button', { name: /Delete selected/ }));
 
     await waitFor(() => {
       expect(mockDeleteInventoryItem).toHaveBeenCalledWith('item-1');

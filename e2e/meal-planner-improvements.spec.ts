@@ -78,13 +78,13 @@ test('copy week previews occupied meals, persists fresh IDs and reusable favorit
   await page.getByRole('button', { name: 'Apply copy' }).click();
   await expect(slot(page, '2026-09-14').locator('[data-plan-open]')).toHaveCount(2);
 });
-test('calorie estimates show per-person, all-portions and unknown subtotals', async ({ page }) => {
+test('calorie estimates show per-portion, all-portions and unknown subtotals', async ({ page }) => {
   await setupPlanner(page, [
     { ...meal('first', monday), servings: 2 },
     { ...meal('note', monday), entryType: 'custom', recipeId: '', recipeName: 'Unknown snack' },
   ]);
   const day = page.locator(`[data-date="${monday}"]`);
-  await expect(day).toContainText('kcal per person: 400');
+  await expect(day).toContainText('kcal per portion: 400');
   await expect(day).not.toContainText('All planned portions');
   await expect(day).toContainText('Incomplete: 1 entries unknown');
 });
