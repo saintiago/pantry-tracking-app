@@ -257,3 +257,6 @@ collection isolation, three recipe views, retained detail-return context, compac
 filters, touch-hold actions, 320px layouts and actual 2400px-to-720px cover compression.
 The issue #15 journey still checks cookbook save/retry/reload/membership and removal
 without deleting recipes. Earlier filter-position/reset assertions now follow issue #17.
+
+Touch-drag browser journeys wait for a stable, unobstructed card after native swipe
+scrolling before sampling coordinates for the following hold gesture.

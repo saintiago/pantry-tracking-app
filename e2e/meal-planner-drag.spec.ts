@@ -92,6 +92,9 @@ for (const width of [320, 390])
     await source.evaluate((element) =>
       element.scrollIntoView({ block: 'center', inline: 'nearest' }),
     );
+    // Native swipe scrolling can still be settling after touchEnd. Wait for a
+    // stable, unobstructed target before sampling coordinates for the next hold.
+    await source.click({ trial: true });
     const b = (await source.boundingBox())!;
     await session.send('Input.dispatchTouchEvent', {
       type: 'touchStart',
