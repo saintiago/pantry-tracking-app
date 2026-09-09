@@ -5,6 +5,7 @@ import type { Language } from '../../i18n/i18n';
 export default function Flag({ language }: { language: Language }) {
   return (
     <svg
+      className="language-flag"
       aria-hidden="true"
       focusable="false"
       width="24"

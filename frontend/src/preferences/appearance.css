@@ -20,7 +20,7 @@
   --color-lunch: #eee;
   --color-dinner: #e5e5e5;
 }
-:root[data-appearance='minimal'] svg[role='img'][aria-label] {
+:root[data-appearance='minimal'] .language-flag {
   filter: grayscale(1);
 }
 :root[data-appearance='minimal'] button[aria-pressed='true'],
