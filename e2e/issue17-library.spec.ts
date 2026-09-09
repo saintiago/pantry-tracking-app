@@ -111,7 +111,7 @@ test('mobile cookbook hold reveals icon actions without opening; view layouts fi
   }
 });
 
-test('new cookbook lives under New Recipe and cover uploads are resized and compressed', async ({
+test('new cookbook sits beside New Recipe and cover uploads are resized and compressed', async ({
   page,
 }) => {
   await setupPlanner(page, []);
@@ -122,8 +122,7 @@ test('new cookbook lives under New Recipe and cover uploads are resized and comp
   });
   await page.route('**/recipe-images/cover', (route) => route.fulfill({ json: { url: uploaded } }));
   await page.getByRole('button', { name: 'Recipes', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'New cookbook', exact: true })).toBeHidden();
-  await page.getByRole('button', { name: '+ New Recipe', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'New cookbook', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'New cookbook', exact: true }).click();
   const png = await page.evaluate(() => {
     const c = document.createElement('canvas');
