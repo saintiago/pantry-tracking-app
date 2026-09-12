@@ -1,0 +1,77 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "One-time Nexus GitHub OIDC access bootstrap; no application resources.",
+  "Resources": {
+    "NexusGitHubDeploy": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "NexusGitHubDeploy",
+        "Description": "Nexus main branch deployment via GitHub OIDC",
+        "MaxSessionDuration": 3600,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Federated": "arn:aws:iam::698643713254:oidc-provider/token.actions.githubusercontent.com"
+              },
+              "Action": "sts:AssumeRoleWithWebIdentity",
+              "Condition": {
+                "StringEquals": {
+                  "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+                  "token.actions.githubusercontent.com:sub": "repo:saintiago/nexus:ref:refs/heads/main"
+                }
+              }
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "NexusDeployment",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "UseExistingCdkBootstrap",
+                  "Effect": "Allow",
+                  "Action": "sts:AssumeRole",
+                  "Resource": [
+                    "arn:aws:iam::698643713254:role/cdk-hnb659fds-deploy-role-698643713254-eu-north-1",
+                    "arn:aws:iam::698643713254:role/cdk-hnb659fds-file-publishing-role-698643713254-eu-north-1",
+                    "arn:aws:iam::698643713254:role/cdk-hnb659fds-lookup-role-698643713254-eu-north-1"
+                  ]
+                },
+                {
+                  "Sid": "ConfigureNexusThroughItsPolicyApi",
+                  "Effect": "Allow",
+                  "Action": "execute-api:Invoke",
+                  "Resource": [
+                    "arn:aws:execute-api:eu-north-1:698643713254:*/*/GET/v1/*",
+                    "arn:aws:execute-api:eu-north-1:698643713254:*/*/POST/v1/profiles",
+                    "arn:aws:execute-api:eu-north-1:698643713254:*/*/POST/v1/tasks",
+                    "arn:aws:execute-api:eu-north-1:698643713254:*/*/POST/v1/tasks/*/authorize",
+                    "arn:aws:execute-api:eu-north-1:698643713254:*/*/POST/v1/admissions"
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Project",
+            "Value": "Nexus"
+          }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "DeployRoleArn": {
+      "Value": {
+        "Fn::GetAtt": ["NexusGitHubDeploy", "Arn"]
+      }
+    }
+  }
+}

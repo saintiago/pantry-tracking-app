@@ -59,3 +59,5 @@ The script uses `--ci` to disable interactive CDK approval in Actions; ordinary 
 Application Lambdas use Node.js 24. DynamoDB, Cognito and both S3 buckets are retained on deletion/replacement; DynamoDB point-in-time recovery is enabled. An isolated table restore and content comparison are recorded in the [recovery runbook](development/recovery.md). Application cutover and a separate development environment remain outstanding. Inspect `cdk diff` before infrastructure changes and preserve existing construct IDs. See the [architecture audit](architecture/audit-2026-09.md).
 
 References: [GitHub OIDC with AWS](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws), [CDK bootstrapping](https://docs.aws.amazon.com/cdk/v2/guide/bootstrapping.html).
+
+The one-time [Nexus bootstrap](../infrastructure/nexus-bootstrap/README.md) adds a manual, separate access workflow. Its reviewed bootstrap commit uses `[nexus-bootstrap-only]` to omit the unrelated application deployment while preserving the verification job. Ordinary commits and manual application deployments continue unchanged.

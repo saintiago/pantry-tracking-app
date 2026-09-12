@@ -1,0 +1,72 @@
+name: Bootstrap Nexus deployment access
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/nexus-bootstrap.yml'
+      - 'infrastructure/nexus-bootstrap/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nexus-access-bootstrap
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Check fixed bootstrap scope
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const t=JSON.parse(fs.readFileSync('infrastructure/nexus-bootstrap/template.json','utf8'));
+          assert.deepEqual(Object.keys(t.Resources),['NexusGitHubDeploy']);
+          const role=t.Resources.NexusGitHubDeploy;
+          assert.equal(role.Type,'AWS::IAM::Role');
+          assert.equal(role.Properties.RoleName,'NexusGitHubDeploy');
+          const trust=role.Properties.AssumeRolePolicyDocument.Statement;
+          assert.equal(trust.length,1);
+          assert.equal(trust[0].Condition.StringEquals['token.actions.githubusercontent.com:sub'],'repo:saintiago/nexus:ref:refs/heads/main');
+          assert.equal(trust[0].Condition.StringEquals['token.actions.githubusercontent.com:aud'],'sts.amazonaws.com');
+          assert.equal(trust[0].Principal.Federated,'arn:aws:iam::698643713254:oidc-provider/token.actions.githubusercontent.com');
+          assert.ok(!role.Properties.ManagedPolicyArns);
+          JS
+  bootstrap:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Authenticate through existing trusted CI role
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: eu-north-1
+          allowed-account-ids: '698643713254'
+          role-session-name: NexusBootstrap-${{ github.run_id }}
+      - name: Assume existing CloudFormation deployment role
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708
+        with:
+          role-to-assume: arn:aws:iam::698643713254:role/cdk-hnb659fds-deploy-role-698643713254-eu-north-1
+          role-chaining: true
+          aws-region: eu-north-1
+          allowed-account-ids: '698643713254'
+          role-session-name: NexusBootstrapStack-${{ github.run_id }}
+      - name: Validate bootstrap template
+        run: aws cloudformation get-template-summary --template-body file://infrastructure/nexus-bootstrap/template.json --region eu-north-1
+      - name: Create only Nexus access stack
+        run: |
+          aws cloudformation deploy --stack-name NexusAccess \
+            --template-file infrastructure/nexus-bootstrap/template.json \
+            --capabilities CAPABILITY_NAMED_IAM --region eu-north-1 \
+            --role-arn arn:aws:iam::698643713254:role/cdk-hnb659fds-cfn-exec-role-698643713254-eu-north-1 \
+            --no-fail-on-empty-changeset --tags Project=Nexus
+      - name: Report deployment role
+        run: |
+          aws cloudformation describe-stacks --stack-name NexusAccess --region eu-north-1 \
+            --query 'Stacks[0].Outputs' --output json >> "$GITHUB_STEP_SUMMARY"

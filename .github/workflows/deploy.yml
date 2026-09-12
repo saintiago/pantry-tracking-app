@@ -30,7 +30,8 @@ jobs:
 
   deploy:
     needs: verify
-    if: github.ref == 'refs/heads/main'
+    # Bootstrap commits still run verification; only the unrelated app release is omitted.
+    if: github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, '[nexus-bootstrap-only]')
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
