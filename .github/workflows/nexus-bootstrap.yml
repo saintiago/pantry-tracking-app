@@ -54,6 +54,7 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::698643713254:role/cdk-hnb659fds-deploy-role-698643713254-eu-north-1
           role-chaining: true
+          role-skip-session-tagging: true
           aws-region: eu-north-1
           allowed-account-ids: '698643713254'
           role-session-name: NexusBootstrapStack-${{ github.run_id }}
