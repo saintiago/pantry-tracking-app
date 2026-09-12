@@ -20,7 +20,7 @@
               "Condition": {
                 "StringEquals": {
                   "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-                  "token.actions.githubusercontent.com:sub": "repo:saintiago/nexus:ref:refs/heads/main"
+                  "token.actions.githubusercontent.com:sub": "repo:saintiago@11892583/nexus@1367767330:ref:refs/heads/main"
                 }
               }
             }
