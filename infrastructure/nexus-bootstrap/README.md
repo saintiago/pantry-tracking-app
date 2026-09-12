@@ -16,3 +16,5 @@ After reviewing the exact diff:
 The bootstrap job uses the existing Pantry OIDC role, then assumes its existing CDK deployment role. CloudFormation uses the existing CDK execution role. All AWS changes happen inside GitHub Actions. Local `validate-template` only checked syntax; it is not deployment proof.
 
 Rollback: review trust revocation or removal through a CI CloudFormation change. Do not delete the role while Nexus deployment jobs are running.
+
+Nexus uses GitHub immutable OIDC subjects: the trust condition includes owner ID `11892583` and repository ID `1367767330`, as returned by the repository OIDC settings API. Its exact main subject is `repo:saintiago@11892583/nexus@1367767330:ref:refs/heads/main`. The older Pantry repository keeps its existing name-based subject. Do not disable immutable subjects to match the old trust format.

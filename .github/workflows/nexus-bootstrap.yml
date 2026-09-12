@@ -27,7 +27,7 @@ jobs:
           assert.equal(role.Properties.RoleName,'NexusGitHubDeploy');
           const trust=role.Properties.AssumeRolePolicyDocument.Statement;
           assert.equal(trust.length,1);
-          assert.equal(trust[0].Condition.StringEquals['token.actions.githubusercontent.com:sub'],'repo:saintiago/nexus:ref:refs/heads/main');
+          assert.equal(trust[0].Condition.StringEquals['token.actions.githubusercontent.com:sub'],'repo:saintiago@11892583/nexus@1367767330:ref:refs/heads/main');
           assert.equal(trust[0].Condition.StringEquals['token.actions.githubusercontent.com:aud'],'sts.amazonaws.com');
           assert.equal(trust[0].Principal.Federated,'arn:aws:iam::698643713254:oidc-provider/token.actions.githubusercontent.com');
           assert.ok(!role.Properties.ManagedPolicyArns);
